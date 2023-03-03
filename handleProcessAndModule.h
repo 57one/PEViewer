@@ -12,3 +12,5 @@ VOID InitModulesListView(HWND hDlg);
 VOID EnumProcess(HWND hListProcess);
 
 VOID EnumModule(HWND hListModule);
+
+VOID EnumModules(HWND hListProcess, HWND hListModule, WPARAM wParam, LPARAM lParam);

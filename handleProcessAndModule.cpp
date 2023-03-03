@@ -64,7 +64,54 @@ VOID InitModulesListView(HWND hDlg) {
 	lv.iSubItem = 1;
 	ListView_InsertColumn(hListModule, 1, &lv);
 
-	EnumModule(hListModule);
+	//EnumModule(hListModule);
+}
+
+VOID DrawProcess(HWND hListProcess, int Row, TCHAR* szProcessName, TCHAR* szProcessID) {
+	LV_ITEM vitem;
+
+	//初始化						
+	memset(&vitem, 0, sizeof(LV_ITEM));
+	vitem.mask = LVIF_TEXT;
+
+	vitem.pszText = szProcessName;
+	vitem.iItem = Row;		//第几行				
+	vitem.iSubItem = 0;		//第几列
+	// 这是一个宏 和 sendMessage做的事情一样
+	//ListView_InsertItem(hListProcess, &vitem);
+	//凡事皆消息
+	SendMessage(hListProcess, LVM_INSERTITEM, 0, (DWORD)&vitem);
+
+	//第一行写完之后 后面全是 SETITEM
+	vitem.pszText = szProcessID;
+	vitem.iSubItem = 1;
+	ListView_SetItem(hListProcess, &vitem);
+
+	vitem.pszText = const_cast<wchar_t*>(TEXT("56590000"));
+	vitem.iSubItem = 2;
+	ListView_SetItem(hListProcess, &vitem);
+
+	vitem.pszText = const_cast<wchar_t*>(TEXT("000F0000"));
+	vitem.iSubItem = 3;
+	ListView_SetItem(hListProcess, &vitem);
+}
+
+VOID DrawModules(HWND hListModule, int Row, TCHAR* szModName, TCHAR* szModFullName) {
+	LV_ITEM vitem;
+
+	//初始化
+	memset(&vitem, 0, sizeof(LV_ITEM));
+	vitem.mask = LVIF_TEXT;
+
+	vitem.pszText = szModName;
+	vitem.iItem = Row;		//第几行				
+	vitem.iSubItem = 0;		//第几列
+	SendMessage(hListModule, LVM_INSERTITEM, 0, (DWORD)&vitem);
+
+	//第一行写完之后 后面全是 SETITEM
+	vitem.pszText = szModFullName;
+	vitem.iSubItem = 1;
+	ListView_SetItem(hListModule, &vitem);
 }
 
 VOID EnumProcess(HWND hListProcess) {
@@ -78,110 +125,85 @@ VOID EnumProcess(HWND hListProcess) {
 
 	HANDLE hProcess;
 	TCHAR szProcessName[MAX_PATH] = TEXT("<unknown>");
-
-	HMODULE hMod;
-	DWORD cbNeeded;
-
+	TCHAR szBuf[6] = { 0 };
+	UINT32 count = 0;
 	for (UINT32 i = 0; i < cProcesses; i++) {
-		hProcess = OpenProcess(PROCESS_QUERY_INFORMATION |
-			PROCESS_VM_READ,
-			FALSE, iProcesses[i]);
-		if (hProcess == NULL) continue;
-		/*if (GetProcessImageFileName(hProcess, szProcessName, sizeof(szProcessName) / sizeof(*szProcessName)) == 0) {
-			continue;
+		if (iProcesses[i] != 0) {
+			hProcess = OpenProcess(PROCESS_QUERY_INFORMATION |
+				PROCESS_VM_READ,
+				FALSE, iProcesses[i]);
+			if (hProcess == NULL) continue;
+			HMODULE hMod;
+			DWORD cbNeeded;
+			MODULEINFO module_info;
+			memset(&module_info, 0, sizeof(module_info));
+			if (EnumProcessModules(hProcess, &hMod, sizeof(hMod),
+				&cbNeeded))
+			{
+				GetModuleInformation(hProcess, hMod, &module_info, sizeof(module_info));
+				//MessageBox(NULL, TEXT("请选择进程"), TEXT("出错了"), MB_OK);
+				GetModuleBaseName(hProcess, hMod, szProcessName,
+					sizeof(szProcessName) / sizeof(TCHAR));
+				wsprintf(szBuf, TEXT("%ld"), iProcesses[i]);
+				DrawProcess(hListProcess, count, szProcessName, szBuf);
+				count++;
+			}
 		}
-		else {
-			break;
-		}*/
-		if (EnumProcessModules(hProcess, &hMod, sizeof(hMod),
-			&cbNeeded))
-		{
-			GetModuleBaseName(hProcess, hMod, szProcessName,
-				sizeof(szProcessName) / sizeof(TCHAR));
-			break;
-		}
-
 	}
-	
-
-	LV_ITEM vitem;
-
-	//初始化						
-	memset(&vitem, 0, sizeof(LV_ITEM));
-	vitem.mask = LVIF_TEXT;
-
-	//vitem.pszText = const_cast<wchar_t*>(TEXT("csrss.exe"));
-	vitem.pszText = szProcessName;
-	vitem.iItem = 0;		//第几行				
-	vitem.iSubItem = 0;		//第几列
-	// 这是一个宏 和 sendMessage做的事情一样
-	//ListView_InsertItem(hListProcess, &vitem);
-	//凡事皆消息
-	SendMessage(hListProcess, LVM_INSERTITEM, 0, (DWORD)&vitem);
-
-	//第一行写完之后 后面全是 SETITEM
-	vitem.pszText = const_cast<wchar_t*>(TEXT("448"));
-	vitem.iItem = 0;
-	vitem.iSubItem = 1;
-	ListView_SetItem(hListProcess, &vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("56590000"));
-	vitem.iItem = 0;
-	vitem.iSubItem = 2;
-	ListView_SetItem(hListProcess, &vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("000F0000"));
-	vitem.iItem = 0;
-	vitem.iSubItem = 3;
-	ListView_SetItem(hListProcess, &vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("winlogon.exe"));
-	vitem.iItem = 1;
-	vitem.iSubItem = 0;
-	//ListView_InsertItem(hListProcess, &vitem);						
-	SendMessage(hListProcess, LVM_INSERTITEM, 0, (DWORD)&vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("456"));
-	vitem.iSubItem = 1;
-	ListView_SetItem(hListProcess, &vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("10000000"));
-	vitem.iSubItem = 2;
-	ListView_SetItem(hListProcess, &vitem);
-
-	vitem.pszText = const_cast<wchar_t*>(TEXT("000045800"));
-	vitem.iSubItem = 3;
-	ListView_SetItem(hListProcess, &vitem);
-
 }
 
-VOID EnumModule(HWND hListModule) {
-	LV_ITEM vitem;
+VOID EnumModules(HWND hListProcess, HWND hListModule, WPARAM wParam, LPARAM lParam) {
+	DWORD dwRowId;
+	TCHAR szPid[0x20];
+	LV_ITEM lv;
 
 	//初始化
-	memset(&vitem, 0, sizeof(LV_ITEM));
-	vitem.mask = LVIF_TEXT;
+	memset(&lv, 0, sizeof(LV_ITEM));
+	memset(szPid, 0, 0x20);
+	//获取选择行
+	dwRowId = SendMessage(hListProcess, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
+	if (dwRowId == -1) {
+		MessageBox(NULL, TEXT("请选择进程"), TEXT("出错了"), MB_OK);
+		return;
+	}
+	//获取PID
+	lv.iSubItem = 1;	//要获取的列
+	lv.pszText = szPid;	//指定存储查询结果的缓冲区
+	lv.cchTextMax = 0x20;	//指定缓冲区大小
+	SendMessage(hListProcess, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
 
-	vitem.pszText = const_cast <wchar_t*>(TEXT("kernel.dll"));
-	vitem.iItem = 0;		//第几行				
-	vitem.iSubItem = 0;		//第几列
-	SendMessage(hListModule, LVM_INSERTITEM, 0, (DWORD)&vitem);
+	DWORD processID;
+	HMODULE hMods[1024];
+	HANDLE hProcess;
+	DWORD cbNeeded;
 
-	//第一行写完之后 后面全是 SETITEM
-	vitem.pszText = const_cast<wchar_t*>(TEXT("c:\\windows\\system32\\kernel.dll"));
-	vitem.iItem = 0;
-	vitem.iSubItem = 1;
-	ListView_SetItem(hListModule, &vitem);
+	processID = wcstoul(szPid, NULL, 10);
 
+	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION |
+		PROCESS_VM_READ,
+		FALSE, processID);
+ 
+	UINT32 count = 0;
 
-	vitem.pszText = const_cast<wchar_t*>(TEXT("user.dll"));
-	vitem.iItem = 1;
-	vitem.iSubItem = 0;
-	//ListView_InsertItem(hListProcess, &vitem);						
-	SendMessage(hListModule, LVM_INSERTITEM, 0, (DWORD)&vitem);
+	if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
+	{
+		for (UINT32 i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+		{
+			TCHAR szModName[MAX_PATH], szModFullName[MAX_PATH];
 
-	vitem.pszText = const_cast<wchar_t*>(TEXT("c:\\windows\\system32\\user.dll"));
-	vitem.iSubItem = 1;
-	ListView_SetItem(hListModule, &vitem);
+			// Get the full path to the module's file.
+
+			if (GetModuleBaseName(hProcess, hMods[i], szModName,
+				sizeof(szModName) / sizeof(TCHAR))) {
+			}
+
+			if (GetModuleFileNameEx(hProcess, hMods[i], szModFullName,
+				sizeof(szModName) / sizeof(TCHAR))) {
+			}
+
+			DrawModules(hListModule, count, szModName, szModFullName);
+			count++;
+		}
+	}
 
 }
