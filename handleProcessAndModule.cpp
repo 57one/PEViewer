@@ -67,7 +67,8 @@ VOID InitModulesListView(HWND hDlg) {
 	//EnumModule(hListModule);
 }
 
-VOID DrawProcess(HWND hListProcess, int Row, TCHAR* szProcessName, TCHAR* szProcessID) {
+VOID DrawProcess(HWND hListProcess, int Row, TCHAR* szProcessName, TCHAR* szProcessID,
+				TCHAR* szImageBase, TCHAR* szSizeofImage) {
 	LV_ITEM vitem;
 
 	//初始化						
@@ -87,11 +88,11 @@ VOID DrawProcess(HWND hListProcess, int Row, TCHAR* szProcessName, TCHAR* szProc
 	vitem.iSubItem = 1;
 	ListView_SetItem(hListProcess, &vitem);
 
-	vitem.pszText = const_cast<wchar_t*>(TEXT("56590000"));
+	vitem.pszText = szImageBase;
 	vitem.iSubItem = 2;
 	ListView_SetItem(hListProcess, &vitem);
 
-	vitem.pszText = const_cast<wchar_t*>(TEXT("000F0000"));
+	vitem.pszText = szSizeofImage;
 	vitem.iSubItem = 3;
 	ListView_SetItem(hListProcess, &vitem);
 }
@@ -125,6 +126,8 @@ VOID EnumProcess(HWND hListProcess) {
 
 	HANDLE hProcess;
 	TCHAR szProcessName[MAX_PATH] = TEXT("<unknown>");
+	TCHAR szImageBase[MAX_PATH] = TEXT("<unknown>");
+	TCHAR szSizeofImage[MAX_PATH] = TEXT("<unknown>");
 	TCHAR szBuf[6] = { 0 };
 	UINT32 count = 0;
 	for (UINT32 i = 0; i < cProcesses; i++) {
@@ -141,11 +144,18 @@ VOID EnumProcess(HWND hListProcess) {
 				&cbNeeded))
 			{
 				GetModuleInformation(hProcess, hMod, &module_info, sizeof(module_info));
+
+				DWORD ImageBase = DWORD(module_info.EntryPoint) - DWORD(module_info.lpBaseOfDll);
+				wsprintf(szImageBase, TEXT("%X"), ImageBase);
+				wsprintf(szSizeofImage, TEXT("%X"), module_info.SizeOfImage);
+				/*printf("%x\n", module_info.lpBaseOfDll);
+				printf("%x\n", module_info.EntryPoint);
+				printf("%x\n", module_info.SizeOfImage);*/
 				//MessageBox(NULL, TEXT("请选择进程"), TEXT("出错了"), MB_OK);
 				GetModuleBaseName(hProcess, hMod, szProcessName,
 					sizeof(szProcessName) / sizeof(TCHAR));
 				wsprintf(szBuf, TEXT("%ld"), iProcesses[i]);
-				DrawProcess(hListProcess, count, szProcessName, szBuf);
+				DrawProcess(hListProcess, count, szProcessName, szBuf, szImageBase, szSizeofImage);
 				count++;
 			}
 		}
