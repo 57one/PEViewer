@@ -2,8 +2,14 @@
 
 #include <windows.h>
 #include <commctrl.h>
-#include <Psapi.h>
+#include <psapi.h>
+#include <tlhelp32.h>
+#include <tchar.h>
+
+#include "global.h"
 #include "resource.h"
+#include "structs.h"
+#include "utility.h"
 
 VOID InitProcessListView(HWND hDlg);
 
