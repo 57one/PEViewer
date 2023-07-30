@@ -1,9 +1,14 @@
 #pragma once
-#include <windows.h>
+#include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <tchar.h>
+#include <windows.h>
 
-extern LPVOID* pFileBuffer;
+#include "resource.h"
+extern LPVOID pFileBuffer;
 DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer);
+
+VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer);
+
+VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, WORD data);

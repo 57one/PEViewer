@@ -1,7 +1,9 @@
 #include "readPE.h"
+
 #include "global.h"
 
-LPVOID* pFileBuffer = NULL;
+LPVOID pFileBuffer = NULL;
+TCHAR buffer[MAX_PATH] = {0};
 DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   FILE* file = NULL;
   DWORD fileSize = 0;
@@ -35,4 +37,34 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   }
   fclose(file);
   return n;
+}
+
+VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
+  memset(buffer, 0, sizeof(buffer));
+  PIMAGE_DOS_HEADER pDosHeader = NULL;
+  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
+  // set DosHeader Text
+  writeToText(hwnd, IDC_EDIT_MAGIC_NUMBER, TEXT("%04X"), pDosHeader->e_magic);
+  writeToText(hwnd, IDC_EDIT_BLP, TEXT("%04X"), pDosHeader->e_cblp);
+  writeToText(hwnd, IDC_EDIT_PAGES, TEXT("%04X"), pDosHeader->e_cp);
+  writeToText(hwnd, IDC_EDIT_RLC, TEXT("%04X"), pDosHeader->e_crlc);
+  writeToText(hwnd, IDC_EDIT_PARHDR, TEXT("%04X"), pDosHeader->e_cparhdr);
+  writeToText(hwnd, IDC_EDIT_MIN_ALLOC, TEXT("%04X"), pDosHeader->e_minalloc);
+  writeToText(hwnd, IDC_EDIT_MAX_ALLOC, TEXT("%04X"), pDosHeader->e_maxalloc);
+  writeToText(hwnd, IDC_EDIT_INIT_SS, TEXT("%04X"), pDosHeader->e_ss);
+  writeToText(hwnd, IDC_EDIT_INIT_SP, TEXT("%04X"), pDosHeader->e_sp);
+  writeToText(hwnd, IDC_EDIT_CHECKSUM, TEXT("%04X"), pDosHeader->e_csum);
+  writeToText(hwnd, IDC_EDIT_INIT_IP, TEXT("%04X"), pDosHeader->e_ip);
+  writeToText(hwnd, IDC_EDIT_INIT_CS, TEXT("%04X"), pDosHeader->e_cs);
+  writeToText(hwnd, IDC_EDIT_LFARLC, TEXT("%04X"), pDosHeader->e_lfarlc);
+  writeToText(hwnd, IDC_EDIT_OVNO, TEXT("%04X"), pDosHeader->e_ovno);
+  writeToText(hwnd, IDC_EDIT_OEM_ID, TEXT("%04X"), pDosHeader->e_oemid);
+  writeToText(hwnd, IDC_EDIT_OEM_INFO, TEXT("%04X"), pDosHeader->e_oeminfo);
+  writeToText(hwnd, IDC_EDIT_PE_ADDRESS, TEXT("%08X"), pDosHeader->e_lfanew);
+
+}
+
+VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, WORD data) {
+  _stprintf_s(buffer, TEXT("%04X"), data);
+  SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
 }
