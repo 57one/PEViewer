@@ -143,18 +143,27 @@
     <ClCompile Include="handleProcessAndModule.cpp" />
     <ClCompile Include="messageCallback.cpp" />
     <ClCompile Include="PEViewer.cpp" />
+    <ClCompile Include="readPE.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="windowProc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="global.h" />
     <ClInclude Include="handleProcessAndModule.h" />
     <ClInclude Include="messageCallback.h" />
+    <ClInclude Include="readPE.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="utility.h" />
+    <ClInclude Include="windowProc.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="H:\57one\7eviewer-back.bmp" />
+    <Image Include="resources\bmp\7eviewer.bmp" />
+    <Image Include="resources\bmp\bitmap1.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
