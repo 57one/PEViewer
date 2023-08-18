@@ -18,3 +18,6 @@ BOOL CALLBACK AboutProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
                            LPARAM lParam);
+
+BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
+                             LPARAM lParam);

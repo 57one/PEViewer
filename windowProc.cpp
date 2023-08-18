@@ -113,13 +113,51 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
     }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
-        case IDC_BUTTON_EDIT: {
+        case IDC_BUTTON_FILE_HEADER: {
+          onFileHeader(hwnd);
+          return true;
+        }
+        case IDC_BUTTON_OPTION_HEADER: {
+          return true;
+        }
+        case IDC_BUTTON_HEADER_INFO: {
+          return true;
+        }
+        case IDC_BUTTON_SECTION: {
+          return true;
+        }
+        case IDC_BUTTON_DIRECTORY: {
+          return true;
+        }
+        case IDC_BUTTON_TOOLS: {
+          return true;
+        }
+        case IDC_BUTTON_DOS_OK: {
           return TRUE;
         }
-        case IDC_BUTTON_CANCEL: {
+        case IDC_BUTTON_DOS_CANCEL: {
           EndDialog(hwnd, 0);
           return TRUE;
         }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onFileHeaderInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
       }
     }
   }
