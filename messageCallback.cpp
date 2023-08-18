@@ -84,3 +84,14 @@ void onPeEditorInit(HWND hwnd, LPARAM lParam) {
   // set text about dos header
   readDosHeader(hwnd, pFileBuffer);
 }
+
+void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
+    // set text about file header
+  readFileHeader(hwnd, pFileBuffer);
+}
+
+void onFileHeader(HWND hwnd) {
+  DialogBox(GetModuleHandle(NULL),
+            MAKEINTRESOURCE(IDD_DIALOG_IMAGE_FILE_HEADER), hwnd,
+            FileHeaderProc);
+}

@@ -20,3 +20,9 @@ void onPeEditor(HWND hwnd);
 
 // WM_INITDIALOG
 void onPeEditorInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_FILE_HEADER
+void onFileHeader(HWND hwnd);
+
+// WM_INITDIALOG
+void onFileHeaderInit(HWND hwnd, LPARAM lParam);
