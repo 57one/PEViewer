@@ -11,4 +11,6 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer);
 
 VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer);
 
+VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer);
+
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, WORD data);

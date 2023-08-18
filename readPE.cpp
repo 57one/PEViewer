@@ -61,10 +61,27 @@ VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
   writeToText(hwnd, IDC_EDIT_OEM_ID, TEXT("%04X"), pDosHeader->e_oemid);
   writeToText(hwnd, IDC_EDIT_OEM_INFO, TEXT("%04X"), pDosHeader->e_oeminfo);
   writeToText(hwnd, IDC_EDIT_PE_ADDRESS, TEXT("%08X"), pDosHeader->e_lfanew);
+}
 
+VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer) {
+  memset(buffer, 0, sizeof(buffer));
+  PIMAGE_DOS_HEADER pDosHeader = NULL;
+  PIMAGE_NT_HEADERS pNTHeader = NULL;
+  PIMAGE_FILE_HEADER pFileHeader = NULL;
+  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
+  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD)pFileBuffer + pDosHeader->e_lfanew);
+  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
+  // set FileHeader
+  writeToText(hwnd, IDC_EDIT_MACHINE, TEXT("%04X"), pFileHeader->Machine);
+  writeToText(hwnd, IDC_EDIT_NUMBER_OF_SECTIONS, TEXT("%04X"), pFileHeader->NumberOfSections);
+  writeToText(hwnd, IDC_EDIT_TIMEDATESTAMP, TEXT("%08X"), pFileHeader->TimeDateStamp);
+  writeToText(hwnd, IDC_EDIT_P_SYMTAB, TEXT("%08X"), pFileHeader->PointerToSymbolTable);
+  writeToText(hwnd, IDC_EDIT_NUMBER_OF_SYMBOL, TEXT("%08X"), pFileHeader->NumberOfSymbols);
+  writeToText(hwnd, IDC_EDIT_SIZE_OF_OPT_HEADER, TEXT("%04X"), pFileHeader->SizeOfOptionalHeader);
+  writeToText(hwnd, IDC_EDIT_CHARACTERISTICS, TEXT("%04X"), pFileHeader->Characteristics);
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, WORD data) {
-  _stprintf_s(buffer, TEXT("%04X"), data);
+  _stprintf_s(buffer, format, data);
   SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
 }
