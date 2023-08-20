@@ -69,12 +69,16 @@ BOOL setDebugPrivilege(BOOL bEnable) {
   return TRUE;
 }
 
+void printMessage(LPCTSTR lpcstr) {
+  _tprintf(TEXT("\n-----%s-----\n"), lpcstr);
+}
+
 void printErrorCode() {
   DWORD error = GetLastError();
   _tprintf(TEXT("[errorCode: %ld]\n"), error);
 }
 
-void printErrorCode(LPCSTR lpcstr, BOOL bExit) {
+void printErrorCode(LPCTSTR lpcstr, BOOL bExit) {
   DWORD error = GetLastError();
   _tprintf(TEXT("[errorCode: %ld]: %s\n"), error, lpcstr);
   if (bExit) {
@@ -92,7 +96,7 @@ BOOL isWow64(HANDLE hProcess) {
 
   if (NULL != fnIsWow64Process) {
     if (!fnIsWow64Process(hProcess, &bIsWow64)) {
-      printErrorCode("isWow64");
+      printErrorCode(TEXT("isWow64"));
     }
   }
   return bIsWow64;

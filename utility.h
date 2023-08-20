@@ -11,9 +11,11 @@ void screenToClientRect(HWND dlgHwnd, LPRECT lpRect);
 
 BOOL setDebugPrivilege(BOOL bEnable);
 
+void printMessage(LPCTSTR lpcstr);
+
 void printErrorCode();
 
-void printErrorCode(LPCSTR lpcstr, BOOL bExit = FALSE);
+void printErrorCode(LPCTSTR lpcstr, BOOL bExit = FALSE);
 
 BOOL isWow64(HANDLE hProcess);
 
