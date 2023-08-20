@@ -235,13 +235,13 @@ VOID EnumProcess2(HWND hListProcess) {
   COLORREF colorRef = RGB(0xf1, 0xf2, 0xf6);
   hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
   if (hProcessSnap == INVALID_HANDLE_VALUE) {
-    printErrorCode("CreateToolhelp32Snapshot (of processes)");
+    printErrorCode(TEXT("CreateToolhelp32Snapshot (of processes)"));
     return;
   }
   pe32.dwSize = sizeof(PROCESSENTRY32);
 
   if (!Process32First(hProcessSnap, &pe32)) {
-    printErrorCode("Process32First");
+    printErrorCode(TEXT("Process32First"));
     CloseHandle(hProcessSnap);
     return;
   }
@@ -252,12 +252,12 @@ VOID EnumProcess2(HWND hListProcess) {
         TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, dwPID);
     printf("%d\n", dwPID);
     if (hModuleSnap == INVALID_HANDLE_VALUE) {
-      printErrorCode("CreateToolhelp32Snapshot (of modules)");
+      printErrorCode(TEXT("CreateToolhelp32Snapshot (of modules)"));
       continue;
     }
     me32.dwSize = sizeof(MODULEENTRY32);
     if (!Module32First(hModuleSnap, &me32)) {
-      printErrorCode("Module32First");
+      printErrorCode(TEXT("Module32First"));
       continue;
     }
 
