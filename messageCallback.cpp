@@ -85,13 +85,44 @@ void onPeEditorInit(HWND hwnd, LPARAM lParam) {
   readDosHeader(hwnd, pFileBuffer);
 }
 
-void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
-    // set text about file header
-  readFileHeader(hwnd, pFileBuffer);
-}
-
 void onFileHeader(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL),
             MAKEINTRESOURCE(IDD_DIALOG_IMAGE_FILE_HEADER), hwnd,
             FileHeaderProc);
+}
+
+void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
+  // set text about file header
+  readFileHeader(hwnd, pFileBuffer);
+}
+
+void onMachineType(HWND hwnd) {
+  HWND hEditMachine = GetDlgItem(hwnd, IDC_EDIT_MACHINE);
+  TCHAR szBuffer[8];
+  GetWindowText(hEditMachine, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_MACHINE_TYPE), hwnd,
+                 MachineTypeProc, (LPARAM)szBuffer);
+}
+
+void onMachineTypeInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+
+  HWND hMachineType = NULL;
+  hMachineType = GetDlgItem(hwnd, IDC_COMBO_MACHINE_TYPE);
+
+  // ComboBox_AddString(hMachineType, TEXT("123"));
+  // same as
+  // SendMessage(hMachineType, CB_ADDSTRING, 0, (LPARAM)TEXT("123"));
+  for (int i = 0; i < wMachineTypeLength; i++) {
+    ComboBox_AddString(hMachineType, szMachineTypeDesc[i]);
+  }
+
+  DWORD index = 0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
+  ComboBox_SetCurSel(hMachineType, machinetypeToIndex[index]);
 }

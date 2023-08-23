@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <windows.h>
+#include <windowsx.h>
 
 #include "global.h"
 #include "resource.h"
@@ -26,3 +27,9 @@ void onFileHeader(HWND hwnd);
 
 // WM_INITDIALOG
 void onFileHeaderInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_FILE_HEADER_MACHINE
+void onMachineType(HWND hwnd);
+
+// WM_INITDIALOG
+void onMachineTypeInit(HWND hwnd, LPARAM lParam);
