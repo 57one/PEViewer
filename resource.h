@@ -6,6 +6,7 @@
 #define IDD_DIALOG_ABOUT                107
 #define IDD_DIALOG_PE_EDITOR            134
 #define IDD_DIALOG_IMAGE_FILE_HEADER    142
+#define IDD_DIALOG_MACHINE_TYPE         144
 #define IDC_BUTTON_PE_EDITOR            1001
 #define IDC_LIST_PROCESS                1008
 #define IDC_BUTTON_PROFILE              1009
@@ -75,31 +76,39 @@
 #define IDC_STATIC_INIT_CS              1058
 #define IDC_EDIT_INIT_CS                1059
 #define IDC_BUTTON_MACHINE              1059
+#define IDC_BUTTON_FILE_HEADER_MACHINE  1059
 #define IDC_STATIC_LFARLC               1060
 #define IDC_STATIC_NUMBER_OF_SYMBOL     1060
 #define IDC_EDIT_LFARLC                 1061
 #define IDC_EDIT_NUMBER_OF_SYMBOL       1061
 #define IDC_STATIC_OVNO                 1062
 #define IDC_BUTTON_TIMEDATESTAMP        1062
+#define IDC_BUTTON_FILE_HEADER_TIMEDATESTAMP 1062
 #define IDC_EDIT_OVNO                   1063
 #define IDC_BUTTON_CHARACTERISTICS      1063
+#define IDC_BUTTON_FILE_HEADER_CHARACTERISTICS 1063
 #define IDC_STATIC_OEM_ID               1064
 #define IDC_BUTTON_FILE_HEADER_OK       1064
 #define IDC_EDIT_OEM_ID                 1065
 #define IDC_BUTTON_FILE_HEADER_CANCEL   1065
 #define IDC_STATIC_OEM_INFO             1066
+#define IDC_GROUP_MACHINE_TYPE          1066
 #define IDC_EDIT_OEM_INFO               1067
 #define IDC_STATIC_PE_ADDRESS           1068
 #define IDC_EDIT_OEM_INFO2              1069
 #define IDC_EDIT_PE_ADDRESS             1069
+#define IDC_COMBO1                      1069
+#define IDC_COMBO_MACHINE_TYPE          1069
+#define IDC_BUTTON_MACHINE_TYPE_OK      1070
+#define IDC_BUTTON_MACHINE_TYPE_CANCEL  1071
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        144
+#define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1066
+#define _APS_NEXT_CONTROL_VALUE         1072
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
