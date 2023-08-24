@@ -115,22 +115,22 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_FILE_HEADER: {
           onFileHeader(hwnd);
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_OPTION_HEADER: {
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_HEADER_INFO: {
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_SECTION: {
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_DIRECTORY: {
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_TOOLS: {
-          return true;
+          return TRUE;
         }
         case IDC_BUTTON_DOS_OK: {
           return TRUE;
@@ -158,6 +158,40 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
     }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
+        case IDC_BUTTON_FILE_HEADER_MACHINE: {
+          onMachineType(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_FILE_HEADER_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
+                             LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onMachineTypeInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_MACHINE_TYPE_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_MACHINE_TYPE_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
       }
     }
   }
