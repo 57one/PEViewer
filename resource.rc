@@ -168,6 +168,47 @@ BEGIN
     PUSHBUTTON      "Cancel",IDC_BUTTON_MACHINE_TYPE_CANCEL,116,40,63,16
 END
 
+IDD_DIALOG_CHARACTERISTICS DIALOGEX 0, 0, 281, 188
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Characteristics"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Characteristics",IDC_GROUP_MACHINE_TYPE,7,7,267,153
+    CONTROL         "File has no Relocation info",IDC_CHECK_FILE_RELOCS_STRIPPED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,20,99,10
+    CONTROL         "File is executable",IDC_CHECK_FILE_EXECUTABLE_IMAGE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,29,71,10
+    CONTROL         "File has no COFF Line number (deprecated)(should be zero)",IDC_CHECK_FILE_LINE_NUMS_STRIPPED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,38,207,10
+    CONTROL         "File has no COFF local symbolS (deprecated)(should be zero)",IDC_CHECK_FILE_LOCAL_SYMS_STRIPPED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,47,210,10
+    CONTROL         "Application can handle > 2-GB addresses",IDC_CHECK_FILE_LARGE_ADDRESS_AWARE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,56,147,10
+    CONTROL         "Aggressively trim working set (deprecated for Win2000 and later)",IDC_CHECK_FILE_AGGRESSIVE_WS_TRIM,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,65,225,10
+    CONTROL         "No Flag (0x0040) reserved for future use",IDC_CHECK_CHARA_RESERVED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,74,149,10
+    CONTROL         "Little endian: LSB precedes MSB in memory (deprecated)(should be zero)",IDC_CHECK_FILE_BYTES_REVERSED_LO,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,83,248,10
+    CONTROL         "Machine is based on 32-bit",IDC_CHECK_FILE_32BIT_MACHINE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,92,101,10
+    CONTROL         "File has no Debugging information",IDC_CHECK_FILE_DEBUG_STRIPPED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,101,124,10
+    CONTROL         "If the image is on removable media, fully load it and copy it to the swap file",IDC_CHECK_FILE_REMOVABLE_RUN_FROM_SWAP,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,110,255,10
+    CONTROL         "If the image is on network media, fully load it and copy it to the  swap file",IDC_CHECK_FILE_NET_RUN_FROM_SWAP,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,119,250,10
+    CONTROL         "File is a system file",IDC_CHECK_FILE_SYSTEM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,137,75,10
+    CONTROL         "File is a dynamic-link library (DLL)",IDC_CHECK_FILE_DLL,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,128,121,10
+    CONTROL         "File should be run only on a uniprocessor machine",IDC_CHECK_FILE_UP_SYSTEM_ONLY,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,137,174,10
+    CONTROL         "Big endian: MSB precedes the LSB in memory (deprecated)(should be zero)",IDC_CHECK_FILE_BYTES_REVERSED_HI,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,146,255,10
+    PUSHBUTTON      "Ok",IDC_BUTTON_CHARACTERISTICS_OK,146,162,63,16
+    PUSHBUTTON      "Cancel",IDC_BUTTON_CHARACTERISTICS_CANCEL,211,162,63,16
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -216,6 +257,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 56
     END
+
+    IDD_DIALOG_CHARACTERISTICS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 274
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 180
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -246,6 +295,11 @@ BEGIN
 END
 
 IDD_DIALOG_MACHINE_TYPE AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_CHARACTERISTICS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
