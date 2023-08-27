@@ -161,9 +161,7 @@
     <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="H:\57one\7eviewer-back.bmp" />
     <Image Include="resources\bmp\7eviewer.bmp" />
-    <Image Include="resources\bmp\bitmap1.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

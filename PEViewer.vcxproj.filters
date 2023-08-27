@@ -72,11 +72,5 @@
     <Image Include="resources\bmp\7eviewer.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="H:\57one\7eviewer-back.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="resources\bmp\bitmap1.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
   </ItemGroup>
 </Project>
