@@ -162,6 +162,10 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
           onMachineType(hwnd);
           return TRUE;
         }
+        case IDC_BUTTON_FILE_HEADER_CHARACTERISTICS: {
+          onCharacteristics(hwnd);
+          return TRUE;
+        }
         case IDC_BUTTON_FILE_HEADER_CANCEL: {
           EndDialog(hwnd, 0);
           return TRUE;
@@ -190,6 +194,36 @@ BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
         }
         case IDC_BUTTON_MACHINE_TYPE_CANCEL: {
           EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+                              LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onCharacteristicsInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_CHARACTERISTICS_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_CHARACTERISTICS_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+        default: {
+          handleCheckBoxesChecked(hwnd, LOWORD(wParam));
           return TRUE;
         }
       }

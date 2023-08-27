@@ -24,3 +24,6 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
                               LPARAM lParam);
+
+BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+                                  LPARAM lParam);
