@@ -126,3 +126,57 @@ void onMachineTypeInit(HWND hwnd, LPARAM lParam) {
   _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
   ComboBox_SetCurSel(hMachineType, machinetypeToIndex[index]);
 }
+
+void setCharacteristics(HWND hwnd, LPARAM lParam) {
+  DWORD Characteristics = 0x0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &Characteristics);
+  for (DWORD i = characteristicsBegin, index = 0; i <= characteristicsEnd;) {
+    if (i & Characteristics) {
+      Button_SetCheck(GetDlgItem(hwnd, characteristicsCheckBoxID[index]),
+                      BST_CHECKED);
+    }
+    i <<= 1;
+    index++;
+  }
+}
+
+void onCharacteristics(HWND hwnd) {
+  HWND hCharacteristics = GetDlgItem(hwnd, IDC_EDIT_CHARACTERISTICS);
+  TCHAR szBuffer[8];
+  GetWindowText(hCharacteristics, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
+                 CharacteristicsProc, (LPARAM)szBuffer);
+}
+
+void onCharacteristicsInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+  setCharacteristics(hwnd, lParam);
+}
+
+void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  DWORD Characteristics = 0x0;
+  _stscanf_s(szTitle, TEXT("Characteristics -- %x"), &Characteristics);
+  for (DWORD i = characteristicsBegin, index = 0; i <= characteristicsEnd;) {
+    if (characteristicsCheckBoxID[index] == checkBoxID) {
+      // checkbox checked before WM_COMMAND Message
+      if (IsDlgButtonChecked(hwnd, checkBoxID) == BST_CHECKED) {
+        Characteristics |= i;
+      } else {
+        Characteristics ^= i;
+      }
+      
+      break;
+    }
+    i <<= 1;
+    index++;
+  }
+  wsprintf(szTitle, TEXT("Characteristics -- %x"), Characteristics);
+  SetWindowText(hwnd, szTitle);
+}

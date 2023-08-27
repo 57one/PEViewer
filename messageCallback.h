@@ -33,3 +33,12 @@ void onMachineType(HWND hwnd);
 
 // WM_INITDIALOG
 void onMachineTypeInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_FILE_HEADER_CHARACTERISTICS
+void onCharacteristics(HWND hwnd);
+
+// WM_INITDIALOG
+void onCharacteristicsInit(HWND hwnd, LPARAM lParam);
+
+//WM_COMMAND IDC_CHECKBOX
+void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID);
