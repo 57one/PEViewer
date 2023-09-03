@@ -81,7 +81,7 @@ VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer) {
   writeToText(hwnd, IDC_EDIT_CHARACTERISTICS, TEXT("%04X"), pFileHeader->Characteristics);
 }
 
-VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, WORD data) {
+VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
   _stprintf_s(buffer, format, data);
   SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
 }
