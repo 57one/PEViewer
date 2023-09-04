@@ -115,3 +115,44 @@ BOOL isX86Process(HANDLE hProcess) {
   // architecture
   return isWow64(hProcess);
 }
+
+// here secToSysTime and SysTimeToSec have bugs
+// i dont know why but i check it with PE Tools
+// it's like my seconds time should added 0X7080
+SYSTEMTIME secondsToSystemTime(DWORD seconds) {
+  SYSTEMTIME sysTime = {0};
+  struct tm time;
+  time_t seconds_t = seconds;
+  gmtime_s(&time, &seconds_t);
+  // time.tm_year = current year - 1900
+  sysTime.wYear = time.tm_year + 1900;
+  // time.tm_mon (0 ~ 11) sysTime.wMonth (0 ~ 12)
+  sysTime.wMonth = time.tm_mon + 1;
+  // time.tm_mday/sysTime.wDay (1 ~ 31)
+  sysTime.wDay = time.tm_mday;
+  // time.tm_wday/sysTime.wDayOfWeek (0 ~ 6)
+  sysTime.wDayOfWeek = time.tm_wday;
+  // time.tm_hour/sysTime.wHour (0 ~ 23)
+  sysTime.wHour = time.tm_hour;
+  // time.tm_min/sysTime.wMinute (0 ~ 59)
+  sysTime.wMinute = time.tm_min;
+  // time.tm_sec/sysTime.wSecond (0 ~ 59)
+  sysTime.wSecond = time.tm_sec;
+  return sysTime;
+}
+
+DWORD systemTimeToSeconds(SYSTEMTIME sysTime) { 
+    struct tm t = {0}; 
+    time_t seconds = 0;
+    long timezoneSeconds = 0;
+    t.tm_year = sysTime.wYear - 1900;
+    t.tm_mon = sysTime.wMonth - 1;
+    t.tm_mday = sysTime.wDay;
+    t.tm_wday = sysTime.wDayOfWeek;
+    t.tm_hour = sysTime.wHour;
+    t.tm_min = sysTime.wMinute;
+    t.tm_sec = sysTime.wSecond;
+    _get_timezone(&timezoneSeconds);
+    seconds = mktime(&t) - timezoneSeconds;
+    return seconds;
+}
