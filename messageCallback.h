@@ -42,3 +42,11 @@ void onCharacteristicsInit(HWND hwnd, LPARAM lParam);
 
 //WM_COMMAND IDC_CHECKBOX
 void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID);
+
+void setDateTime(HWND hwnd, SYSTEMTIME sysTime);
+
+// WM_COMMAND IDC_BUTTON_FILE_HEADER_TIMEDATESTAMP
+void onTimeDateStamp(HWND hwnd);
+
+// WM_INITDIALOG
+void onTimeDateStampInit(HWND hwnd, LPARAM lParam);

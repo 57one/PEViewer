@@ -180,3 +180,45 @@ void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
   wsprintf(szTitle, TEXT("Characteristics -- %x"), Characteristics);
   SetWindowText(hwnd, szTitle);
 }
+
+void initDateTimePicker(HWND hwnd, LPARAM lParam) {
+  HWND hDateTimeHours = GetDlgItem(hwnd, IDC_DATETIMEPICKER_HOURS);
+  HWND hDateTimeYears = GetDlgItem(hwnd, IDC_DATETIMEPICKER_YEARS);
+  DWORD seconds = 0x0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%X"), &seconds);
+  SYSTEMTIME sysTime = secondsToSystemTime(seconds);
+  DateTime_SetSystemtime(hDateTimeHours, GDT_VALID, &sysTime);
+  DateTime_SetSystemtime(hDateTimeYears, GDT_VALID, &sysTime);
+}
+
+void setDateTime(HWND hwnd, SYSTEMTIME sysTime) {
+  DWORD seconds = systemTimeToSeconds(sysTime);
+  HWND hTimeDateStamp = GetDlgItem(hwnd, IDC_EDIT_TIMEDATESTAMP_MORE_INFO);
+  TCHAR szSeconds[10] = {0};
+  wsprintf(szSeconds, TEXT("%X"), seconds);
+  SetWindowText(hTimeDateStamp, szSeconds);
+
+  TCHAR szTitle[MAX_PATH];
+  wsprintf(szTitle, TEXT("Time/Date [HEX] -- %X"), seconds);
+  SetWindowText(hwnd, szTitle);
+}
+
+void onTimeDateStamp(HWND hwnd) {
+  HWND hTimeDateStamp = GetDlgItem(hwnd, IDC_EDIT_TIMEDATESTAMP);
+  TCHAR szBuffer[10] = {0};
+  GetWindowText(hTimeDateStamp, szBuffer, 10);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
+                 TimeDateStampProc, (LPARAM)szBuffer);
+}
+
+void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+  SetWindowText(GetDlgItem(hwnd, IDC_EDIT_TIMEDATESTAMP_MORE_INFO),
+                (PTCHAR)lParam);
+  initDateTimePicker(hwnd, lParam);
+}
