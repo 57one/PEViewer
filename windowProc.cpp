@@ -146,7 +146,7 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
-    LPARAM lParam) {
+                             LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onFileHeaderInit(hwnd, lParam);
@@ -160,6 +160,10 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_FILE_HEADER_MACHINE: {
           onMachineType(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_TIMEDATESTAMP: {
+          onTimeDateStamp(hwnd);
           return TRUE;
         }
         case IDC_BUTTON_FILE_HEADER_CHARACTERISTICS: {
@@ -177,7 +181,7 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
-                             LPARAM lParam) {
+                              LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onMachineTypeInit(hwnd, lParam);
@@ -203,7 +207,7 @@ BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
-                              LPARAM lParam) {
+                                  LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onCharacteristicsInit(hwnd, lParam);
@@ -224,6 +228,50 @@ BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
         }
         default: {
           handleCheckBoxesChecked(hwnd, LOWORD(wParam));
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
+                                LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onTimeDateStampInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_TIMEDATESTAMP_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_TIMEDATESTAMP_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+    case WM_NOTIFY: {
+      switch (LOWORD(wParam)) {
+        case IDC_DATETIMEPICKER_HOURS:
+        case IDC_DATETIMEPICKER_YEARS: {
+          // here should use reinterpret_cast to cast
+          // but at first i forgot it(c++ rookie) and for backward compatibility
+          NMHDR* pnmhdr = (NMHDR*)lParam;
+          if (pnmhdr != NULL && pnmhdr->code == DTN_DATETIMECHANGE) {
+            LPNMDATETIMECHANGE lpChange = (LPNMDATETIMECHANGE)lParam;
+              if (lpChange->dwFlags & GDT_NONE) {
+              } else {
+                setDateTime(hwnd, lpChange->st);
+              }
+          }
           return TRUE;
         }
       }

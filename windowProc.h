@@ -27,3 +27,6 @@ BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
                                   LPARAM lParam);
+
+BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
+                                  LPARAM lParam);
