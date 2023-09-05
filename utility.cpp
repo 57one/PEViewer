@@ -116,9 +116,6 @@ BOOL isX86Process(HANDLE hProcess) {
   return isWow64(hProcess);
 }
 
-// here secToSysTime and SysTimeToSec have bugs
-// i dont know why but i check it with PE Tools
-// it's like my seconds time should added 0X7080
 SYSTEMTIME secondsToSystemTime(DWORD seconds) {
   SYSTEMTIME sysTime = {0};
   struct tm time;
@@ -153,6 +150,7 @@ DWORD systemTimeToSeconds(SYSTEMTIME sysTime) {
     t.tm_min = sysTime.wMinute;
     t.tm_sec = sysTime.wSecond;
     _get_timezone(&timezoneSeconds);
+    // remove timezone
     seconds = mktime(&t) - timezoneSeconds;
     return seconds;
 }
