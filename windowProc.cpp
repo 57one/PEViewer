@@ -118,6 +118,7 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
         case IDC_BUTTON_OPTION_HEADER: {
+          onOptinalHeader(hwnd);
           return TRUE;
         }
         case IDC_BUTTON_HEADER_INFO: {
@@ -267,11 +268,37 @@ BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
           NMHDR* pnmhdr = (NMHDR*)lParam;
           if (pnmhdr != NULL && pnmhdr->code == DTN_DATETIMECHANGE) {
             LPNMDATETIMECHANGE lpChange = (LPNMDATETIMECHANGE)lParam;
-              if (lpChange->dwFlags & GDT_NONE) {
-              } else {
-                setDateTime(hwnd, lpChange->st);
-              }
+            if (lpChange->dwFlags & GDT_NONE) {
+            } else {
+              setDateTime(hwnd, lpChange->st);
+            }
           }
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
+                                   LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onOptinalHeaderInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_OPTIONAL_HEADER32_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_CANCEL: {
+          EndDialog(hwnd, 0);
           return TRUE;
         }
       }
