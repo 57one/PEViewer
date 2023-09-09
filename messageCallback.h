@@ -50,3 +50,9 @@ void onTimeDateStamp(HWND hwnd);
 
 // WM_INITDIALOG
 void onTimeDateStampInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND
+void onOptinalHeader(HWND hwnd);
+
+// WM_INITDIALOG
+void onOptinalHeaderInit(HWND hwnd, LPARAM lParam);

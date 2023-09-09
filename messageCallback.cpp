@@ -222,3 +222,14 @@ void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
                 (PTCHAR)lParam);
   initDateTimePicker(hwnd, lParam);
 }
+
+void onOptinalHeader(HWND hwnd) {
+  DialogBox(GetModuleHandle(NULL),
+            MAKEINTRESOURCE(IDD_DIALOG_IMAGE_OPTIONAL_HEADER32), hwnd,
+            OptionalHeader32Proc);
+}
+
+void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
+  // set text about optinal header
+  readOptinalHeader32(hwnd, pFileBuffer);
+}
