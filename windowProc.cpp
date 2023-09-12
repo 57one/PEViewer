@@ -201,6 +201,11 @@ BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
           EndDialog(hwnd, 0);
           return TRUE;
         }
+        case IDC_COMBO_MACHINE_TYPE: {
+          if (HIWORD(wParam) == CBN_SELCHANGE) {
+            onMachineTypeChange(hwnd, (HWND)lParam);
+          }
+        }
       }
     }
   }
@@ -294,12 +299,46 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
     }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
+        case IDC_BUTTON_OPTIONAL_HEADER32_MAGIC: {
+          onMagicType(hwnd);
+        }
         case IDC_BUTTON_OPTIONAL_HEADER32_OK: {
           return TRUE;
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_CANCEL: {
           EndDialog(hwnd, 0);
           return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onMagicTypeInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_MAGIC_TYPE_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_MAGIC_TYPE_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+        case IDC_COMBO_MAGIC_TYPE: {
+          if (HIWORD(wParam) == CBN_SELCHANGE) {
+            onMagicTypeChange(hwnd, (HWND)lParam);
+          }
         }
       }
     }

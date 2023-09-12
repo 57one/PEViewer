@@ -33,3 +33,6 @@ BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
                                 LPARAM lParam);
+
+BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
+                            LPARAM lParam);
