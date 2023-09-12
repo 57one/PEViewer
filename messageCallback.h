@@ -34,6 +34,9 @@ void onMachineType(HWND hwnd);
 // WM_INITDIALOG
 void onMachineTypeInit(HWND hwnd, LPARAM lParam);
 
+// IDC_COMBO_MACHINE_TYPE CBN_SELCHANGE
+void onMachineTypeChange(HWND hwnd, HWND hCombo);
+
 // WM_COMMAND IDC_BUTTON_FILE_HEADER_CHARACTERISTICS
 void onCharacteristics(HWND hwnd);
 
@@ -56,3 +59,12 @@ void onOptinalHeader(HWND hwnd);
 
 // WM_INITDIALOG
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_MAGIC
+void onMagicType(HWND hwnd);
+
+// WM_INITDIALOG
+void onMagicTypeInit(HWND hwnd, LPARAM lParam);
+
+// IDC_COMBO_MAGIC_TYPE CBN_SELCHANGE
+void onMagicTypeChange(HWND hwnd, HWND hCombo);

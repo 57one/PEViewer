@@ -127,6 +127,15 @@ void onMachineTypeInit(HWND hwnd, LPARAM lParam) {
   ComboBox_SetCurSel(hMachineType, machinetypeToIndex[index]);
 }
 
+void onMachineTypeChange(HWND hwnd, HWND hCombo) {
+  WORD index = ComboBox_GetCurSel(hCombo);
+  WORD machineType = wMachineType[index];
+
+  TCHAR szTitle[MAX_PATH];
+  wsprintf(szTitle, TEXT("Machine Type -- %04X"), machineType);
+  SetWindowText(hwnd, szTitle);
+}
+
 void setCharacteristics(HWND hwnd, LPARAM lParam) {
   DWORD Characteristics = 0x0;
   _stscanf_s((PTCHAR)lParam, TEXT("%x"), &Characteristics);
@@ -199,7 +208,7 @@ void setDateTime(HWND hwnd, SYSTEMTIME sysTime) {
   SetWindowText(hTimeDateStamp, szSeconds);
 
   TCHAR szTitle[MAX_PATH];
-  wsprintf(szTitle, TEXT("Time/Date [HEX] -- %X"), seconds);
+  wsprintf(szTitle, TEXT("Time/Date Stamp(GMT) -- %08X"), seconds);
   SetWindowText(hwnd, szTitle);
 }
 
@@ -232,4 +241,41 @@ void onOptinalHeader(HWND hwnd) {
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
   // set text about optinal header
   readOptinalHeader32(hwnd, pFileBuffer);
+}
+
+void onMagicType(HWND hwnd) {
+  HWND hEditMagic = GetDlgItem(hwnd, IDC_EDIT_MAGIC);
+  TCHAR szBuffer[8];
+  GetWindowText(hEditMagic, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE), hwnd,
+                 MagicTypeProc, (LPARAM)szBuffer);
+}
+
+void onMagicTypeInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+
+  HWND hMagicType = NULL;
+  hMagicType = GetDlgItem(hwnd, IDC_COMBO_MAGIC_TYPE);
+
+  for (int i = 0; i < wMagicTypeLength; i++) {
+    ComboBox_AddString(hMagicType, szMagicTypeDesc[i]);
+  }
+
+  DWORD index = 0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
+  ComboBox_SetCurSel(hMagicType, magicTypeToIndex[index]);
+}
+
+void onMagicTypeChange(HWND hwnd, HWND hCombo) {
+  WORD index = ComboBox_GetCurSel(hCombo);
+  WORD magicType = wMagicType[index];
+
+  TCHAR szTitle[MAX_PATH];
+  wsprintf(szTitle, TEXT("Magic Type -- %04X"), magicType);
+  SetWindowText(hwnd, szTitle);
 }
