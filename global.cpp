@@ -129,3 +129,26 @@ TCHAR szCharacteristics[][80] = {
     TEXT("File should be run only on a uniprocessor machine"),
     TEXT("Big endian: MSB precedes the LSB in memory (deprecated)(should be "
          "zero)")};
+
+WORD wMagicTypeLength = 4;
+
+TCHAR szMagicTypeDesc[][15] = {
+    TEXT("UNKNOWN"),
+    TEXT("PE32"),
+    TEXT("PE32+/PE64"),
+    TEXT("ROM"),
+};
+
+WORD wMagicType[] = {
+    0x0,
+    0x10b,
+    0x20b,
+    0x107,
+};
+
+std::map<WORD, WORD> magicTypeToIndex{
+    {0x0, 0},
+    {0x10b, 1},
+    {0x20b, 2},
+    {0x107, 3},
+};
