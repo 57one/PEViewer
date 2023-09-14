@@ -3,6 +3,10 @@
 #include "global.h"
 
 LPVOID pFileBuffer = NULL;
+PIMAGE_DOS_HEADER pDosHeader = NULL;
+PIMAGE_NT_HEADERS pNTHeader = NULL;
+PIMAGE_FILE_HEADER pFileHeader = NULL;
+PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;
 TCHAR buffer[MAX_PATH] = {0};
 DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   FILE* file = NULL;
@@ -39,10 +43,16 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   return n;
 }
 
+VOID initPE() {
+  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
+  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD)pFileBuffer + pDosHeader->e_lfanew);
+  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
+  pOptionalHeader32 =
+      (PIMAGE_OPTIONAL_HEADER32)((DWORD)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
+}
+
 VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
   memset(buffer, 0, sizeof(buffer));
-  PIMAGE_DOS_HEADER pDosHeader = NULL;
-  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
   // set DosHeader Text
   writeToText(hwnd, IDC_EDIT_MAGIC_NUMBER, TEXT("%04X"), pDosHeader->e_magic);
   writeToText(hwnd, IDC_EDIT_BLP, TEXT("%04X"), pDosHeader->e_cblp);
@@ -65,12 +75,6 @@ VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
 
 VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer) {
   memset(buffer, 0, sizeof(buffer));
-  PIMAGE_DOS_HEADER pDosHeader = NULL;
-  PIMAGE_NT_HEADERS pNTHeader = NULL;
-  PIMAGE_FILE_HEADER pFileHeader = NULL;
-  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
-  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD)pFileBuffer + pDosHeader->e_lfanew);
-  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
   // set FileHeader
   writeToText(hwnd, IDC_EDIT_MACHINE, TEXT("%04X"), pFileHeader->Machine);
   writeToText(hwnd, IDC_EDIT_NUMBER_OF_SECTIONS, TEXT("%04X"), pFileHeader->NumberOfSections);
@@ -82,15 +86,6 @@ VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer) {
 }
 
 VOID readOptinalHeader32(HWND hwnd, LPVOID pFileBuffer) {
-  PIMAGE_DOS_HEADER pDosHeader = NULL;
-  PIMAGE_NT_HEADERS pNTHeader = NULL;
-  PIMAGE_FILE_HEADER pFileHeader = NULL;
-  PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;
-  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
-  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD)pFileBuffer + pDosHeader->e_lfanew);
-  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
-  pOptionalHeader32 =
-      (PIMAGE_OPTIONAL_HEADER32)((DWORD)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
   // set OptinalHeader32
   writeToText(hwnd, IDC_EDIT_MAGIC, TEXT("%04X"), pOptionalHeader32->Magic);
   writeToText(hwnd, IDC_EDIT_MAJ_LINK_VER, TEXT("%02X"), pOptionalHeader32->MajorLinkerVersion);
