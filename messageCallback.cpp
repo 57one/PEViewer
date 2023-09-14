@@ -68,6 +68,7 @@ void onPeEditor(HWND hwnd) {
     /*_tprintf(TEXT("%s\n"), szBuffer);*/
     // Display the Open dialog box.
     readPeFile(szBuffer, &pFileBuffer);
+    initPE();
     DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_PE_EDITOR),
                    hwnd, PeEditorProc, (LPARAM)szBuffer);
   }
@@ -278,4 +279,39 @@ void onMagicTypeChange(HWND hwnd, HWND hCombo) {
   TCHAR szTitle[MAX_PATH];
   wsprintf(szTitle, TEXT("Magic Type -- %04X"), magicType);
   SetWindowText(hwnd, szTitle);
+}
+
+void checkHeader32Image(HWND hwnd) {
+  DWORD sizeOfImage, sectionAlignment, remainder;
+  HWND hEditHeader32Image, hsectionAlignment;
+  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_IMAGE);
+  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_SECTION_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Image, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
+  GetWindowText(hsectionAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
+  remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
+  sizeOfImage = sizeOfImage < pOptionalHeader32->SizeOfImage
+                    ? pOptionalHeader32->SizeOfImage
+                    : sizeOfImage - remainder;
+  memset(szBuffer, 0, sizeof(szBuffer));
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
+  SetWindowText(hEditHeader32Image, szBuffer);
+}
+
+void addHeader32Image(HWND hwnd) {
+
+}
+
+void checkHeader32Headers(HWND hwnd) {
+
+}
+
+void addHeader32Headers(HWND hwnd) {
+
+}
+
+void checkHeader32CheckSum(HWND hwnd) {
+
 }
