@@ -300,16 +300,55 @@ void checkHeader32Image(HWND hwnd) {
   SetWindowText(hEditHeader32Image, szBuffer);
 }
 
-void addHeader32Image(HWND hwnd) {
-
+void addHeader32Image(HWND hwnd) { 
+  checkHeader32Image(hwnd);
+  DWORD sizeOfImage, sectionAlignment;
+  HWND hEditHeader32Image, hsectionAlignment;
+  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_IMAGE);
+  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_SECTION_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Image, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
+  GetWindowText(hsectionAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
+  sizeOfImage += sectionAlignment;
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
+  SetWindowText(hEditHeader32Image, szBuffer);
 }
 
 void checkHeader32Headers(HWND hwnd) {
-
+  DWORD sizeOfHeaders, fileAlignment, remainder;
+  HWND hEditHeader32Headers, hfileAlignment;
+  hEditHeader32Headers = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_HEADERS);
+  hfileAlignment = GetDlgItem(hwnd, IDC_EDIT_FILE_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Headers, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfHeaders);
+  GetWindowText(hfileAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &fileAlignment);
+  remainder = fileAlignment == 0 ? 0 : sizeOfHeaders % fileAlignment;
+  sizeOfHeaders = sizeOfHeaders < pOptionalHeader32->SizeOfHeaders
+                      ? pOptionalHeader32->SizeOfHeaders
+                      : sizeOfHeaders - remainder;
+  memset(szBuffer, 0, sizeof(szBuffer));
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfHeaders);
+  SetWindowText(hEditHeader32Headers, szBuffer);
 }
 
-void addHeader32Headers(HWND hwnd) {
-
+void addHeader32Headers(HWND hwnd) { 
+  checkHeader32Headers(hwnd);
+  DWORD sizeOfHeaders, fileAlignment, remainder;
+  HWND hEditHeader32Headers, hfileAlignment;
+  hEditHeader32Headers = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_HEADERS);
+  hfileAlignment = GetDlgItem(hwnd, IDC_EDIT_FILE_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Headers, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfHeaders);
+  GetWindowText(hfileAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &fileAlignment);
+  sizeOfHeaders += fileAlignment;
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfHeaders);
+  SetWindowText(hEditHeader32Headers, szBuffer);
 }
 
 void checkHeader32CheckSum(HWND hwnd) {

@@ -309,6 +309,32 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
           EndDialog(hwnd, 0);
           return TRUE;
         }
+        case IDC_BUTTON_OPTIONAL_HEADER32_ENTRY: {
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_IMAGE: {
+          checkHeader32Image(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_IMAGE_ADD: {
+          addHeader32Image(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_HEADERS: {
+          checkHeader32Headers(hwnd);
+          return TRUE;        
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_HEADER_ADD: {
+          addHeader32Headers(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_CHECKSUM: {
+          checkHeader32CheckSum(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_SUBSTM: {
+          return TRUE;        
+        }
       }
     }
   }
