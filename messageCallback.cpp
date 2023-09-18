@@ -354,3 +354,40 @@ void addHeader32Headers(HWND hwnd) {
 void checkHeader32CheckSum(HWND hwnd) {
 
 }
+
+void onSubsystem(HWND hwnd) {
+  HWND hEditSubsystem = GetDlgItem(hwnd, IDC_EDIT_SUB_STM);
+  TCHAR szBuffer[8];
+  GetWindowText(hEditSubsystem, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
+                 hwnd,
+                 SubsystemProc, (LPARAM)szBuffer);
+}
+
+void onSubsystemInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+
+  HWND hSubsystem = NULL;
+  hSubsystem = GetDlgItem(hwnd, IDC_COMBO_SUBSYSTEM);
+
+  for (int i = 0; i < wSubsystemLength; i++) {
+    ComboBox_AddString(hSubsystem, szSubsystemDesc[i]);
+  }
+
+  DWORD index = 0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
+  ComboBox_SetCurSel(hSubsystem, subsystemToIndex[index]);
+}
+
+void onSubsystemChange(HWND hwnd, HWND hCombo) {
+  WORD index = ComboBox_GetCurSel(hCombo);
+  WORD subsystem = wSubsystem[index];
+
+  TCHAR szTitle[MAX_PATH];
+  wsprintf(szTitle, TEXT("Subsystem -- %04X"), subsystem);
+  SetWindowText(hwnd, szTitle);
+}

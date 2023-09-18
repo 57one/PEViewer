@@ -83,3 +83,12 @@ void addHeader32Headers(HWND hwnd);
 
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_CHECKSUM
 void checkHeader32CheckSum(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_SUBSTM
+void onSubsystem(HWND hwnd);
+
+// WM_INITDIALOG
+void onSubsystemInit(HWND hwnd, LPARAM lParam);
+
+// IDC_COMBO_SUBSYSTEM CBN_SELCHANGE
+void onSubsystemChange(HWND hwnd, HWND hCombo);
