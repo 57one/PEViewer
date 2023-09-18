@@ -10,8 +10,8 @@
 #define IDD_DIALOG_CHARACTERISTICS      146
 #define IDD_DIALOG_TIMEDATESTAMP        148
 #define IDD_DIALOG_IMAGE_OPTIONAL_HEADER32 149
-#define IDD_DIALOG_MACHINE_TYPE1        150
 #define IDD_DIALOG_MAGIC_TYPE           150
+#define IDD_DIALOG_SUBSYSTEM            151
 #define IDC_BUTTON_PE_EDITOR            1001
 #define IDC_LIST_PROCESS                1008
 #define IDC_BUTTON_PROFILE              1009
@@ -209,6 +209,10 @@
 #define IDC_COMBO_MAGIC_TYPE            1181
 #define IDC_BUTTON_MAGIC_TYPE_OK        1182
 #define IDC_BUTTON_MAGIC_TYPE_CANCEL    1183
+#define IDC_GROUP_SUBSYSTEM             1184
+#define IDC_COMBO_SUBSYSTEM             1185
+#define IDC_BUTTON_SUBSYSTEM_OK         1186
+#define IDC_BUTTON_SUBSYSTEM_CANCEL     1187
 
 // Next default values for new objects
 // 
@@ -216,7 +220,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1184
+#define _APS_NEXT_CONTROL_VALUE         1188
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
