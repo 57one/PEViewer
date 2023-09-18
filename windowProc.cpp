@@ -333,6 +333,7 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_SUBSTM: {
+          onSubsystem(hwnd);
           return TRUE;        
         }
       }
@@ -364,6 +365,37 @@ BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
         case IDC_COMBO_MAGIC_TYPE: {
           if (HIWORD(wParam) == CBN_SELCHANGE) {
             onMagicTypeChange(hwnd, (HWND)lParam);
+          }
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onSubsystemInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_SUBSYSTEM_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_SUBSYSTEM_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+        case IDC_COMBO_SUBSYSTEM: {
+          if (HIWORD(wParam) == CBN_SELCHANGE) {
+            onSubsystemChange(hwnd, (HWND)lParam);
           }
         }
       }

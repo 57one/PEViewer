@@ -36,3 +36,6 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam);
+
+BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
+                            LPARAM lParam);
