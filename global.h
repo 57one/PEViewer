@@ -28,3 +28,8 @@ extern TCHAR szMagicTypeDesc[][15];
 extern WORD wMagicTypeLength;
 extern WORD wMagicType[];
 extern std::map<WORD, WORD> magicTypeToIndex;
+
+extern TCHAR szSubsystemDesc[][50];
+extern WORD wSubsystemLength;
+extern WORD wSubsystem[];
+extern std::map<WORD, WORD> subsystemToIndex;
