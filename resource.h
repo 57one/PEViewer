@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
+#define IDC_CHECK_UNKNOWN               -1
 #define IDD_DIALOG                      101
 #define IDD_DIALOG_ABOUT                107
 #define IDD_DIALOG_PE_EDITOR            134
@@ -12,6 +13,7 @@
 #define IDD_DIALOG_IMAGE_OPTIONAL_HEADER32 149
 #define IDD_DIALOG_MAGIC_TYPE           150
 #define IDD_DIALOG_SUBSYSTEM            151
+#define IDD_DIALOG_DLLCHARACTERISTICS   152
 #define IDC_BUTTON_PE_EDITOR            1001
 #define IDC_LIST_PROCESS                1008
 #define IDC_BUTTON_PROFILE              1009
@@ -213,6 +215,19 @@
 #define IDC_COMBO_SUBSYSTEM             1185
 #define IDC_BUTTON_SUBSYSTEM_OK         1186
 #define IDC_BUTTON_SUBSYSTEM_CANCEL     1187
+#define IDC_BUTTON_DLLCHARACTERISTICS_OK 1192
+#define IDC_BUTTON_DLLCHARACTERISTICS_CANCEL 1193
+#define IDC_CHECK_HIGH_ENTROPY_VA       1194
+#define IDC_CHECK_DYNAMIC_BASE          1195
+#define IDC_CHECK_CODE_FORCE_INTEGRITY  1196
+#define IDC_CHECK_NX_COMPAT             1197
+#define IDC_CHECK_NO_ISOLATION          1198
+#define IDC_CHECK_NO_SEH                1199
+#define IDC_CHECK_NO_BIND               1200
+#define IDC_CHECK_APPCONTAINER          1201
+#define IDC_CHECK_WDM_DRIVER            1202
+#define IDC_CHECK_GUARD_CF              1203
+#define IDC_CHECK_TERMINAL_SERVER_AWARE 1204
 
 // Next default values for new objects
 // 
@@ -220,7 +235,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1188
+#define _APS_NEXT_CONTROL_VALUE         1205
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

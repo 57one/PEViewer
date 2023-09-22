@@ -327,6 +327,35 @@ BEGIN
     PUSHBUTTON      "Cancel",IDC_BUTTON_SUBSYSTEM_CANCEL,116,40,63,16
 END
 
+IDD_DIALOG_DLLCHARACTERISTICS DIALOGEX 0, 0, 281, 149
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "DllCharacteristics"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "DllCharacteristics",IDC_GROUP_MACHINE_TYPE,7,7,267,116
+    CONTROL         "Image can handle a high entropy 64-bit virtual address space",IDC_CHECK_HIGH_ENTROPY_VA,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,20,212,10
+    CONTROL         "DLL can be relocated at load time",IDC_CHECK_DYNAMIC_BASE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,29,122,10
+    CONTROL         "Code Integrity checks are enforced.",IDC_CHECK_CODE_FORCE_INTEGRITY,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,38,132,10
+    CONTROL         "Image is NX compatible",IDC_CHECK_NX_COMPAT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,47,89,10
+    CONTROL         "Isolation aware, but do not isolate the image",IDC_CHECK_NO_ISOLATION,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,56,159,10
+    CONTROL         "Does not use structured exception (SE) handling",IDC_CHECK_NO_SEH,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,65,171,10
+    CONTROL         "Do not bind the image",IDC_CHECK_NO_BIND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,74,86,10
+    CONTROL         "Image must execute in an AppContainer",IDC_CHECK_APPCONTAINER,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,83,145,10
+    CONTROL         "A WDM driver",IDC_CHECK_WDM_DRIVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,92,60,10
+    CONTROL         "Image supports Control Flow Guard",IDC_CHECK_GUARD_CF,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,101,129,10
+    CONTROL         "Terminal Server aware",IDC_CHECK_TERMINAL_SERVER_AWARE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,110,88,10
+    PUSHBUTTON      "Ok",IDC_BUTTON_DLLCHARACTERISTICS_OK,146,125,63,16
+    PUSHBUTTON      "Cancel",IDC_BUTTON_DLLCHARACTERISTICS_CANCEL,211,125,63,16
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -415,6 +444,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 56
     END
+
+    IDD_DIALOG_DLLCHARACTERISTICS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 274
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 141
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -470,6 +507,11 @@ BEGIN
 END
 
 IDD_DIALOG_SUBSYSTEM AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_DLLCHARACTERISTICS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
