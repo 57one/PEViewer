@@ -233,7 +233,7 @@ BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
         default: {
-          handleCheckBoxesChecked(hwnd, LOWORD(wParam));
+          handlCharacCheckBoxesChecked(hwnd, LOWORD(wParam));
           return TRUE;
         }
       }
@@ -336,6 +336,10 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
           onSubsystem(hwnd);
           return TRUE;        
         }
+        case IDC_BUTTON_OPTIONAL_HEADER32_DLL_CHARAC: {
+          onDllCharacteristics(hwnd);
+          return TRUE;
+        }
       }
     }
   }
@@ -397,6 +401,36 @@ BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
           if (HIWORD(wParam) == CBN_SELCHANGE) {
             onSubsystemChange(hwnd, (HWND)lParam);
           }
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onDllCharacteristicsInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_DLLCHARACTERISTICS_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_DLLCHARACTERISTICS_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+        default: {
+          handleDllCharacCheckBoxesChecked(hwnd, LOWORD(wParam));
+          return TRUE;
         }
       }
     }

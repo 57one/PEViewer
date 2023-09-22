@@ -39,3 +39,6 @@ BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam);
+
+BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+                            LPARAM lParam);
