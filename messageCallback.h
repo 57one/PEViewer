@@ -44,7 +44,7 @@ void onCharacteristics(HWND hwnd);
 void onCharacteristicsInit(HWND hwnd, LPARAM lParam);
 
 // WM_COMMAND IDC_CHECKBOX
-void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID);
+void handlCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID);
 
 void setDateTime(HWND hwnd, SYSTEMTIME sysTime);
 
@@ -92,3 +92,12 @@ void onSubsystemInit(HWND hwnd, LPARAM lParam);
 
 // IDC_COMBO_SUBSYSTEM CBN_SELCHANGE
 void onSubsystemChange(HWND hwnd, HWND hCombo);
+
+// WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_DLL_CHARAC
+void onDllCharacteristics(HWND hwnd);
+
+// WM_INITDIALOG
+void onDllCharacteristicsInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_CHECKBOX
+void handleDllCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID);

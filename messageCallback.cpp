@@ -168,7 +168,7 @@ void onCharacteristicsInit(HWND hwnd, LPARAM lParam) {
   setCharacteristics(hwnd, lParam);
 }
 
-void handleCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
+void handlCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
   TCHAR szTitle[MAX_PATH];
   GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
   DWORD Characteristics = 0x0;
@@ -389,5 +389,58 @@ void onSubsystemChange(HWND hwnd, HWND hCombo) {
 
   TCHAR szTitle[MAX_PATH];
   wsprintf(szTitle, TEXT("Subsystem -- %04X"), subsystem);
+  SetWindowText(hwnd, szTitle);
+}
+
+void setDllCharacteristics(HWND hwnd, LPARAM lParam) {
+  DWORD dllCharacteristics = 0x0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &dllCharacteristics);
+  for (DWORD i = dllCharacteristicsBegin; i <= dllCharacteristicsEnd;) {
+    if (i & dllCharacteristics) {
+      Button_SetCheck(
+          GetDlgItem(hwnd, dllCharacteristicsCheckBoxID[dllCharacToIndex[i]]),
+                      BST_CHECKED);
+    }
+    i <<= 1;
+  }
+}
+
+void onDllCharacteristics(HWND hwnd) {
+  HWND hDllCharacteristics = GetDlgItem(hwnd, IDC_EDIT_DLL_CHARAC);
+  TCHAR szBuffer[8];
+  GetWindowText(hDllCharacteristics, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_DLLCHARACTERISTICS), hwnd,
+                 DllCharacteristicsProc, (LPARAM)szBuffer);
+}
+
+void onDllCharacteristicsInit(HWND hwnd, LPARAM lParam) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, (PTCHAR)lParam);
+  SetWindowText(hwnd, szTitle);
+  setDllCharacteristics(hwnd, lParam);
+}
+
+void handleDllCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  DWORD dllCharacteristics = 0x0;
+  _stscanf_s(szTitle, TEXT("DllCharacteristics -- %x"), &dllCharacteristics);
+  for (DWORD i = dllCharacteristicsBegin; i <= dllCharacteristicsEnd;) {
+    if (dllCharacteristicsCheckBoxID[dllCharacToIndex[i]] == checkBoxID) {
+      // checkbox checked before WM_COMMAND Message
+      if (IsDlgButtonChecked(hwnd, checkBoxID) == BST_CHECKED) {
+        dllCharacteristics |= i;
+      } else {
+        dllCharacteristics ^= i;
+      }
+
+      break;
+    }
+    i <<= 1;
+  }
+  wsprintf(szTitle, TEXT("DllCharacteristics -- %X"), dllCharacteristics);
   SetWindowText(hwnd, szTitle);
 }
