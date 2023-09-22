@@ -33,3 +33,8 @@ extern TCHAR szSubsystemDesc[][50];
 extern WORD wSubsystemLength;
 extern WORD wSubsystem[];
 extern std::map<WORD, WORD> subsystemToIndex;
+
+extern DWORD dllCharacteristicsBegin;
+extern DWORD dllCharacteristicsEnd;
+extern std::map<WORD, WORD> dllCharacToIndex;
+extern INT dllCharacteristicsCheckBoxID[];

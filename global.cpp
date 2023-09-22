@@ -176,3 +176,27 @@ WORD wSubsystem[] = {0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 16};
 std::map<WORD, WORD> subsystemToIndex = {
     {0, 0}, {1, 1},  {2, 2},  {3, 3},   {5, 4},   {7, 5},   {8, 6},
     {9, 7}, {10, 8}, {11, 9}, {12, 10}, {13, 11}, {14, 12}, {16, 13}};
+
+DWORD dllCharacteristicsBegin = 0x1;
+DWORD dllCharacteristicsEnd = 0x8000;
+
+std::map<WORD, WORD> dllCharacToIndex = {
+    {0x0001, 0},  {0x0002, 1},  {0x0004, 2},  {0x0008, 3},  {0x0020, 4},
+    {0x0040, 5},  {0x0080, 6},  {0x0100, 7},  {0x0200, 8},  {0x0400, 9},
+    {0x0800, 10}, {0x1000, 11}, {0x2000, 12}, {0x4000, 13}, {0x8000, 14}};
+
+INT dllCharacteristicsCheckBoxID[] = {IDC_CHECK_UNKNOWN,
+                                      IDC_CHECK_UNKNOWN,
+                                      IDC_CHECK_UNKNOWN,
+                                      IDC_CHECK_UNKNOWN,
+                                      IDC_CHECK_HIGH_ENTROPY_VA,
+                                      IDC_CHECK_DYNAMIC_BASE,
+                                      IDC_CHECK_CODE_FORCE_INTEGRITY,
+                                      IDC_CHECK_NX_COMPAT,
+                                      IDC_CHECK_NO_ISOLATION,
+                                      IDC_CHECK_NO_SEH,
+                                      IDC_CHECK_NO_BIND,
+                                      IDC_CHECK_APPCONTAINER,
+                                      IDC_CHECK_WDM_DRIVER,
+                                      IDC_CHECK_GUARD_CF,
+                                      IDC_CHECK_TERMINAL_SERVER_AWARE};
