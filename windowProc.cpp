@@ -322,7 +322,7 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_HEADERS: {
           checkHeader32Headers(hwnd);
-          return TRUE;        
+          return TRUE;
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_HEADER_ADD: {
           addHeader32Headers(hwnd);
@@ -334,10 +334,18 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_SUBSTM: {
           onSubsystem(hwnd);
-          return TRUE;        
+          return TRUE;
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_DLL_CHARAC: {
           onDllCharacteristics(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_ADD: {
+          addHeader32NumRvaSize(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_MINUS: {
+          minusHeader32NumRvaSize(hwnd);
           return TRUE;
         }
       }
@@ -347,7 +355,7 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
-    LPARAM lParam) {
+                            LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onMagicTypeInit(hwnd, lParam);
@@ -378,7 +386,7 @@ BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
-    LPARAM lParam) {
+                            LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onSubsystemInit(hwnd, lParam);
@@ -409,7 +417,7 @@ BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
 }
 
 BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
-    LPARAM lParam) {
+                                     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
       onDllCharacteristicsInit(hwnd, lParam);

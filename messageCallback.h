@@ -101,3 +101,9 @@ void onDllCharacteristicsInit(HWND hwnd, LPARAM lParam);
 
 // WM_COMMAND IDC_CHECKBOX
 void handleDllCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID);
+
+// WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_ADD
+void addHeader32NumRvaSize(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_MINUS
+void minusHeader32NumRvaSize(HWND hwnd);

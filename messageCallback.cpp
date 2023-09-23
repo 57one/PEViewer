@@ -444,3 +444,27 @@ void handleDllCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
   wsprintf(szTitle, TEXT("DllCharacteristics -- %X"), dllCharacteristics);
   SetWindowText(hwnd, szTitle);
 }
+
+void addHeader32NumRvaSize(HWND hwnd) {
+  DWORD numOfRva;
+  HWND hEditnumOfRva;
+  hEditnumOfRva = GetDlgItem(hwnd, IDC_EDIT_NUM_OF_RVA_SIZES);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditnumOfRva, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &numOfRva);
+  if (numOfRva < 16) numOfRva += 1;
+  wsprintf(szBuffer, TEXT("%08X"), numOfRva);
+  SetWindowText(hEditnumOfRva, szBuffer);
+}
+
+void minusHeader32NumRvaSize(HWND hwnd) {
+  DWORD numOfRva;
+  HWND hEditnumOfRva;
+  hEditnumOfRva = GetDlgItem(hwnd, IDC_EDIT_NUM_OF_RVA_SIZES);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditnumOfRva, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &numOfRva);
+  if (numOfRva > 0) numOfRva -= 1;
+  wsprintf(szBuffer, TEXT("%08X"), numOfRva);
+  SetWindowText(hEditnumOfRva, szBuffer);
+}
