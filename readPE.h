@@ -22,4 +22,6 @@ VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer);
 
 VOID readOptinalHeader32(HWND hwnd, LPVOID pFileBuffer);
 
+VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer);
+
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
