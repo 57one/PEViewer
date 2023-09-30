@@ -107,3 +107,9 @@ void addHeader32NumRvaSize(HWND hwnd);
 
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_MINUS
 void minusHeader32NumRvaSize(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_HEADER_INFO
+void onHeaderInfo(HWND hwnd);
+
+// WM_INITDIALOG
+void onHeaderInfoInit(HWND hwnd, LPARAM lParam);

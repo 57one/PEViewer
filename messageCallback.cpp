@@ -181,7 +181,7 @@ void handlCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID) {
       } else {
         Characteristics ^= i;
       }
-      
+
       break;
     }
     i <<= 1;
@@ -248,9 +248,8 @@ void onMagicType(HWND hwnd) {
   HWND hEditMagic = GetDlgItem(hwnd, IDC_EDIT_MAGIC);
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
-  DialogBoxParam(GetModuleHandle(NULL),
-                 MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE), hwnd,
-                 MagicTypeProc, (LPARAM)szBuffer);
+  DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
+                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
 }
 
 void onMagicTypeInit(HWND hwnd, LPARAM lParam) {
@@ -300,7 +299,7 @@ void checkHeader32Image(HWND hwnd) {
   SetWindowText(hEditHeader32Image, szBuffer);
 }
 
-void addHeader32Image(HWND hwnd) { 
+void addHeader32Image(HWND hwnd) {
   checkHeader32Image(hwnd);
   DWORD sizeOfImage, sectionAlignment;
   HWND hEditHeader32Image, hsectionAlignment;
@@ -335,7 +334,7 @@ void checkHeader32Headers(HWND hwnd) {
   SetWindowText(hEditHeader32Headers, szBuffer);
 }
 
-void addHeader32Headers(HWND hwnd) { 
+void addHeader32Headers(HWND hwnd) {
   checkHeader32Headers(hwnd);
   DWORD sizeOfHeaders, fileAlignment, remainder;
   HWND hEditHeader32Headers, hfileAlignment;
@@ -351,17 +350,14 @@ void addHeader32Headers(HWND hwnd) {
   SetWindowText(hEditHeader32Headers, szBuffer);
 }
 
-void checkHeader32CheckSum(HWND hwnd) {
-
-}
+void checkHeader32CheckSum(HWND hwnd) {}
 
 void onSubsystem(HWND hwnd) {
   HWND hEditSubsystem = GetDlgItem(hwnd, IDC_EDIT_SUB_STM);
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
-                 hwnd,
-                 SubsystemProc, (LPARAM)szBuffer);
+                 hwnd, SubsystemProc, (LPARAM)szBuffer);
 }
 
 void onSubsystemInit(HWND hwnd, LPARAM lParam) {
@@ -399,7 +395,7 @@ void setDllCharacteristics(HWND hwnd, LPARAM lParam) {
     if (i & dllCharacteristics) {
       Button_SetCheck(
           GetDlgItem(hwnd, dllCharacteristicsCheckBoxID[dllCharacToIndex[i]]),
-                      BST_CHECKED);
+          BST_CHECKED);
     }
     i <<= 1;
   }
@@ -467,4 +463,14 @@ void minusHeader32NumRvaSize(HWND hwnd) {
   if (numOfRva > 0) numOfRva -= 1;
   wsprintf(szBuffer, TEXT("%08X"), numOfRva);
   SetWindowText(hEditnumOfRva, szBuffer);
+}
+
+void onHeaderInfo(HWND hwnd) {
+  DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_HEADER_INFO),
+            hwnd, HeaderInfoProc);
+}
+
+void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
+  // set text about [Header Info]
+  readHeaderInfo(hwnd, pFileBuffer);
 }
