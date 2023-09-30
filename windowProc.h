@@ -42,3 +42,6 @@ BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam);
+
+BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
+                                     LPARAM lParam);

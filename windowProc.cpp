@@ -122,6 +122,7 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
         case IDC_BUTTON_HEADER_INFO: {
+          onHeaderInfo(hwnd);
           return TRUE;
         }
         case IDC_BUTTON_SECTION: {
@@ -438,6 +439,32 @@ BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
         }
         default: {
           handleDllCharacCheckBoxesChecked(hwnd, LOWORD(wParam));
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onHeaderInfoInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_HEADER_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_CANCEL: {
+          EndDialog(hwnd, 0);
           return TRUE;
         }
       }
