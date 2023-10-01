@@ -302,6 +302,7 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_OPTIONAL_HEADER32_MAGIC: {
           onMagicType(hwnd);
+          return TRUE;
         }
         case IDC_BUTTON_OPTIONAL_HEADER32_OK: {
           return TRUE;
@@ -460,6 +461,45 @@ BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
     }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
+        case IDC_BUTTON_HEADER_ENTRY: {
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_SIZE_OF_IMAGE: {
+          checkHeaderInfo32Image(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_IMAGE_ADD: {
+          addHeaderInfo32Image(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_MAGIC: {
+          onHeaderInfoMagicType(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_SUBSTM: {
+          onHeaderInfoSubsystem(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_TIMEDATESTAMP: {
+          onHeaderInfoTimeDateStamp(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_CHARACTERISTICS: {
+          onHeaderInfoCharacteristics(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_CHECKSUM: {
+          checkHeaderInfo32CheckSum(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_NUM_RVA_SIZE_ADD: {
+          addHeaderInfo32NumRvaSize(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_HEADER_NUM_RVA_SIZE_MINUS: {
+          minusHeaderInfo32NumRvaSize(hwnd);
+          return TRUE;
+        }
         case IDC_BUTTON_HEADER_OK: {
           return TRUE;
         }

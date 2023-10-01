@@ -159,6 +159,15 @@ void onCharacteristics(HWND hwnd) {
                  CharacteristicsProc, (LPARAM)szBuffer);
 }
 
+void onHeaderInfoCharacteristics(HWND hwnd) {
+  HWND hCharacteristics = GetDlgItem(hwnd, IDC_EDIT_HEADER_CHARACTERISTICS);
+  TCHAR szBuffer[8];
+  GetWindowText(hCharacteristics, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
+                 CharacteristicsProc, (LPARAM)szBuffer);
+}
+
 void onCharacteristicsInit(HWND hwnd, LPARAM lParam) {
   TCHAR szTitle[MAX_PATH];
   GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
@@ -222,6 +231,15 @@ void onTimeDateStamp(HWND hwnd) {
                  TimeDateStampProc, (LPARAM)szBuffer);
 }
 
+void onHeaderInfoTimeDateStamp(HWND hwnd) {
+  HWND hTimeDateStamp = GetDlgItem(hwnd, IDC_EDIT_HEADER_TIMEDATESTAMP);
+  TCHAR szBuffer[10] = {0};
+  GetWindowText(hTimeDateStamp, szBuffer, 10);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
+                 TimeDateStampProc, (LPARAM)szBuffer);
+}
+
 void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
   TCHAR szTitle[MAX_PATH];
   GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
@@ -246,6 +264,14 @@ void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
 
 void onMagicType(HWND hwnd) {
   HWND hEditMagic = GetDlgItem(hwnd, IDC_EDIT_MAGIC);
+  TCHAR szBuffer[8];
+  GetWindowText(hEditMagic, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
+                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
+}
+
+void onHeaderInfoMagicType(HWND hwnd) {
+  HWND hEditMagic = GetDlgItem(hwnd, IDC_EDIT_HEADER_MAGIC);
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
@@ -299,12 +325,47 @@ void checkHeader32Image(HWND hwnd) {
   SetWindowText(hEditHeader32Image, szBuffer);
 }
 
+void checkHeaderInfo32Image(HWND hwnd) {
+  DWORD sizeOfImage, sectionAlignment, remainder;
+  HWND hEditHeader32Image, hsectionAlignment;
+  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE);
+  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Image, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
+  GetWindowText(hsectionAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
+  remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
+  sizeOfImage = sizeOfImage < pOptionalHeader32->SizeOfImage
+                    ? pOptionalHeader32->SizeOfImage
+                    : sizeOfImage - remainder;
+  memset(szBuffer, 0, sizeof(szBuffer));
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
+  SetWindowText(hEditHeader32Image, szBuffer);
+}
+
 void addHeader32Image(HWND hwnd) {
   checkHeader32Image(hwnd);
   DWORD sizeOfImage, sectionAlignment;
   HWND hEditHeader32Image, hsectionAlignment;
   hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_IMAGE);
   hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_SECTION_ALIGNMENT);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditHeader32Image, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
+  GetWindowText(hsectionAlignment, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
+  sizeOfImage += sectionAlignment;
+  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
+  SetWindowText(hEditHeader32Image, szBuffer);
+}
+
+void addHeaderInfo32Image(HWND hwnd) {
+  checkHeaderInfo32Image(hwnd);
+  DWORD sizeOfImage, sectionAlignment;
+  HWND hEditHeader32Image, hsectionAlignment;
+  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE);
+  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT);
   TCHAR szBuffer[10];
   GetWindowText(hEditHeader32Image, szBuffer, 10);
   _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
@@ -352,8 +413,18 @@ void addHeader32Headers(HWND hwnd) {
 
 void checkHeader32CheckSum(HWND hwnd) {}
 
+void checkHeaderInfo32CheckSum(HWND hwnd) {}
+
 void onSubsystem(HWND hwnd) {
   HWND hEditSubsystem = GetDlgItem(hwnd, IDC_EDIT_SUB_STM);
+  TCHAR szBuffer[8];
+  GetWindowText(hEditSubsystem, szBuffer, 8);
+  DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
+                 hwnd, SubsystemProc, (LPARAM)szBuffer);
+}
+
+void onHeaderInfoSubsystem(HWND hwnd) {
+  HWND hEditSubsystem = GetDlgItem(hwnd, IDC_EDIT_HEADER_SUB_STM);
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
@@ -453,10 +524,34 @@ void addHeader32NumRvaSize(HWND hwnd) {
   SetWindowText(hEditnumOfRva, szBuffer);
 }
 
+void addHeaderInfo32NumRvaSize(HWND hwnd) {
+  DWORD numOfRva;
+  HWND hEditnumOfRva;
+  hEditnumOfRva = GetDlgItem(hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditnumOfRva, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &numOfRva);
+  if (numOfRva < 16) numOfRva += 1;
+  wsprintf(szBuffer, TEXT("%08X"), numOfRva);
+  SetWindowText(hEditnumOfRva, szBuffer);
+}
+
 void minusHeader32NumRvaSize(HWND hwnd) {
   DWORD numOfRva;
   HWND hEditnumOfRva;
   hEditnumOfRva = GetDlgItem(hwnd, IDC_EDIT_NUM_OF_RVA_SIZES);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditnumOfRva, szBuffer, 10);
+  _stscanf_s(szBuffer, TEXT("%x"), &numOfRva);
+  if (numOfRva > 0) numOfRva -= 1;
+  wsprintf(szBuffer, TEXT("%08X"), numOfRva);
+  SetWindowText(hEditnumOfRva, szBuffer);
+}
+
+void minusHeaderInfo32NumRvaSize(HWND hwnd) {
+  DWORD numOfRva;
+  HWND hEditnumOfRva;
+  hEditnumOfRva = GetDlgItem(hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES);
   TCHAR szBuffer[10];
   GetWindowText(hEditnumOfRva, szBuffer, 10);
   _stscanf_s(szBuffer, TEXT("%x"), &numOfRva);

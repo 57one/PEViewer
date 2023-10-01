@@ -40,6 +40,9 @@ void onMachineTypeChange(HWND hwnd, HWND hCombo);
 // WM_COMMAND IDC_BUTTON_FILE_HEADER_CHARACTERISTICS
 void onCharacteristics(HWND hwnd);
 
+// WM_COMMAND IDC_BUTTON_HEADER_CHARACTERISTICS
+void onHeaderInfoCharacteristics(HWND hwnd);
+
 // WM_INITDIALOG
 void onCharacteristicsInit(HWND hwnd, LPARAM lParam);
 
@@ -50,6 +53,9 @@ void setDateTime(HWND hwnd, SYSTEMTIME sysTime);
 
 // WM_COMMAND IDC_BUTTON_FILE_HEADER_TIMEDATESTAMP
 void onTimeDateStamp(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_HEADER_TIMEDATESTAMP
+void onHeaderInfoTimeDateStamp(HWND hwnd);
 
 // WM_INITDIALOG
 void onTimeDateStampInit(HWND hwnd, LPARAM lParam);
@@ -63,6 +69,9 @@ void onOptinalHeaderInit(HWND hwnd, LPARAM lParam);
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_MAGIC
 void onMagicType(HWND hwnd);
 
+// WM_COMMAND IDC_BUTTON_HEADER_MAGIC
+void onHeaderInfoMagicType(HWND hwnd);
+
 // WM_INITDIALOG
 void onMagicTypeInit(HWND hwnd, LPARAM lParam);
 
@@ -72,8 +81,14 @@ void onMagicTypeChange(HWND hwnd, HWND hCombo);
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_IMAGE
 void checkHeader32Image(HWND hwnd);
 
+// WM_COMMAND IDC_BUTTON_HEADER_SIZE_OF_IMAGE
+void checkHeaderInfo32Image(HWND hwnd);
+
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_IMAGE_ADD
 void addHeader32Image(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_HEADER_IMAGE_ADD
+void addHeaderInfo32Image(HWND hwnd);
 
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_HEADERS
 void checkHeader32Headers(HWND hwnd);
@@ -84,8 +99,14 @@ void addHeader32Headers(HWND hwnd);
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_CHECKSUM
 void checkHeader32CheckSum(HWND hwnd);
 
+// WM_COMMAND IDC_BUTTON_HEADER_CHECKSUM
+void checkHeaderInfo32CheckSum(HWND hwnd);
+
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_SUBSTM
 void onSubsystem(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_HEADER_SUBSTM
+void onHeaderInfoSubsystem(HWND hwnd);
 
 // WM_INITDIALOG
 void onSubsystemInit(HWND hwnd, LPARAM lParam);
@@ -105,8 +126,14 @@ void handleDllCharacCheckBoxesChecked(HWND hwnd, INT checkBoxID);
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_ADD
 void addHeader32NumRvaSize(HWND hwnd);
 
+// WM_COMMAND IDC_BUTTON_HEADER_NUM_RVA_SIZE_ADD
+void addHeaderInfo32NumRvaSize(HWND hwnd);
+
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_NUM_RVA_SIZE_MINUS
 void minusHeader32NumRvaSize(HWND hwnd);
+
+// WM_COMMAND IDC_BUTTON_HEADER_NUM_RVA_SIZE_MINUS
+void minusHeaderInfo32NumRvaSize(HWND hwnd);
 
 // WM_COMMAND IDC_BUTTON_HEADER_INFO
 void onHeaderInfo(HWND hwnd);
