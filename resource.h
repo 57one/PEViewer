@@ -14,6 +14,7 @@
 #define IDD_DIALOG_SUBSYSTEM            151
 #define IDD_DIALOG_DLLCHARACTERISTICS   152
 #define IDD_DIALOG_HEADER_INFO          153
+#define IDD_DIALOG_SECTION              154
 #define IDC_BUTTON_PE_EDITOR            1001
 #define IDC_LIST_PROCESS                1008
 #define IDC_BUTTON_PROFILE              1009
@@ -273,6 +274,10 @@
 #define IDC_BUTTON_HEADER_CHECKSUM      1245
 #define IDC_BUTTON_HEADER_NUM_RVA_SIZE_ADD 1246
 #define IDC_BUTTON_HEADER_NUM_RVA_SIZE_MINUS 1247
+#define IDC_GROUP_SECTION_LIST          1248
+#define IDC_LIST_SECTIONS               1249
+#define IDC_BUTTON_SECTION_QUIT         1250
+#define IDC_BUTTON_SECTION_CANCEL       1250
 #define IDC_CHECK_UNKNOWN               -1
 
 // Next default values for new objects
@@ -281,7 +286,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1248
+#define _APS_NEXT_CONTROL_VALUE         1251
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
