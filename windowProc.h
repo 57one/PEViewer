@@ -45,3 +45,6 @@ BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
                                      LPARAM lParam);
+
+BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
+                             LPARAM lParam);
