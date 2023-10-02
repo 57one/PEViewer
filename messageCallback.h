@@ -140,3 +140,9 @@ void onHeaderInfo(HWND hwnd);
 
 // WM_INITDIALOG
 void onHeaderInfoInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_SECTION
+void onSection(HWND hwnd);
+
+// WM_INITDIALOG
+void onSectionInit(HWND hwnd, LPARAM lParam);

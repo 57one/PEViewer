@@ -569,3 +569,67 @@ void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
   // set text about [Header Info]
   readHeaderInfo(hwnd, pFileBuffer);
 }
+
+void onSection(HWND hwnd) {
+  DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SECTION),
+            hwnd, SectionProc);
+}
+
+VOID InitSectionListView(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hListSections;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_PROCESS句柄 (List的句柄)
+  hListSections = GetDlgItem(hwnd, IDC_LIST_SECTIONS);
+  //设置整行选中
+  //点击某行的时候 显示整行选中
+  SendMessage(hListSections, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
+              LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("#"));
+  lv.cx = 80;
+  lv.iSubItem = 0;
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Name")); 
+  lv.cx = 80;                                       
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hListSections, 0, &lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Size"));
+  lv.cx = 80;
+  lv.iSubItem = 2;
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  //第四列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Offset"));
+  lv.cx = 80;
+  lv.iSubItem = 3;
+  // ListView_InsertColumn(hListSections, 1, &lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  //第五列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Raw Size"));
+  lv.cx = 80;
+  lv.iSubItem = 4;
+  ListView_InsertColumn(hListSections, 4, &lv);
+  //第六列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Raw Offset"));
+  lv.cx = 80;
+  lv.iSubItem = 5;
+  ListView_InsertColumn(hListSections, 5, &lv);
+  //第七列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics"));
+  lv.cx = 80;
+  lv.iSubItem = 6;
+  ListView_InsertColumn(hListSections, 6, &lv);
+
+
+  readSections(hwnd, hListSections, pFileBuffer);
+}
+
+void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
