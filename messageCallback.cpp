@@ -591,13 +591,13 @@ VOID InitSectionListView(HWND hwnd) {
   //第一列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("#"));
-  lv.cx = 80;
+  lv.cx = 20;
   lv.iSubItem = 0;
   SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Name")); 
-  lv.cx = 80;                                       
+  lv.cx = 60;                                       
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListSections, 0, &lv);
   SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (DWORD)&lv);

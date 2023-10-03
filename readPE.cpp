@@ -7,6 +7,7 @@ PIMAGE_DOS_HEADER pDosHeader = NULL;
 PIMAGE_NT_HEADERS pNTHeader = NULL;
 PIMAGE_FILE_HEADER pFileHeader = NULL;
 PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;
+PIMAGE_SECTION_HEADER pSectionHeader = NULL;
 TCHAR buffer[MAX_PATH] = {0};
 DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   FILE* file = NULL;
@@ -49,6 +50,9 @@ VOID initPE() {
   pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
   pOptionalHeader32 =
       (PIMAGE_OPTIONAL_HEADER32)((DWORD)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
+  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
+  pSectionHeader =
+      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
 }
 
 VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
@@ -189,6 +193,77 @@ VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer) {
               pFileHeader->SizeOfOptionalHeader);
   writeToText(hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES, TEXT("%08X"),
               pOptionalHeader32->NumberOfRvaAndSizes);
+}
+
+VOID DrawSections(HWND hListSection, int Row, SectionInfo sectionInfo,
+                  COLORREF colorRef) {
+  LV_ITEM vitem;
+  //初始化
+  memset(&vitem, 0, sizeof(LV_ITEM));
+  vitem.mask = LVIF_TEXT;
+
+  vitem.pszText = sectionInfo.szIndex;
+  vitem.iItem = Row;   //第几行
+  vitem.iSubItem = 0;  //第几列
+  SendMessage(hListSection, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hListSection, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
+
+  //第一行写完之后 后面全是 SETITEM
+  vitem.pszText = sectionInfo.szSectionName;
+  vitem.iSubItem = 1;
+  ListView_SetItem(hListSection, &vitem);
+
+  vitem.pszText = sectionInfo.szVirtualSize;
+  vitem.iSubItem = 2;
+  ListView_SetItem(hListSection, &vitem);
+
+  vitem.pszText = sectionInfo.szVirtualOffset;
+  vitem.iSubItem = 3;
+  ListView_SetItem(hListSection, &vitem);
+
+  vitem.pszText = sectionInfo.szRawSize;
+  vitem.iSubItem = 4;
+  ListView_SetItem(hListSection, &vitem);
+
+  vitem.pszText = sectionInfo.szRawOffset;
+  vitem.iSubItem = 5;
+  ListView_SetItem(hListSection, &vitem);
+
+  vitem.pszText = sectionInfo.szCharacteristics;
+  vitem.iSubItem = 6;
+  ListView_SetItem(hListSection, &vitem);
+}
+
+VOID readSections(HWND hwnd, HWND hListSection, LPVOID pFileBuffer) {
+  // number of sections
+  int sectionNums = pFileHeader->NumberOfSections;
+  SectionInfo sectionInfo;
+  TCHAR szSectionName[MAX_PATH] = TEXT("<unknown>");
+  COLORREF colorRef;
+  colorRef = colorWhite;
+  // colorRef = (count % 2 == 1) ? colorGrey : colorWhite;
+  for (int i = 0; i < sectionNums; i++) {
+    wsprintf(sectionInfo.szIndex, TEXT("%d"), i);
+    MultiByteToWideChar(CP_OEMCP, 0, (char*)(pSectionHeader->Name), -1,
+                        szSectionName, MAX_PATH + 1);
+    wsprintf(sectionInfo.szSectionName, TEXT("%s"), szSectionName);
+    wsprintf(sectionInfo.szVirtualSize, TEXT("%08X"), pSectionHeader->Misc);
+    wsprintf(sectionInfo.szVirtualOffset, TEXT("%08X"),
+             pSectionHeader->VirtualAddress);
+    wsprintf(sectionInfo.szRawSize, TEXT("%08X"),
+             pSectionHeader->SizeOfRawData);
+    wsprintf(sectionInfo.szRawOffset, TEXT("%08X"),
+             pSectionHeader->PointerToRawData);
+    wsprintf(sectionInfo.szCharacteristics, TEXT("%08X"),
+             pSectionHeader->Characteristics);
+    DrawSections(hListSection, i, sectionInfo, colorRef);
+    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
+                                             IMAGE_SIZEOF_SECTION_HEADER);
+  }
+  // restore pSectionHeader
+  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
+  pSectionHeader =
+      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {

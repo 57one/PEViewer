@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <tchar.h>
 #include <windows.h>
+#include <commctrl.h>
 
 #include "resource.h"
+#include "structs.h"
 extern LPVOID pFileBuffer;
 extern PIMAGE_DOS_HEADER pDosHeader;
 extern PIMAGE_NT_HEADERS pNTHeader;
@@ -23,5 +25,7 @@ VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer);
 VOID readOptinalHeader32(HWND hwnd, LPVOID pFileBuffer);
 
 VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer);
+
+VOID readSections(HWND hwnd, HWND hListSection, LPVOID pFileBuffer);
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
