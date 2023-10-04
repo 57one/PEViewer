@@ -38,3 +38,6 @@ extern DWORD dllCharacteristicsBegin;
 extern DWORD dllCharacteristicsEnd;
 extern std::map<WORD, WORD> dllCharacToIndex;
 extern INT dllCharacteristicsCheckBoxID[];
+
+INT directoryRVAEditID[];
+INT directorySizeEditID[];
