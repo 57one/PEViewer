@@ -633,3 +633,13 @@ VOID InitSectionListView(HWND hwnd) {
 }
 
 void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
+
+void onDirectory(HWND hwnd) {
+  DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_DIRECTORY), hwnd,
+            DirectoryProc);
+}
+
+void onDirectoryInit(HWND hwnd, LPARAM lParam) {
+    // set text about Directory
+  readDirectory(hwnd);
+}

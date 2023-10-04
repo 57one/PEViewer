@@ -146,3 +146,9 @@ void onSection(HWND hwnd);
 
 // WM_INITDIALOG
 void onSectionInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_DIRECTORY
+void onDirectory(HWND hwnd);
+
+// WM_INITDIALOG
+void onDirectoryInit(HWND hwnd, LPARAM lParam);
