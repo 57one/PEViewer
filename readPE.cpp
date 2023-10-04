@@ -8,6 +8,8 @@ PIMAGE_NT_HEADERS pNTHeader = NULL;
 PIMAGE_FILE_HEADER pFileHeader = NULL;
 PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;
 PIMAGE_SECTION_HEADER pSectionHeader = NULL;
+DWORD sizeOfDataDirectory = 0;
+PIMAGE_DATA_DIRECTORY pDataDirectory = NULL;
 TCHAR buffer[MAX_PATH] = {0};
 DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
   FILE* file = NULL;
@@ -53,6 +55,8 @@ VOID initPE() {
   int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
   pSectionHeader =
       (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
+  sizeOfDataDirectory = pOptionalHeader32->NumberOfRvaAndSizes;
+  pDataDirectory = pOptionalHeader32->DataDirectory;
 }
 
 VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
@@ -264,6 +268,17 @@ VOID readSections(HWND hwnd, HWND hListSection, LPVOID pFileBuffer) {
   int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
   pSectionHeader =
       (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
+}
+
+VOID readDirectory(HWND hwnd) {
+    // set Directory
+  for (int i = 0; i < sizeOfDataDirectory; i++) {
+    // printf("%x\n%x\n",pOptionalHeader->DataDirectory[i].VirtualAddress,pOptionalHeader->DataDirectory[i].VirtualAddress);
+    writeToText(hwnd, directoryRVAEditID[i], TEXT("%08X"),
+                pDataDirectory[i].VirtualAddress);
+    writeToText(hwnd, directorySizeEditID[i], TEXT("%08X"),
+                pDataDirectory[i].Size);
+  }
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
