@@ -48,3 +48,6 @@ BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
                              LPARAM lParam);
+
+BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+                            LPARAM lParam);

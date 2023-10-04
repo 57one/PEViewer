@@ -130,6 +130,7 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
         case IDC_BUTTON_DIRECTORY: {
+          onDirectory(hwnd);
           return TRUE;
         }
         case IDC_BUTTON_TOOLS: {
@@ -528,6 +529,32 @@ BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_SECTION_CANCEL : {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+                          LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onDirectoryInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_DIRECTORY_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_DIRECTORY_CANCEL: {
           EndDialog(hwnd, 0);
           return TRUE;
         }
