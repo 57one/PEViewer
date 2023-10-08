@@ -643,3 +643,14 @@ void onDirectoryInit(HWND hwnd, LPARAM lParam) {
     // set text about Directory
   readDirectory(hwnd);
 }
+
+void onSectionEdit(HWND hwnd, LPARAM lParam) {
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_SECTION_EDIT), hwnd,
+                 SectionEditProc, lParam);
+}
+
+void onSectionEditInit(HWND hwnd, LPARAM lParam) {
+  LPNMITEMACTIVATE lpnmitem = (LPNMITEMACTIVATE)lParam;
+  readSectionEdit(hwnd, lpnmitem->iItem);
+}

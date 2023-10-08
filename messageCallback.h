@@ -152,3 +152,9 @@ void onDirectory(HWND hwnd);
 
 // WM_INITDIALOG
 void onDirectoryInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_LIST_SECTIONS
+void onSectionEdit(HWND hwnd, LPARAM lParam);
+
+// WM_INITDIALOG
+void onSectionEditInit(HWND hwnd, LPARAM lParam);
