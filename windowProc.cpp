@@ -526,6 +526,14 @@ BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
       EndDialog(hwnd, 0);
       return TRUE;
     }
+    case WM_NOTIFY: {
+      NMHDR* pNMHDR = (NMHDR*)lParam;
+      // click Process in List
+      if (wParam == IDC_LIST_SECTIONS && pNMHDR->code == NM_DBLCLK) {
+        onSectionEdit(hwnd, lParam);
+      }
+      return TRUE;
+    }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_SECTION_CANCEL : {
@@ -543,6 +551,32 @@ BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   switch (message) {
     case WM_INITDIALOG: {
       onDirectoryInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_DIRECTORY_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_DIRECTORY_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onSectionEditInit(hwnd, lParam);
       return TRUE;
     }
     case WM_CLOSE: {

@@ -51,3 +51,6 @@ BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam);
+
+BOOL CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
+                              LPARAM lParam);
