@@ -271,7 +271,7 @@ VOID readSections(HWND hwnd, HWND hListSection, LPVOID pFileBuffer) {
 }
 
 VOID readDirectory(HWND hwnd) {
-    // set Directory
+  // set Directory
   for (int i = 0; i < sizeOfDataDirectory; i++) {
     // printf("%x\n%x\n",pOptionalHeader->DataDirectory[i].VirtualAddress,pOptionalHeader->DataDirectory[i].VirtualAddress);
     writeToText(hwnd, directoryRVAEditID[i], TEXT("%08X"),
@@ -279,6 +279,39 @@ VOID readDirectory(HWND hwnd) {
     writeToText(hwnd, directorySizeEditID[i], TEXT("%08X"),
                 pDataDirectory[i].Size);
   }
+}
+
+VOID readSectionEdit(HWND hwnd, INT ID) {
+  // number of sections
+  int sectionNums = pFileHeader->NumberOfSections;
+  SectionInfo sectionInfo;
+  TCHAR szSectionName[MAX_PATH] = TEXT("<unknown>");
+  COLORREF colorRef;
+  colorRef = colorWhite;
+  // colorRef = (count % 2 == 1) ? colorGrey : colorWhite;
+  pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
+                                           IMAGE_SIZEOF_SECTION_HEADER * ID);
+
+  MultiByteToWideChar(CP_OEMCP, 0, (char*)(pSectionHeader->Name), -1,
+                      szSectionName, MAX_PATH + 1);
+  SetWindowText(GetDlgItem(hwnd, IDC_EDIT_SECTION_NAME), szSectionName);
+  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_SIZE, TEXT("%08X"),
+              (pSectionHeader->Misc.VirtualSize));
+  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_SIZE, TEXT("%08X"),
+              pSectionHeader->Misc.VirtualSize);
+  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_OFFSET, TEXT("%08X"),
+              pSectionHeader->VirtualAddress);
+  writeToText(hwnd, IDC_EDIT_SECTION_RAW_SIZE, TEXT("%08X"),
+              pSectionHeader->SizeOfRawData);
+  writeToText(hwnd, IDC_EDIT_SECTION_RAW_OffSET, TEXT("%08X"),
+              pSectionHeader->PointerToRawData);
+  writeToText(hwnd, IDC_EDIT_SECTION_CHARACTERISTICS, TEXT("%08X"),
+              pSectionHeader->Characteristics);
+
+  // restore pSectionHeader
+  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
+  pSectionHeader =
+      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {

@@ -30,4 +30,6 @@ VOID readSections(HWND hwnd, HWND hListSection, LPVOID pFileBuffer);
 
 VOID readDirectory(HWND hwnd);
 
+VOID readSectionEdit(HWND hwnd, INT ID);
+
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
