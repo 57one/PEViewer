@@ -332,7 +332,7 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MAXIMIZEBOX | WS_POPUP | WS_
 CAPTION "DllCharacteristics"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    GROUPBOX        "DllCharacteristics",IDC_GROUP_MACHINE_TYPE,7,7,267,116
+    GROUPBOX        "DllCharacteristics",IDC_GROUP_DLL_CHARACTERISTICS,7,7,267,116
     CONTROL         "Image can handle a high entropy 64-bit virtual address space",IDC_CHECK_HIGH_ENTROPY_VA,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,20,212,10
     CONTROL         "DLL can be relocated at load time",IDC_CHECK_DYNAMIC_BASE,
@@ -501,6 +501,41 @@ BEGIN
     PUSHBUTTON      "...",IDC_BUTTON_SECTION_CHARACTERISTICS,265,50,18,14
 END
 
+IDD_DIALOG_SECTION_CHARACTERISTICS DIALOGEX 0, 0, 359, 153
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Section Characteristics"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Section Characteristics",IDC_GROUP_SECTION_CHARACTERISTICS,7,7,345,114
+    CONTROL         "Shareble in memory.",IDC_CHECK_MEM_SHARED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,20,81,10
+    CONTROL         "Executable as code.",IDC_CHECK_MEM_EXECUTE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,29,81,10
+    CONTROL         "Readable",IDC_CHECK_MEM_READ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,38,46,10
+    CONTROL         "Writeable",IDC_CHECK_MEM_WRITE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,47,47,10
+    CONTROL         "Contains COMDAT data",IDC_CHECK_LNK_COMDAT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,70,91,10
+    CONTROL         "Contains comments or other information",IDC_CHECK_LNK_INFO,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,79,144,10
+    CONTROL         "Will not become part of the image",IDC_CHECK_LNK_REMOVE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,88,123,10
+    CONTROL         "Should not be padded to the next boundary",IDC_CHECK_TYPE_NO_PAD,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,97,157,10
+    PUSHBUTTON      "Ok",IDC_BUTTON_SECTION_CHARACTERISTICS_OK,217,124,63,16
+    PUSHBUTTON      "Cancel",IDC_BUTTON_SECTION_CHARACTERISTICS_CANCEL,289,125,63,16
+    CONTROL         "Contains extended relocations",IDC_CHECK_LNK_NRELOC_OVFL,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,194,20,113,10
+    CONTROL         "Can be discarded as needed",IDC_CHECK_MEM_DISCARDABLE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,194,29,107,10
+    CONTROL         "Cannot be cached",IDC_CHECK_MEM_NOT_CACHED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,194,38,74,10
+    CONTROL         "Not pageable",IDC_CHECK_MEM_NOT_PAGED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,194,47,59,10
+    CONTROL         "Contains executable code",IDC_CHECK_SCN_CNT_CODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,195,70,99,10
+    CONTROL         "Contains initialized data",IDC_CHECK_CNT_INITIALIZED_DATA,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,195,79,91,10
+    CONTROL         "Contains uninitialized data",IDC_CHECK_CNT_UNINITIALIZED_DATA,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,195,88,99,10
+    COMBOBOX        IDC_COMBO_ALIGN_BYTES,232,100,65,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Alignment:",IDC_STATIC_SEC_CHARA_ALLIGNMENT,194,102,36,9
+    LTEXT           "Bytes",IDC_STATIC_SEC_CHARA_BYTES,299,102,36,9
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -629,6 +664,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 100
     END
+
+    IDD_DIALOG_SECTION_CHARACTERISTICS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 352
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 145
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -709,6 +752,11 @@ BEGIN
 END
 
 IDD_DIALOG_SECTION_EDIT AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_SECTION_CHARACTERISTICS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
