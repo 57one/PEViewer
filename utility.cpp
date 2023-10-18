@@ -154,3 +154,11 @@ DWORD systemTimeToSeconds(SYSTEMTIME sysTime) {
     seconds = mktime(&t) - timezoneSeconds;
     return seconds;
 }
+
+void setWindowTitleWithValue(HWND hwnd, PTCHAR Value) {
+  TCHAR szTitle[MAX_PATH];
+  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
+  _tcscat_s(szTitle, TEXT(" -- "));
+  _tcscat_s(szTitle, Value);
+  SetWindowText(hwnd, szTitle);
+}

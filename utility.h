@@ -25,3 +25,5 @@ BOOL isX86Process(HANDLE hProcess);
 SYSTEMTIME secondsToSystemTime(DWORD seconds);
 
 DWORD systemTimeToSeconds(SYSTEMTIME sysTime);
+
+void setWindowTitleWithValue(HWND hwnd, PTCHAR Value);
