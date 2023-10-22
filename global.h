@@ -41,3 +41,14 @@ extern INT dllCharacteristicsCheckBoxID[];
 
 INT directoryRVAEditID[];
 INT directorySizeEditID[];
+
+extern DWORD sectionCharacteristicsBegin;
+extern DWORD sectionCharacteristicsEnd;
+extern DWORD sectionCharacteristicsSize;
+extern DWORD sectionCharacterisValues[];
+extern std::map<DWORD, DWORD> sectionCharacToIndex;
+extern INT sectionCharacteristicsCheckBoxID[];
+
+extern WORD wSectionAlignLength;
+
+extern TCHAR szSectionAlignBytesDesc[][6];
