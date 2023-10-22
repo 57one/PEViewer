@@ -571,8 +571,8 @@ void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
 }
 
 void onSection(HWND hwnd) {
-  DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SECTION),
-            hwnd, SectionProc);
+  DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SECTION), hwnd,
+            SectionProc);
 }
 
 VOID InitSectionListView(HWND hwnd) {
@@ -596,8 +596,8 @@ VOID InitSectionListView(HWND hwnd) {
   SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
   //µÚ¶þÁÐ
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-  lv.pszText = const_cast<wchar_t*>(TEXT("Name")); 
-  lv.cx = 60;                                       
+  lv.pszText = const_cast<wchar_t*>(TEXT("Name"));
+  lv.cx = 60;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListSections, 0, &lv);
   SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
@@ -628,7 +628,6 @@ VOID InitSectionListView(HWND hwnd) {
   lv.iSubItem = 6;
   ListView_InsertColumn(hListSections, 6, &lv);
 
-
   readSections(hwnd, hListSections, pFileBuffer);
 }
 
@@ -640,7 +639,7 @@ void onDirectory(HWND hwnd) {
 }
 
 void onDirectoryInit(HWND hwnd, LPARAM lParam) {
-    // set text about Directory
+  // set text about Directory
   readDirectory(hwnd);
 }
 
@@ -653,4 +652,47 @@ void onSectionEdit(HWND hwnd, LPARAM lParam) {
 void onSectionEditInit(HWND hwnd, LPARAM lParam) {
   LPNMITEMACTIVATE lpnmitem = (LPNMITEMACTIVATE)lParam;
   readSectionEdit(hwnd, lpnmitem->iItem);
+}
+
+void onSectionCharacteristics(HWND hwnd) {
+  HWND hEditectionCharacteristics =
+      GetDlgItem(hwnd, IDC_EDIT_SECTION_CHARACTERISTICS);
+  TCHAR szBuffer[10];
+  GetWindowText(hEditectionCharacteristics, szBuffer, 10);
+  DialogBoxParam(GetModuleHandle(NULL),
+                 MAKEINTRESOURCE(IDD_DIALOG_SECTION_CHARACTERISTICS), hwnd,
+                 SectionCharacteristicsProc, (LPARAM)szBuffer);
+}
+
+void setSectionCharacteristics(HWND hwnd, LPARAM lParam) {
+  DWORD SectionCharacteristics = 0x0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &SectionCharacteristics);
+  for (DWORD i = 1; i < sectionCharacteristicsSize; i++) {
+    if (sectionCharacterisValues[i] & SectionCharacteristics) {
+      _tprintf(TEXT("------\n"));
+      if (sectionCharacToIndex[sectionCharacterisValues[i]] != 0) {
+        Button_SetCheck(
+            GetDlgItem(hwnd,
+                       sectionCharacteristicsCheckBoxID
+                           [sectionCharacToIndex[sectionCharacterisValues[i]]]),
+            BST_CHECKED);
+      }
+    }
+  }
+}
+
+void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam) {
+  setWindowTitleWithValue(hwnd, (PTCHAR)lParam);
+  setSectionCharacteristics(hwnd, lParam);
+
+  HWND hAlignBytes = NULL;
+  hAlignBytes = GetDlgItem(hwnd, IDC_COMBO_ALIGN_BYTES);
+
+  for (int i = 0; i < wSectionAlignLength; i++) {
+    ComboBox_AddString(hAlignBytes,  szSectionAlignBytesDesc[i]);
+  }
+
+  /* DWORD index = 0;
+  _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
+  ComboBox_SetCurSel(hAlignBytes, machinetypeToIndex[index]);*/
 }

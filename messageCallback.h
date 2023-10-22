@@ -158,3 +158,9 @@ void onSectionEdit(HWND hwnd, LPARAM lParam);
 
 // WM_INITDIALOG
 void onSectionEditInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_SECTION_CHARACTERISTICS
+void onSectionCharacteristics(HWND hwnd);
+
+// WM_INITDIALOG
+void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam);
