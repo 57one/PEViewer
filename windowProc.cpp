@@ -585,6 +585,36 @@ BOOL CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
     }
     case WM_COMMAND: {
       switch (LOWORD(wParam)) {
+        case IDC_BUTTON_SECTION_CHARACTERISTICS: {
+          onSectionCharacteristics(hwnd);
+          return TRUE;
+        }
+        case IDC_BUTTON_SECTION_EDIT_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_SECTION_EDIT_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK SectionCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+                              LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onSectionCharacteristicsInit(hwnd, lParam);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
         case IDC_BUTTON_SECTION_EDIT_OK: {
           return TRUE;
         }
