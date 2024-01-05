@@ -41,6 +41,8 @@ extern INT dllCharacteristicsCheckBoxID[];
 
 INT directoryRVAEditID[];
 INT directorySizeEditID[];
+INT directoryMoreInfoButtonID[];
+INT directoryHexButtonID[];
 
 extern DWORD sectionCharacteristicsBegin;
 extern DWORD sectionCharacteristicsEnd;
