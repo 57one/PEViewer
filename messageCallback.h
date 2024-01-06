@@ -164,3 +164,9 @@ void onSectionCharacteristics(HWND hwnd);
 
 // WM_INITDIALOG
 void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam);
+
+// WM_COMMAND IDC_BUTTON_XX
+BOOL onDirectoryButton(HWND hwnd, WPARAM wParam);
+
+// WM_INITDIALOG
+void onImportDirectoryInit(HWND hwnd, LPARAM lParam);

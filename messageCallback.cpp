@@ -689,10 +689,79 @@ void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam) {
   hAlignBytes = GetDlgItem(hwnd, IDC_COMBO_ALIGN_BYTES);
 
   for (int i = 0; i < wSectionAlignLength; i++) {
-    ComboBox_AddString(hAlignBytes,  szSectionAlignBytesDesc[i]);
+    ComboBox_AddString(hAlignBytes, szSectionAlignBytesDesc[i]);
   }
 
   /* DWORD index = 0;
   _stscanf_s((PTCHAR)lParam, TEXT("%x"), &index);
   ComboBox_SetCurSel(hAlignBytes, machinetypeToIndex[index]);*/
 }
+
+BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
+  switch (LOWORD(wParam)) {
+    case IDC_BUTTON_DIRECTORY_IMPORT: {
+      DialogBox(GetModuleHandle(NULL),
+                MAKEINTRESOURCE(IDD_DIALOG_IMPORT_DIRECTORY), hwnd,
+                ImportDirectoryProc);
+      return TRUE;
+    }
+    default:
+      return FALSE;
+  }
+}
+
+VOID InitImportDirectory(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hListImportDLL;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_IMPORT_DLL句柄 (List的句柄)
+  hListImportDLL = GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL);
+  //设置整行选中
+  //点击某行的时候 显示整行选中
+  SendMessage(hListImportDLL, LVM_SETEXTENDEDLISTVIEWSTYLE,
+              LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
+  lv.cx = 80;
+  lv.iSubItem = 0;
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics/OriginalFirstThunk"));
+  lv.cx = 180;
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hListImportDLL, 0, &lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
+  lv.cx = 100;
+  lv.iSubItem = 2;
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  //第四列
+  lv.pszText = const_cast<wchar_t*>(TEXT("ForwarderChain"));
+  lv.cx = 90;
+  lv.iSubItem = 3;
+  // ListView_InsertColumn(hListImportDLL, 1, &lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  //第五列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Name(address)"));
+  lv.cx = 90;
+  lv.iSubItem = 4;
+  ListView_InsertColumn(hListImportDLL, 4, &lv);
+  //第六列
+  lv.pszText = const_cast<wchar_t*>(TEXT("FirstThunk"));
+  lv.cx = 70;
+  lv.iSubItem = 5;
+  ListView_InsertColumn(hListImportDLL, 5, &lv);
+
+  // readSections(hwnd, hListImportDLL, pFileBuffer);
+}
+
+void onImportDirectoryInit(HWND hwnd, LPARAM lParam) {
+  InitImportDirectory(hwnd);
+}
+
