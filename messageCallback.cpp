@@ -628,7 +628,7 @@ VOID InitSectionListView(HWND hwnd) {
   lv.iSubItem = 6;
   ListView_InsertColumn(hListSections, 6, &lv);
 
-  readSections(hwnd, hListSections, pFileBuffer);
+  readSections(hwnd, hListSections);
 }
 
 void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
@@ -758,10 +758,58 @@ VOID InitImportDirectory(HWND hwnd) {
   lv.iSubItem = 5;
   ListView_InsertColumn(hListImportDLL, 5, &lv);
 
-  // readSections(hwnd, hListImportDLL, pFileBuffer);
+  readImportDirectory(hwnd, hListImportDLL);
+}
+
+VOID InitImportFunction(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hListIntThunk;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_IMPORT_DLL句柄 (List的句柄)
+  hListIntThunk = GetDlgItem(hwnd, IDC_LIST_INT_THUNK);
+  //设置整行选中
+  //点击某行的时候 显示整行选中
+  SendMessage(hListIntThunk, LVM_SETEXTENDEDLISTVIEWSTYLE,
+              LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("API Name"));
+  lv.cx = 150;
+  lv.iSubItem = 0;
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RVA"));
+  lv.cx = 80;
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hListIntThunk, 0, &lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RAW(FOA)"));
+  lv.cx = 100;
+  lv.iSubItem = 2;
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  //第四列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Thunk Value"));
+  lv.cx = 80;
+  lv.iSubItem = 3;
+  // ListView_InsertColumn(hListIntThunk, 1, &lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  //第五列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Hint"));
+  lv.cx = 80;
+  lv.iSubItem = 4;
+  ListView_InsertColumn(hListIntThunk, 4, &lv);
+
+  // Int import name table
+  //readIntThunk(hwnd, hListIntThunk, (PIMAGE_IMPORT_DESCRIPTOR)0);
 }
 
 void onImportDirectoryInit(HWND hwnd, LPARAM lParam) {
   InitImportDirectory(hwnd);
+  InitImportFunction(hwnd);
 }
 
