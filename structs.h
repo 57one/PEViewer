@@ -22,3 +22,20 @@ typedef struct SectionInfo {
   TCHAR szRawOffset[MAX_PATH] = TEXT("<unknown>");
   TCHAR szCharacteristics[MAX_PATH] = TEXT("<unknown>");
 } SectionInfo;
+
+typedef struct ImportDescInfo {
+  TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szOriginalFirstThunk[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szTimeDateStamp[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szForwarderChain[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szName[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szFirstThunk[MAX_PATH] = TEXT("<unknown>");
+} ImportDescInfo;
+
+typedef struct IntThunkInfo {
+  TCHAR szAPIName[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szThunkRVA[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szThunkRAW[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szThunkValue[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szHint[MAX_PATH] = TEXT("<unknown>");
+} IntThunkInfo;
