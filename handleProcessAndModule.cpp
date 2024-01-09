@@ -282,6 +282,7 @@ VOID EnumProcess2(HWND hListProcess) {
 
 VOID EnumModules(HWND hListProcess, HWND hListModule, WPARAM wParam,
                  LPARAM lParam) {
+  ListView_DeleteAllItems(hListModule);
   DWORD dwRowId;
   TCHAR szPid[0x20] = {0};
   LV_ITEM lv;
