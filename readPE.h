@@ -36,7 +36,6 @@ VOID readSectionEdit(HWND hwnd, INT ID);
 
 VOID readImportDirectory(HWND hwnd, HWND hListImportDLL);
 
-VOID readIntThunk(HWND hwnd, HWND hListIntThunk,
-                  PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor);
+VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk);
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);

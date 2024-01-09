@@ -457,17 +457,36 @@ VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
   ListView_SetItem(hListIntThunk, &vitem);
 }
 
-VOID readIntThunk(HWND hwnd, HWND hListIntThunk,
-                  PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor) {
-  DWORD originalFirstThunk = NULL;
+VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
+  ListView_DeleteAllItems(hListIntThunk);
+  DWORD originalFirstThunk = 0, rvaOriginalFirstThunk = 0;
   DWORD thunkData = 0;
   IntThunkInfo intThunkInfo;
   TCHAR szAPIName[MAX_PATH] = TEXT("<unknown>");
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
-  originalFirstThunk =
-      rvaToFileOffset(pFileBuffer, pImportDescriptor->OriginalFirstThunk);
+
+  //get selected DLL's OriginalFirstThunk
+  DWORD dwRowId;
+  TCHAR szOriginalFirstThunk[0x20] = {0};
+  LV_ITEM lv;
+  memset(&lv, 0, sizeof(LV_ITEM));
+  dwRowId = SendMessage(hListImportDLL, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
+  if (dwRowId == -1) {
+    MessageBox(NULL, TEXT("Please select a DLL"), TEXT("Error"), MB_OK);
+    return;
+  }
+  //get OriginalFirstThunk
+  lv.iSubItem = 1;       //要获取的列
+  lv.pszText = szOriginalFirstThunk;  //指定存储查询结果的缓冲区
+  lv.cchTextMax = 0x20;  //指定缓冲区大小
+  SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
+  _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &originalFirstThunk);
+
+  rvaOriginalFirstThunk = originalFirstThunk;
+  originalFirstThunk = rvaToFileOffset(pFileBuffer, originalFirstThunk);
   originalFirstThunk = (DWORD)pFileBuffer + originalFirstThunk;
+
   while (TRUE) {
     if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal == 0x00000000)
       break;
@@ -483,8 +502,9 @@ VOID readIntThunk(HWND hwnd, HWND hListIntThunk,
       thunkData = (DWORD)pFileBuffer + thunkData;
 
       wsprintf(intThunkInfo.szThunkRVA, TEXT("%010X"),
-               pImportDescriptor->OriginalFirstThunk + 4 * row);
-      wsprintf(intThunkInfo.szThunkRAW, TEXT("%08X"), originalFirstThunk);
+               rvaOriginalFirstThunk + 4 * row);
+      wsprintf(intThunkInfo.szThunkRAW, TEXT("%08X"),
+               rvaToFileOffset(pFileBuffer, rvaOriginalFirstThunk + 4 * row));
       wsprintf(intThunkInfo.szThunkValue, TEXT("%08X"),
                ((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal);
       wsprintf(intThunkInfo.szHint, TEXT("%04X"),
