@@ -650,6 +650,16 @@ BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
         }
       }
     }
+    case WM_NOTIFY: {
+      NMHDR* pNMHDR = (NMHDR*)lParam;
+      // click DLL in List
+      if (wParam == IDC_LIST_IMPORT_DLL && pNMHDR->code == NM_CLICK) {
+        
+        readIntThunk(hwnd, GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL),
+                     GetDlgItem(hwnd, IDC_LIST_INT_THUNK));
+      }
+      return TRUE;
+    }
   }
   return FALSE;
 }
