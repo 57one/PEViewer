@@ -60,3 +60,6 @@ BOOL CALLBACK SectionCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                                   LPARAM lParam);
+
+BOOL CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+                                  LPARAM lParam);

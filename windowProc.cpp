@@ -635,7 +635,7 @@ BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) { 
     case WM_INITDIALOG: {
-      onImportDirectoryInit(hwnd, lParam);
+      onImportDirectoryInit(hwnd);
       return TRUE;
     }
     case WM_CLOSE: {
@@ -659,6 +659,32 @@ BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                      GetDlgItem(hwnd, IDC_LIST_INT_THUNK));
       }
       return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+BOOL CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+                                  LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onExportDirectoryInit(hwnd);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_EXPORT_DIRECTORY_OK: {
+          return TRUE;
+        }
+        case IDC_BUTTON_EXPORT_DIRECTORY_CANCEL: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
     }
   }
   return FALSE;
