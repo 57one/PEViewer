@@ -169,4 +169,7 @@ void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam);
 BOOL onDirectoryButton(HWND hwnd, WPARAM wParam);
 
 // WM_INITDIALOG
-void onImportDirectoryInit(HWND hwnd, LPARAM lParam);
+void onImportDirectoryInit(HWND hwnd);
+
+// WM_INITDIALOG
+void onExportDirectoryInit(HWND hwnd);

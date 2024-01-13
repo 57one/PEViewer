@@ -705,6 +705,12 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
                 ImportDirectoryProc);
       return TRUE;
     }
+    case IDC_BUTTON_DIRECTORY_EXPORT: {
+      DialogBox(GetModuleHandle(NULL),
+                MAKEINTRESOURCE(IDD_DIALOG_EXPORT_DIRECTORY), hwnd,
+                ExportDirectoryProc);
+      return TRUE;
+    }
     default:
       return FALSE;
   }
@@ -808,8 +814,51 @@ VOID InitImportFunction(HWND hwnd) {
   //readIntThunk(hwnd, hListIntThunk, (PIMAGE_IMPORT_DESCRIPTOR)0);
 }
 
-void onImportDirectoryInit(HWND hwnd, LPARAM lParam) {
+void onImportDirectoryInit(HWND hwnd) {
   InitImportDirectory(hwnd);
   InitImportFunction(hwnd);
 }
 
+VOID InitExportFunction(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hListExportFunc;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_EXPORT_FUNC句柄 (List的句柄)
+  hListExportFunc = GetDlgItem(hwnd, IDC_LIST_EXPORT_FUNC);
+  SendMessage(hListExportFunc, LVM_SETEXTENDEDLISTVIEWSTYLE,
+              LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Ordinal"));
+  lv.cx = 80;
+  lv.iSubItem = 0;
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Func RVA"));
+  lv.cx = 80;
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hListExportFunc, 0, &lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Func RAW(FOA)"));
+  lv.cx = 100;
+  lv.iSubItem = 2;
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  //第四列
+  lv.pszText = const_cast<wchar_t*>(TEXT("Func Name"));
+  lv.cx = 150;
+  lv.iSubItem = 3;
+  // ListView_InsertColumn(hListExportFunc, 1, &lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+
+  readExportFunc(hwnd, hListExportFunc);
+}
+
+void onExportDirectoryInit(HWND hwnd) { 
+    InitExportFunction(hwnd); 
+    readExportDirectory(hwnd);
+}
