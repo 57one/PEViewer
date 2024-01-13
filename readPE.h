@@ -5,6 +5,7 @@
 #include <tchar.h>
 #include <windows.h>
 #include <commctrl.h>
+#include <map>
 
 #include "resource.h"
 #include "structs.h"
@@ -39,3 +40,7 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL);
 VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk);
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
+
+VOID readExportDirectory(HWND hwnd);
+
+VOID readExportFunc(HWND hwnd, HWND hListExportFunc);
