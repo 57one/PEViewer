@@ -39,3 +39,10 @@ typedef struct IntThunkInfo {
   TCHAR szThunkValue[MAX_PATH] = TEXT("<unknown>");
   TCHAR szHint[MAX_PATH] = TEXT("<unknown>");
 } IntThunkInfo;
+
+typedef struct ExportFuncInfo {
+  TCHAR szOrdinal[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szFuncRVA[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szFuncRAW[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szFuncName[MAX_PATH] = TEXT("<unknown>");
+} ExportFuncInfo;
