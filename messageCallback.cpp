@@ -711,6 +711,12 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
                 ExportDirectoryProc);
       return TRUE;
     }
+    case IDC_BUTTON_DIRECTORY_BOUND_IMPORT: {
+      DialogBox(GetModuleHandle(NULL),
+                MAKEINTRESOURCE(IDD_DIALOG_BOUND_IMPORT_DIRECTORY), hwnd,
+                BoundImportDirectoryProc);
+      return TRUE;
+    }
     default:
       return FALSE;
   }
@@ -862,3 +868,46 @@ void onExportDirectoryInit(HWND hwnd) {
     InitExportFunction(hwnd); 
     readExportDirectory(hwnd);
 }
+
+VOID InitBoundImportDirectory(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hBoundImport;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_IMPORT_DLL句柄 (List的句柄)
+  hBoundImport = GetDlgItem(hwnd, IDC_LIST_BOUND_IMPORT_DIRECTORY);
+  //设置整行选中
+  //点击某行的时候 显示整行选中
+  SendMessage(hBoundImport, LVM_SETEXTENDEDLISTVIEWSTYLE,
+              LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
+  lv.cx = 80;
+  lv.iSubItem = 0;
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
+  lv.cx = 100;
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hBoundImport, 0, &lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("OffsetModuleName"));
+  lv.cx = 100;
+  lv.iSubItem = 2;
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  //第四列
+  lv.pszText = const_cast<wchar_t*>(TEXT("NumberOfModuleForwarderRefs"));
+  lv.cx = 150;
+  lv.iSubItem = 3;
+  // ListView_InsertColumn(hBoundImport, 1, &lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+
+  readBoundImportDirectory(hwnd, hBoundImport);
+}
+
+void onBoundImportDirectoryInit(HWND hwnd) { InitBoundImportDirectory(hwnd); }
