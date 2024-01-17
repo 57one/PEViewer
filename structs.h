@@ -46,3 +46,10 @@ typedef struct ExportFuncInfo {
   TCHAR szFuncRAW[MAX_PATH] = TEXT("<unknown>");
   TCHAR szFuncName[MAX_PATH] = TEXT("<unknown>");
 } ExportFuncInfo;
+
+typedef struct BoundImportInfo {
+  TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szTimeDateStamp[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szOffsetModuleName[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szNumberOfModuleForwarderRefs[MAX_PATH] = TEXT("<unknown>");
+} BoundImportInfo;
