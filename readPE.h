@@ -44,3 +44,5 @@ VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
 VOID readExportDirectory(HWND hwnd);
 
 VOID readExportFunc(HWND hwnd, HWND hListExportFunc);
+
+VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport);

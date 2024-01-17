@@ -47,7 +47,7 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
 }
 
 DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
-  PIMAGE_SECTION_HEADER originalSectionHeader = pSectionHeader; 
+  PIMAGE_SECTION_HEADER originalSectionHeader = pSectionHeader;
   //节区数
   int sectionNums = pFileHeader->NumberOfSections;
 
@@ -72,7 +72,7 @@ DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
   //计算 RAW
   DWORD RAW =
       dwRva - pSectionHeader->VirtualAddress + pSectionHeader->PointerToRawData;
-  pSectionHeader = originalSectionHeader; 
+  pSectionHeader = originalSectionHeader;
   return RAW;
 }
 
@@ -560,7 +560,7 @@ VOID readExportDirectory(HWND hwnd) {
 }
 
 VOID drawExportFunc(HWND hListExportFunc, int Row,
-    ExportFuncInfo& exportFuncInfo, COLORREF colorRef) {
+                    ExportFuncInfo& exportFuncInfo, COLORREF colorRef) {
   LV_ITEM vitem;
   //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
@@ -647,6 +647,73 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
         rvaToFileOffset(pFileBuffer, ((DWORD*)addressOfFunctions)[it.first]);
     wsprintf(exportFuncInfo.szFuncRAW, TEXT("%08X"), funcRaw);
     drawExportFunc(hListExportFunc, row, exportFuncInfo, colorRef);
+    row += 1;
+  }
+}
+
+VOID drawBoundImportDirectory(HWND hBoundImport, int row,
+    BoundImportInfo& boundImportInfo,
+    COLORREF colorRef) {
+  LV_ITEM vitem;
+  //初始化
+  memset(&vitem, 0, sizeof(LV_ITEM));
+  vitem.mask = LVIF_TEXT;
+
+  vitem.pszText = boundImportInfo.szDllName;
+  vitem.iItem = row;   //第几行
+  vitem.iSubItem = 0;  //第几列
+  SendMessage(hBoundImport, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hBoundImport, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
+
+  vitem.pszText = boundImportInfo.szTimeDateStamp;
+  vitem.iSubItem = 1;
+  ListView_SetItem(hBoundImport, &vitem);
+
+  vitem.pszText = boundImportInfo.szOffsetModuleName;
+  vitem.iSubItem = 2;
+  ListView_SetItem(hBoundImport, &vitem);
+
+  vitem.pszText = boundImportInfo.szNumberOfModuleForwarderRefs;
+  vitem.iSubItem = 3;
+  ListView_SetItem(hBoundImport, &vitem);
+}
+
+VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
+  PIMAGE_DATA_DIRECTORY pBoundImportDirectory = pDataDirectory + 11;
+  PIMAGE_BOUND_IMPORT_DESCRIPTOR pBoundImportDescriptor = NULL;
+  BoundImportInfo boundImportInfo;
+  TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
+  DWORD row = 0;
+  COLORREF colorRef = colorWhite;
+
+  pBoundImportDescriptor = (PIMAGE_BOUND_IMPORT_DESCRIPTOR)rvaToFileOffset(
+      pFileBuffer, pBoundImportDirectory->VirtualAddress);
+  pBoundImportDescriptor =
+      (PIMAGE_BOUND_IMPORT_DESCRIPTOR)((DWORD)pFileBuffer +
+                                       (DWORD)pBoundImportDescriptor);
+
+  PIMAGE_BOUND_IMPORT_DESCRIPTOR pFirstDescriptor = pBoundImportDescriptor;
+  while (TRUE) {
+    if (pBoundImportDescriptor->TimeDateStamp == 0 &&
+        pBoundImportDescriptor->OffsetModuleName == 0)
+      break;
+
+    MultiByteToWideChar(
+        CP_OEMCP, 0,
+        (char*)((DWORD)pFirstDescriptor + pBoundImportDescriptor->OffsetModuleName),
+        -1, szDllName, MAX_PATH + 1);
+
+    wsprintf(boundImportInfo.szDllName, TEXT("%s"), szDllName);
+    wsprintf(boundImportInfo.szTimeDateStamp, TEXT("%08X H"),
+             pBoundImportDescriptor->TimeDateStamp);
+    wsprintf(boundImportInfo.szOffsetModuleName, TEXT("%04X H"),
+             pBoundImportDescriptor->OffsetModuleName);
+    wsprintf(boundImportInfo.szNumberOfModuleForwarderRefs, TEXT("%04X H"),
+             pBoundImportDescriptor->NumberOfModuleForwarderRefs);
+    drawBoundImportDirectory(hBoundImport, row, boundImportInfo, colorRef);
+
+    pBoundImportDescriptor +=
+        pBoundImportDescriptor->NumberOfModuleForwarderRefs + 1; 
     row += 1;
   }
 }
