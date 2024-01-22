@@ -711,6 +711,12 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
                 ExportDirectoryProc);
       return TRUE;
     }
+    case IDC_BUTTON_DIRECTORY_DEBUG: {
+      DialogBox(GetModuleHandle(NULL),
+                MAKEINTRESOURCE(IDD_DIALOG_DEBUG_DIRECTORY), hwnd,
+                DebugDirectoryProc);
+      return TRUE;
+    }
     case IDC_BUTTON_DIRECTORY_BOUND_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_BOUND_IMPORT_DIRECTORY), hwnd,
@@ -911,3 +917,66 @@ VOID InitBoundImportDirectory(HWND hwnd) {
 }
 
 void onBoundImportDirectoryInit(HWND hwnd) { InitBoundImportDirectory(hwnd); }
+
+VOID InitDebugDirectory(HWND hwnd) {
+  LV_COLUMN lv;
+  HWND hDebug;
+
+  //初始化
+  memset(&lv, 0, sizeof(LV_COLUMN));
+  //获取IDC_LIST_IMPORT_DLL句柄 (List的句柄)
+  hDebug = GetDlgItem(hwnd, IDC_LIST_DEBUG_DIRECTORY);
+  //设置整行选中
+  //点击某行的时候 显示整行选中
+  SendMessage(hDebug, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
+              LVS_EX_FULLROWSELECT);
+
+  //第一列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics"));
+  lv.cx = 90;
+  lv.iSubItem = 0;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  //第二列
+  lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+  lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
+  lv.cx = 90;
+  lv.iSubItem = 1;
+  // ListView_InsertColumn(hDebug, 1, &lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  //第三列
+  lv.pszText = const_cast<wchar_t*>(TEXT("MajorVersion"));
+  lv.cx = 80;
+  lv.iSubItem = 2;
+  // ListView_InsertColumn(hDebug, 2, &lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+
+  lv.pszText = const_cast<wchar_t*>(TEXT("MinorVersion"));
+  lv.cx = 80;
+  lv.iSubItem = 3;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+
+  lv.pszText = const_cast<wchar_t*>(TEXT("Type"));
+  lv.cx = 80;
+  lv.iSubItem = 4;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 4, (DWORD)&lv);
+
+  lv.pszText = const_cast<wchar_t*>(TEXT("SizeOfData"));
+  lv.cx = 80;
+  lv.iSubItem = 5;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (DWORD)&lv);
+
+  lv.pszText = const_cast<wchar_t*>(TEXT("AddressOfRawData"));
+  lv.cx = 110;
+  lv.iSubItem = 6;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 6, (DWORD)&lv);
+
+  lv.pszText = const_cast<wchar_t*>(TEXT("PointerToRawData"));
+  lv.cx = 110;
+  lv.iSubItem = 7;
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (DWORD)&lv);
+
+  readDebugDirectory(hwnd, hDebug);
+}
+
+void onDebugDirectoryInit(HWND hwnd) { InitDebugDirectory(hwnd); }

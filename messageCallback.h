@@ -176,3 +176,6 @@ void onExportDirectoryInit(HWND hwnd);
 
 // WM_INITDIALOG
 void onBoundImportDirectoryInit(HWND hwnd);
+
+// WM_INITDIALOG
+void onDebugDirectoryInit(HWND hwnd);
