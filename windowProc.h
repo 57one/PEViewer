@@ -66,3 +66,6 @@ BOOL CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
 
 BOOL CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                                        LPARAM lParam);
+
+BOOL CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+                                 LPARAM lParam);

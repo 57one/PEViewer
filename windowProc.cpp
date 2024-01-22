@@ -712,3 +712,26 @@ BOOL CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   }
   return FALSE;
 }
+
+BOOL CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+    LPARAM lParam) {
+  switch (message) {
+    case WM_INITDIALOG: {
+      onDebugDirectoryInit(hwnd);
+      return TRUE;
+    }
+    case WM_CLOSE: {
+      EndDialog(hwnd, 0);
+      return TRUE;
+    }
+    case WM_COMMAND: {
+      switch (LOWORD(wParam)) {
+        case IDC_BUTTON_DEBUG_DIRECTORY_CLOSE: {
+          EndDialog(hwnd, 0);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
