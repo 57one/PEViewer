@@ -53,3 +53,14 @@ typedef struct BoundImportInfo {
   TCHAR szOffsetModuleName[MAX_PATH] = TEXT("<unknown>");
   TCHAR szNumberOfModuleForwarderRefs[MAX_PATH] = TEXT("<unknown>");
 } BoundImportInfo;
+
+typedef struct DebugInfo {
+  TCHAR szCharacteristics[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szTimeDateStamp[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szMajorVersion[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szMinorVersion[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szType[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szSizeOfData[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szAddressOfRawData[MAX_PATH] = TEXT("<unknown>");
+  TCHAR szPointerToRawData[MAX_PATH] = TEXT("<unknown>");
+} DebugInfo;
