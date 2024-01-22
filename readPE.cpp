@@ -717,3 +717,78 @@ VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
     row += 1;
   }
 }
+
+VOID drawBoundImportDirectory(HWND hDebug, int row, DebugInfo& debugInfo,
+    COLORREF colorRef) {
+  LV_ITEM vitem;
+  //初始化
+  memset(&vitem, 0, sizeof(LV_ITEM));
+  vitem.mask = LVIF_TEXT;
+
+  vitem.pszText = debugInfo.szCharacteristics;
+  vitem.iItem = row;   //第几行
+  vitem.iSubItem = 0;  //第几列
+  SendMessage(hDebug, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hDebug, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
+
+  vitem.pszText = debugInfo.szTimeDateStamp;
+  vitem.iSubItem = 1;
+  ListView_SetItem(hDebug, &vitem);
+
+  vitem.pszText = debugInfo.szMajorVersion;
+  vitem.iSubItem = 2;
+  ListView_SetItem(hDebug, &vitem);
+
+  vitem.pszText = debugInfo.szMinorVersion;
+  vitem.iSubItem = 3;
+  ListView_SetItem(hDebug, &vitem);
+
+  vitem.pszText = debugInfo.szType;
+  vitem.iSubItem = 4;
+  ListView_SetItem(hDebug, &vitem);
+
+  vitem.pszText = debugInfo.szSizeOfData;
+  vitem.iSubItem = 5;
+  ListView_SetItem(hDebug, &vitem);
+
+  vitem.pszText = debugInfo.szAddressOfRawData;
+  vitem.iSubItem = 6;
+  ListView_SetItem(hDebug, &vitem);
+  
+  vitem.pszText = debugInfo.szPointerToRawData;
+  vitem.iSubItem = 7;
+  ListView_SetItem(hDebug, &vitem);
+}
+
+VOID readDebugDirectory(HWND hwnd, HWND hDebug) {
+  PIMAGE_DATA_DIRECTORY pDebugDirectoryEntry = pDataDirectory + 6;
+  PIMAGE_DEBUG_DIRECTORY pDebugDirectory = NULL;
+  DebugInfo debugInfo;
+  DWORD row = 0;
+  COLORREF colorRef = colorWhite;
+
+  pDebugDirectory = (PIMAGE_DEBUG_DIRECTORY)rvaToFileOffset(
+      pFileBuffer, pDebugDirectoryEntry->VirtualAddress);
+  pDebugDirectory =
+      (PIMAGE_DEBUG_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pDebugDirectory);
+
+  WORD debugDirectorySize =
+      pDebugDirectoryEntry->Size / sizeof(IMAGE_DEBUG_DIRECTORY);
+  for (WORD i = 0; i < debugDirectorySize; i++) {
+    wsprintf(debugInfo.szCharacteristics, TEXT("%08X"), pDebugDirectory->Characteristics);
+    wsprintf(debugInfo.szTimeDateStamp, TEXT("%08X"), pDebugDirectory->TimeDateStamp);
+    wsprintf(debugInfo.szMajorVersion, TEXT("%04X"), pDebugDirectory->MajorVersion);
+    wsprintf(debugInfo.szMinorVersion, TEXT("%04X"), pDebugDirectory->MinorVersion);
+    wsprintf(debugInfo.szType, TEXT("%s(%X)"),
+             szDebugInfoType[pDebugDirectory->Type],
+             pDebugDirectory->Type);
+    wsprintf(debugInfo.szSizeOfData, TEXT("%08X"), pDebugDirectory->SizeOfData);
+    wsprintf(debugInfo.szAddressOfRawData, TEXT("%08X"), pDebugDirectory->AddressOfRawData);
+    wsprintf(debugInfo.szPointerToRawData, TEXT("%08X"), pDebugDirectory->PointerToRawData);
+
+    drawBoundImportDirectory(hDebug, row, debugInfo, colorRef);
+
+    pDebugDirectory += 1;
+    row += 1;
+  }
+}
