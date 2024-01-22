@@ -54,3 +54,5 @@ extern INT sectionCharacteristicsCheckBoxID[];
 extern WORD wSectionAlignLength;
 
 extern TCHAR szSectionAlignBytesDesc[][6];
+
+extern TCHAR szDebugInfoType[][10];

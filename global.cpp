@@ -323,6 +323,11 @@ TCHAR szSectionAlignBytesDesc[][6] = {
     TEXT("32"),   TEXT("64"),   TEXT("128"), TEXT("256"), TEXT("512"),
     TEXT("1024"), TEXT("2048"), TEXT("4096")};
 
+TCHAR szDebugInfoType[][10]{
+    TEXT("UNKNOWN"), TEXT("COFF"),      TEXT("CODEVIEW"), TEXT("FPO"),
+    TEXT("MISC"),    TEXT("EXCEPTION"), TEXT("FIXUP"),    TEXT("BORLAND"),
+};
+
 // WORD szSectionAlignValue[] = {
 //
 //};
