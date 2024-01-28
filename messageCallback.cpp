@@ -70,7 +70,7 @@ void onPeEditor(HWND hwnd) {
     readPeFile(szBuffer, &pFileBuffer);
     initPE();
     DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_PE_EDITOR),
-                   hwnd, PeEditorProc, (LPARAM)szBuffer);
+                   hwnd, (DLGPROC)PeEditorProc, (LPARAM)szBuffer);
   }
 }
 
@@ -89,7 +89,7 @@ void onPeEditorInit(HWND hwnd, LPARAM lParam) {
 void onFileHeader(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL),
             MAKEINTRESOURCE(IDD_DIALOG_IMAGE_FILE_HEADER), hwnd,
-            FileHeaderProc);
+      (DLGPROC)FileHeaderProc);
 }
 
 void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
@@ -103,7 +103,7 @@ void onMachineType(HWND hwnd) {
   GetWindowText(hEditMachine, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_MACHINE_TYPE), hwnd,
-                 MachineTypeProc, (LPARAM)szBuffer);
+      (DLGPROC)MachineTypeProc, (LPARAM)szBuffer);
 }
 
 void onMachineTypeInit(HWND hwnd, LPARAM lParam) {
@@ -156,7 +156,7 @@ void onCharacteristics(HWND hwnd) {
   GetWindowText(hCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
-                 CharacteristicsProc, (LPARAM)szBuffer);
+      (DLGPROC)CharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoCharacteristics(HWND hwnd) {
@@ -165,7 +165,7 @@ void onHeaderInfoCharacteristics(HWND hwnd) {
   GetWindowText(hCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
-                 CharacteristicsProc, (LPARAM)szBuffer);
+      (DLGPROC)CharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onCharacteristicsInit(HWND hwnd, LPARAM lParam) {
@@ -228,7 +228,7 @@ void onTimeDateStamp(HWND hwnd) {
   GetWindowText(hTimeDateStamp, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
-                 TimeDateStampProc, (LPARAM)szBuffer);
+      (DLGPROC)TimeDateStampProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoTimeDateStamp(HWND hwnd) {
@@ -237,7 +237,7 @@ void onHeaderInfoTimeDateStamp(HWND hwnd) {
   GetWindowText(hTimeDateStamp, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
-                 TimeDateStampProc, (LPARAM)szBuffer);
+      (DLGPROC)TimeDateStampProc, (LPARAM)szBuffer);
 }
 
 void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
@@ -254,7 +254,7 @@ void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
 void onOptinalHeader(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL),
             MAKEINTRESOURCE(IDD_DIALOG_IMAGE_OPTIONAL_HEADER32), hwnd,
-            OptionalHeader32Proc);
+      (DLGPROC)OptionalHeader32Proc);
 }
 
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
@@ -267,7 +267,7 @@ void onMagicType(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
-                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
+                 hwnd, (DLGPROC)MagicTypeProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoMagicType(HWND hwnd) {
@@ -275,7 +275,7 @@ void onHeaderInfoMagicType(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
-                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
+                 hwnd, (DLGPROC)MagicTypeProc, (LPARAM)szBuffer);
 }
 
 void onMagicTypeInit(HWND hwnd, LPARAM lParam) {
@@ -420,7 +420,7 @@ void onSubsystem(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
-                 hwnd, SubsystemProc, (LPARAM)szBuffer);
+                 hwnd, (DLGPROC)SubsystemProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoSubsystem(HWND hwnd) {
@@ -428,7 +428,7 @@ void onHeaderInfoSubsystem(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
-                 hwnd, SubsystemProc, (LPARAM)szBuffer);
+                 hwnd, (DLGPROC)SubsystemProc, (LPARAM)szBuffer);
 }
 
 void onSubsystemInit(HWND hwnd, LPARAM lParam) {
@@ -478,7 +478,7 @@ void onDllCharacteristics(HWND hwnd) {
   GetWindowText(hDllCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_DLLCHARACTERISTICS), hwnd,
-                 DllCharacteristicsProc, (LPARAM)szBuffer);
+      (DLGPROC)DllCharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onDllCharacteristicsInit(HWND hwnd, LPARAM lParam) {
@@ -562,7 +562,7 @@ void minusHeaderInfo32NumRvaSize(HWND hwnd) {
 
 void onHeaderInfo(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_HEADER_INFO),
-            hwnd, HeaderInfoProc);
+            hwnd, (DLGPROC)HeaderInfoProc);
 }
 
 void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
@@ -572,7 +572,7 @@ void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
 
 void onSection(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SECTION), hwnd,
-            SectionProc);
+      (DLGPROC)SectionProc);
 }
 
 VOID InitSectionListView(HWND hwnd) {
@@ -635,7 +635,7 @@ void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
 
 void onDirectory(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_DIRECTORY), hwnd,
-            DirectoryProc);
+      (DLGPROC)DirectoryProc);
 }
 
 void onDirectoryInit(HWND hwnd, LPARAM lParam) {
@@ -646,7 +646,7 @@ void onDirectoryInit(HWND hwnd, LPARAM lParam) {
 void onSectionEdit(HWND hwnd, LPARAM lParam) {
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_SECTION_EDIT), hwnd,
-                 SectionEditProc, lParam);
+      (DLGPROC)SectionEditProc, lParam);
 }
 
 void onSectionEditInit(HWND hwnd, LPARAM lParam) {
@@ -661,7 +661,7 @@ void onSectionCharacteristics(HWND hwnd) {
   GetWindowText(hEditectionCharacteristics, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_SECTION_CHARACTERISTICS), hwnd,
-                 SectionCharacteristicsProc, (LPARAM)szBuffer);
+      (DLGPROC)SectionCharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void setSectionCharacteristics(HWND hwnd, LPARAM lParam) {
@@ -702,25 +702,25 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
     case IDC_BUTTON_DIRECTORY_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_IMPORT_DIRECTORY), hwnd,
-                ImportDirectoryProc);
+          (DLGPROC)ImportDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_EXPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_EXPORT_DIRECTORY), hwnd,
-                ExportDirectoryProc);
+          (DLGPROC)ExportDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_DEBUG: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_DEBUG_DIRECTORY), hwnd,
-                DebugDirectoryProc);
+          (DLGPROC)DebugDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_BOUND_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_BOUND_IMPORT_DIRECTORY), hwnd,
-                BoundImportDirectoryProc);
+          (DLGPROC)BoundImportDirectoryProc);
       return TRUE;
     }
     default:

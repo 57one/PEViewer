@@ -17,6 +17,8 @@ BOOL CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
       mainDialogSize.cx = rect.right - rect.left;
       mainDialogSize.cy = rect.bottom - rect.top;
       mainDialogHwnd = hwnd;
+      // to do
+      // fix bug of complie in x64 mode
       InitProcessListView(hwnd);
       InitModulesListView(hwnd);
       return TRUE;
@@ -52,7 +54,7 @@ BOOL CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
         }
         case IDC_BUTTON_ABOUT: {
           DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_ABOUT),
-                    hwnd, AboutProc);
+                    hwnd, (DLGPROC)AboutProc);
           return TRUE;
         }
         case IDC_BUTTON_QUIT: {
@@ -731,6 +733,16 @@ BOOL CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
           return TRUE;
         }
       }
+    }
+    case WM_NOTIFY: {
+        //NMHDR* pNMHDR = (NMHDR*)lParam;
+        //// click DLL in List
+        //if (wParam == IDC_LIST_IMPORT_DLL && pNMHDR->code == NM_CLICK) {
+
+        //    readIntThunk(hwnd, GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL),
+        //        GetDlgItem(hwnd, IDC_LIST_INT_THUNK));
+        //}
+        return TRUE;
     }
   }
   return FALSE;

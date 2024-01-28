@@ -69,6 +69,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
   icex.dwICC = ICC_WIN95_CLASSES;
   InitCommonControlsEx(&icex);
 
-  DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG), NULL, MainDialogProc);
+  DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG), NULL, (DLGPROC)MainDialogProc);
+
   return 0;
 }
