@@ -18,6 +18,89 @@
 | [resource.rc](resource.rc)、[resource.h](resource.h) | 对话框布局、控件 ID 和中文资源。 |
 | [PEViewer.sln](PEViewer.sln)、[PEViewer.vcxproj](PEViewer.vcxproj) | Visual Studio 的 Debug / Release、Win32 / x64 构建配置。 |
 
+## 目录整理规划（待实施）
+
+目前源码、头文件和资源脚本集中在仓库根目录。下一步按职责归类文件，继续由一个 `PEViewer.vcxproj` 编译主程序，生成 `PEViewer.exe`；`src` 下的子目录属于同一个工程。相关 `.cpp`、`.h` 放在同一模块目录中，解决方案和工程文件保留在根目录。
+
+以下是目标结构，尚未执行文件迁移。`tests` 随正式验证入口落地再建立，其源码单独编译或由测试脚本调用，不加入主程序的 `ClCompile` 列表。
+
+```text
+PEViewer/
+├─ PEViewer.sln
+├─ PEViewer.vcxproj
+├─ PEViewer.vcxproj.filters
+├─ architecture.md
+├─ .gitignore
+├─ src/
+│  ├─ app/
+│  │  └─ PEViewer.cpp
+│  ├─ ui/
+│  │  ├─ windowProc.cpp
+│  │  ├─ windowProc.h
+│  │  ├─ messageCallback.cpp
+│  │  └─ messageCallback.h
+│  ├─ pe/
+│  │  ├─ readPE.cpp
+│  │  └─ readPE.h
+│  ├─ process/
+│  │  ├─ handleProcessAndModule.cpp
+│  │  └─ handleProcessAndModule.h
+│  └─ common/
+│     ├─ global.cpp
+│     ├─ global.h
+│     ├─ structs.h
+│     ├─ utility.cpp
+│     └─ utility.h
+├─ resources/
+│  ├─ resource.rc
+│  ├─ resource.h
+│  └─ bmp/
+│     └─ 7eviewer.bmp
+├─ scripts/
+│  └─ build.ps1
+├─ tests/
+│  ├─ portability-smoke.cpp
+│  └─ fixtures/                  # 样本生成代码和预期值
+├─ bin/                         # 构建产物，忽略提交
+└─ obj/                         # 中间文件和临时样本，忽略提交
+```
+
+### 第一阶段：文件归类与构建路径
+
+这一阶段完成物理目录整理，保持现有函数职责和程序行为，便于独立检查迁移变更。
+
+- [ ] 按目标结构迁移现有源码、头文件和资源脚本，保持现有文件名与编码；已有 `resources/bmp/7eviewer.bmp` 保留在原位置。上面的文件职责表及正文链接在实际迁移时同步更新。
+- [ ] 更新 `PEViewer.vcxproj` 中的 `ClCompile`、`ClInclude`、`ResourceCompile`、`Image` 路径，以及 `PEViewer.vcxproj.filters` 中的文件路径和模块分组。解决方案中的工程路径保持指向根目录工程文件。
+- [ ] 在工程中配置 C++ 和资源编译所需的搜索路径。跨模块头文件引用使用 `ui/windowProc.h`、`pe/readPE.h`、`common/global.h` 等形式；模块内部可继续引用同目录头文件。
+- [ ] 检查 `resource.rc` 的头文件、位图和资源编辑器引用路径，确保资源编译与 Visual Studio 资源编辑器均能找到文件；保留 UTF-8 BOM 和代码页 65001。
+- [ ] 将可复用构建脚本迁入 `scripts/build.ps1` 并纳入版本控制。脚本从自身目录定位仓库根目录，再查找根目录的工程文件，所有输出路径也以仓库根目录为基准。
+- [ ] 在工程中统一设置 `OutDir = $(ProjectDir)bin\$(Configuration)\$(Platform)\`、`IntDir = $(ProjectDir)obj\$(Configuration)\$(Platform)\`，与构建脚本保持一致，使 Visual Studio 和命令行构建都使用相同目录。项目平台名使用 `Win32` / `x64`。
+- [ ] 继续忽略 `bin`、`obj`、`.vs` 等生成文件。当前 `/build.ps1` 规则只匹配根目录脚本，迁入 `scripts` 后不会被该规则忽略；逐项检查正式源码、资源、文档和脚本没有被其他规则误忽略。
+- [ ] 将需要长期保留的验证源码从 `obj/portability-smoke.cpp` 迁入 `tests`，补充独立的编译 / 运行入口。可重复生成的样本及预期值纳入版本控制，验证输出仍放入 `bin` / `obj`。
+
+阶段验收：Debug / Release × Win32 / x64 四组构建通过；Visual Studio 中的模块分组和资源视图正常；现有 PE32 对话框验证结果与迁移前一致。检查 Git 变更能识别文件迁移，正式源码与验证入口可随仓库克隆获得，生成文件不进入提交。
+
+建议将这一阶段作为单独提交；之后再推进解析接口和 PE32+ 功能，便于区分路径问题与功能问题。
+
+### 第二阶段：明确模块职责与依赖
+
+目录归类完成后，结合后面的 PE32 / PE32+ 支持计划逐步调整函数职责。
+
+| 模块 | 目标职责 |
+| --- | --- |
+| `app` | 程序入口、初始化和整体生命周期。 |
+| `ui` | 对话框消息、控件更新、显示格式化和用户操作；消费解析与进程查询结果。 |
+| `pe` | 文件读取、格式识别、边界检查和目录解析；返回结构化结果及错误信息。可使用 Windows 的 PE 类型定义，接口不依赖 `HWND`、控件 ID 或 ListView。 |
+| `process` | 进程 / 模块查询、权限和句柄管理；返回查询结果，列表绘制移入 `ui`。 |
+| `common` | 模块间共用且职责明确的基础类型和辅助函数。 |
+| `resources` | 界面布局、资源 ID 和图片。 |
+| `scripts` / `tests` | 可复用构建、验证入口、样本生成和预期结果。 |
+
+- [ ] 在 PE32 / PE32+ 文件读取的第一阶段建立统一解析上下文，明确文件缓冲区的所有权、长度、格式和头部 / 目录信息；替代分散的可变全局解析状态。
+- [ ] 将 `readPE.cpp` 中的解析与显示逐步拆开。解析结果保留文件字段原值，UI 负责十六进制格式化和控件更新，避免从列表文字反查解析状态。
+- [ ] `global`、`structs`、`utility` 放入 `common` 是初次迁移时的归类。后续把控件 ID 对照、颜色、列表行显示结构和窗口布局辅助函数移入 `ui`；权限、进程架构和句柄辅助函数移入 `process`。
+- [ ] 根据功能规模将 `pe` 下的头部、导入、导出、调试等解析拆为独立文件。`pe`、`process` 和共用基础代码保持对界面模块的独立性，使验证程序能够直接调用解析与查询接口。
+
 ## 数据与页面
 
 ```text
@@ -155,7 +238,9 @@ pwsh -File .\build.ps1 -Configuration Release -Platform x64
 
 脚本默认 `Debug/x86`，接受 `Win32` 作为 x86 别名；输出位于 `bin/<配置>/Win32` 或 `bin/<配置>/x64`，中间文件位于对应的 `obj` 目录。它还会合并子进程环境中仅大小写不同的 PATH 项。
 
-`build.ps1` 当前按 [.gitignore](.gitignore) 的 `/build.ps1` 规则忽略，不随仓库克隆分发。若决定将命令行构建作为正式项目入口，需要先解除忽略并提交脚本。
+`build.ps1` 当前按 [.gitignore](.gitignore) 的 `/build.ps1` 规则忽略，不随仓库克隆分发。若保留根目录脚本作为正式入口，需要解除忽略并提交；按目录规划迁入 `scripts` 后，则检查新路径的忽略状态并提交该脚本。
+
+上面的命令对应当前根目录脚本。目录迁移完成后，正式入口改为 `scripts/build.ps1`，从仓库根目录执行 `pwsh -File .\scripts\build.ps1`，并继续接受配置和平台参数；届时同步更新本节命令。
 
 已完成的验证：
 
