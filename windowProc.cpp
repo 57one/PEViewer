@@ -5,7 +5,7 @@ HWND mainDialogHwnd = NULL;
 // mainDialog Rect
 SIZE mainDialogSize = {0};
 
-BOOL CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
+INT_PTR CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
                              UINT message,   // message
                              WPARAM wParam,  // first message parameter
                              LPARAM lParam   // second message parameter
@@ -54,7 +54,7 @@ BOOL CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
         }
         case IDC_BUTTON_ABOUT: {
           DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_ABOUT),
-                    hwnd, (DLGPROC)AboutProc);
+                    hwnd, AboutProc);
           return TRUE;
         }
         case IDC_BUTTON_QUIT: {
@@ -67,7 +67,7 @@ BOOL CALLBACK MainDialogProc(HWND hwnd,      // handle to dialog box
   return FALSE;
 }
 
-BOOL CALLBACK AboutProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK AboutProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   // need value for GDI+ init
   /*GdiplusStartupInput m_gdiplusStartupInput;
   ULONG_PTR m_gdiplusToken;*/
@@ -102,7 +102,7 @@ BOOL CALLBACK AboutProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   return FALSE;
 }
 
-BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
                            LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -151,7 +151,7 @@ BOOL CALLBACK PeEditorProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
                              LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -186,7 +186,7 @@ BOOL CALLBACK FileHeaderProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
                               LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -217,7 +217,7 @@ BOOL CALLBACK MachineTypeProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
                                   LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -247,7 +247,7 @@ BOOL CALLBACK CharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
                                 LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -291,7 +291,7 @@ BOOL CALLBACK TimeDateStampProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
                                    LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -360,7 +360,7 @@ BOOL CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -391,7 +391,7 @@ BOOL CALLBACK MagicTypeProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -422,7 +422,7 @@ BOOL CALLBACK SubsystemProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
                                      LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -452,7 +452,7 @@ BOOL CALLBACK DllCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -517,7 +517,7 @@ BOOL CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -548,7 +548,7 @@ BOOL CALLBACK SectionProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -578,7 +578,7 @@ BOOL CALLBACK SectionEditProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK SectionCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK SectionCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
                               LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -604,7 +604,7 @@ BOOL CALLBACK SectionCharacteristicsProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -633,7 +633,7 @@ BOOL CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) { 
     case WM_INITDIALOG: {
@@ -666,7 +666,7 @@ BOOL CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                                   LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -692,7 +692,7 @@ BOOL CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
@@ -715,7 +715,7 @@ BOOL CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
   return FALSE;
 }
 
-BOOL CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
+INT_PTR CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {

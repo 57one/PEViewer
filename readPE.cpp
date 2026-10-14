@@ -66,7 +66,7 @@ DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
         dwRva < (DWORD)(pSectionHeader->VirtualAddress) +
                     (DWORD)(pSectionHeader->Misc.VirtualSize))
       break;
-    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
+    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
                                              IMAGE_SIZEOF_SECTION_HEADER);
   }
   //计算 RAW
@@ -78,13 +78,13 @@ DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
 
 VOID initPE() {
   pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
-  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD)pFileBuffer + pDosHeader->e_lfanew);
-  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD)pNTHeader) + 4);
+  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)pFileBuffer + pDosHeader->e_lfanew);
+  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD_PTR)pNTHeader) + 4);
   pOptionalHeader32 =
-      (PIMAGE_OPTIONAL_HEADER32)((DWORD)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
+      (PIMAGE_OPTIONAL_HEADER32)((DWORD_PTR)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
   int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
   pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
+      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
   sizeOfDataDirectory = pOptionalHeader32->NumberOfRvaAndSizes;
   pDataDirectory = pOptionalHeader32->DataDirectory;
 }
@@ -239,7 +239,7 @@ VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
   vitem.pszText = sectionInfo.szIndex;
   vitem.iItem = Row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hListSection, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hListSection, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hListSection, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   //第一行写完之后 后面全是 SETITEM
@@ -291,13 +291,13 @@ VOID readSections(HWND hwnd, HWND hListSection) {
     wsprintf(sectionInfo.szCharacteristics, TEXT("%08X"),
              pSectionHeader->Characteristics);
     drawSections(hListSection, i, sectionInfo, colorRef);
-    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
+    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
                                              IMAGE_SIZEOF_SECTION_HEADER);
   }
   // restore pSectionHeader
   int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
   pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
+      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
 }
 
 VOID readDirectory(HWND hwnd) {
@@ -323,7 +323,7 @@ VOID readSectionEdit(HWND hwnd, INT ID) {
   COLORREF colorRef;
   colorRef = colorWhite;
   // colorRef = (count % 2 == 1) ? colorGrey : colorWhite;
-  pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
+  pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
                                            IMAGE_SIZEOF_SECTION_HEADER * ID);
 
   MultiByteToWideChar(CP_OEMCP, 0, (char*)(pSectionHeader->Name), -1,
@@ -345,7 +345,7 @@ VOID readSectionEdit(HWND hwnd, INT ID) {
   // restore pSectionHeader
   int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
   pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD)pOptionalHeader32 + sizeOfOptionalHeader);
+      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
 }
 
 VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
@@ -358,7 +358,7 @@ VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
   vitem.pszText = importDescInfo.szDllName;
   vitem.iItem = Row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hListImportDLL, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hListImportDLL, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hListImportDLL, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   vitem.pszText = importDescInfo.szOriginalFirstThunk;
@@ -391,10 +391,10 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
   COLORREF colorRef = colorWhite;
   // 定位导入表
   // 导入表描述符 IMAGE_IMPORT_DESCRIPTOR RVA->RAW
-  pImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)rvaToFileOffset(
-      pFileBuffer, pImportDirectory->VirtualAddress);
+  DWORD importDescriptorOffset =
+      rvaToFileOffset(pFileBuffer, pImportDirectory->VirtualAddress);
   pImportDescriptor =
-      (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)pFileBuffer + (DWORD)pImportDescriptor);
+      (PIMAGE_IMPORT_DESCRIPTOR)((DWORD_PTR)pFileBuffer + importDescriptorOffset);
   while (TRUE) {
     if (pImportDescriptor->OriginalFirstThunk == 0 &&
         pImportDescriptor->FirstThunk == 0) {
@@ -410,10 +410,10 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
     wsprintf(importDescInfo.szName, TEXT("%08X"), pImportDescriptor->Name);
     wsprintf(importDescInfo.szFirstThunk, TEXT("%08X"),
              pImportDescriptor->FirstThunk);
-    DWORD addressOfName = NULL;
+    DWORD_PTR addressOfName = 0;
     // dll name RVA->RAW
     addressOfName = rvaToFileOffset(pFileBuffer, pImportDescriptor->Name);
-    addressOfName = (DWORD)pFileBuffer + addressOfName;
+    addressOfName = (DWORD_PTR)pFileBuffer + addressOfName;
     MultiByteToWideChar(CP_OEMCP, 0, (char*)(addressOfName), -1, szDllName,
                         MAX_PATH + 1);
     wsprintf(importDescInfo.szDllName, TEXT("%s"), szDllName);
@@ -438,7 +438,7 @@ VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
   vitem.pszText = intThunkInfo.szAPIName;
   vitem.iItem = Row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hListIntThunk, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hListIntThunk, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hListIntThunk, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   vitem.pszText = intThunkInfo.szThunkRVA;
@@ -460,7 +460,8 @@ VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
 
 VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
   ListView_DeleteAllItems(hListIntThunk);
-  DWORD originalFirstThunk = 0, rvaOriginalFirstThunk = 0;
+  DWORD_PTR originalFirstThunk = 0;
+  DWORD rvaOriginalFirstThunk = 0;
   DWORD thunkData = 0;
   IntThunkInfo intThunkInfo;
   TCHAR szAPIName[MAX_PATH] = TEXT("<unknown>");
@@ -481,37 +482,37 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
   lv.iSubItem = 1;                    //要获取的列
   lv.pszText = szOriginalFirstThunk;  //指定存储查询结果的缓冲区
   lv.cchTextMax = 0x20;               //指定缓冲区大小
-  SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
-  _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &originalFirstThunk);
+  SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (LPARAM)&lv);
+  _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &rvaOriginalFirstThunk);
 
-  rvaOriginalFirstThunk = originalFirstThunk;
-  originalFirstThunk = rvaToFileOffset(pFileBuffer, originalFirstThunk);
-  originalFirstThunk = (DWORD)pFileBuffer + originalFirstThunk;
+  originalFirstThunk = (DWORD_PTR)pFileBuffer +
+                       rvaToFileOffset(pFileBuffer, rvaOriginalFirstThunk);
 
+  // The current parser reads PE32 thunks regardless of the viewer platform.
   while (TRUE) {
-    if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal == 0x00000000)
+    if (((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal == 0x00000000)
       break;
     //最高位为1 表示存放的是函数的导出序号
-    if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal &
+    if (((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal &
         0x80000000 == 0x80000000) {
       thunkData = *((DWORD*)originalFirstThunk) & 0x7FFFFFFF;
     } else {
       thunkData =
-          ((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal & 0x7FFFFFFF;
+          ((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal & 0x7FFFFFFF;
       // RVA->PRAW
-      thunkData = rvaToFileOffset(pFileBuffer, thunkData);
-      thunkData = (DWORD)pFileBuffer + thunkData;
+      DWORD_PTR addressOfImportName =
+          (DWORD_PTR)pFileBuffer + rvaToFileOffset(pFileBuffer, thunkData);
 
       wsprintf(intThunkInfo.szThunkRVA, TEXT("%010X"),
                rvaOriginalFirstThunk + 4 * row);
       wsprintf(intThunkInfo.szThunkRAW, TEXT("%08X"),
                rvaToFileOffset(pFileBuffer, rvaOriginalFirstThunk + 4 * row));
       wsprintf(intThunkInfo.szThunkValue, TEXT("%08X"),
-               ((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal);
+               ((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal);
       wsprintf(intThunkInfo.szHint, TEXT("%04X"),
-               ((PIMAGE_IMPORT_BY_NAME)thunkData)->Hint);
+                ((PIMAGE_IMPORT_BY_NAME)addressOfImportName)->Hint);
       MultiByteToWideChar(CP_OEMCP, 0,
-                          (char*)(((PIMAGE_IMPORT_BY_NAME)thunkData)->Name), -1,
+                          (char*)((PIMAGE_IMPORT_BY_NAME)addressOfImportName)->Name, -1,
                           szAPIName, MAX_PATH + 1);
       wsprintf(intThunkInfo.szAPIName, TEXT("%s"), szAPIName);
       drawIntThunk(hListIntThunk, row, intThunkInfo, colorRef);
@@ -529,11 +530,11 @@ VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
 VOID readExportDirectory(HWND hwnd) {
   PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
   // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
-  pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
-      pFileBuffer, pDataDirectory->VirtualAddress);
+  DWORD exportDirectoryOffset =
+      rvaToFileOffset(pFileBuffer, pDataDirectory->VirtualAddress);
   //转换为内存中的偏移
   pExportDirectory =
-      (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
+      (PIMAGE_EXPORT_DIRECTORY)((DWORD_PTR)pFileBuffer + exportDirectoryOffset);
 
   writeToText(hwnd, IDC_EDIT_EXPORT_DIRECTORY_CHARAC, TEXT("%08X"),
               pExportDirectory->Characteristics);
@@ -569,7 +570,7 @@ VOID drawExportFunc(HWND hListExportFunc, int Row,
   vitem.pszText = exportFuncInfo.szOrdinal;
   vitem.iItem = Row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hListExportFunc, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hListExportFunc, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hListExportFunc, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   vitem.pszText = exportFuncInfo.szFuncRVA;
@@ -594,27 +595,27 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
   COLORREF colorRef = colorWhite;
 
   // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
-  pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
-      pFileBuffer, pDataDirectory->VirtualAddress);
+  DWORD exportDirectoryOffset =
+      rvaToFileOffset(pFileBuffer, pDataDirectory->VirtualAddress);
   //转换为内存中的偏移
   pExportDirectory =
-      (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
+      (PIMAGE_EXPORT_DIRECTORY)((DWORD_PTR)pFileBuffer + exportDirectoryOffset);
 
   // iterate addressOfNameOrdinals to generate map between funcIndex and
   // nameIndex
-  DWORD addressOfNameOrdinals =
+  DWORD_PTR addressOfNameOrdinals =
       rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfNameOrdinals);
-  addressOfNameOrdinals = (DWORD)(pFileBuffer) + addressOfNameOrdinals;
+  addressOfNameOrdinals = (DWORD_PTR)pFileBuffer + addressOfNameOrdinals;
 
   for (WORD i = 0; i < pExportDirectory->NumberOfNames; i++) {
     funcIndexToNameIndex.insert({((WORD*)addressOfNameOrdinals)[i], i});
   }
 
   // iterate addressOfFunctions get function's ordinal without function name
-  DWORD addressOfFunctions =
+  DWORD_PTR addressOfFunctions =
       rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfFunctions);
   //转换为内存中的偏移
-  addressOfFunctions = (DWORD)(pFileBuffer) + addressOfFunctions;
+  addressOfFunctions = (DWORD_PTR)pFileBuffer + addressOfFunctions;
   for (WORD i = 0; i < pExportDirectory->NumberOfFunctions; i++) {
     if (((DWORD*)addressOfFunctions)[i] != 0x0 &&
         funcIndexToNameIndex.end() == funcIndexToNameIndex.find(i)) {
@@ -622,15 +623,15 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
     }
   }
 
-  DWORD addressOfNames =
+  DWORD_PTR addressOfNames =
       rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfNames);
-  addressOfNames = (DWORD)(pFileBuffer) + addressOfNames;
+  addressOfNames = (DWORD_PTR)pFileBuffer + addressOfNames;
 
   for (auto it : funcIndexToNameIndex) {
     if (it.second != -1) {
-      DWORD addressOfName = 0;
+      DWORD_PTR addressOfName = 0;
       addressOfName =
-          (DWORD)(pFileBuffer) +
+          (DWORD_PTR)pFileBuffer +
           rvaToFileOffset(pFileBuffer, ((DWORD*)addressOfNames)[it.second]);
       MultiByteToWideChar(CP_OEMCP, 0, (char*)(addressOfName), -1, szFuncName,
                           MAX_PATH + 1);
@@ -662,7 +663,7 @@ VOID drawBoundImportDirectory(HWND hBoundImport, int row,
   vitem.pszText = boundImportInfo.szDllName;
   vitem.iItem = row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hBoundImport, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hBoundImport, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hBoundImport, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   vitem.pszText = boundImportInfo.szTimeDateStamp;
@@ -686,11 +687,11 @@ VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
 
-  pBoundImportDescriptor = (PIMAGE_BOUND_IMPORT_DESCRIPTOR)rvaToFileOffset(
-      pFileBuffer, pBoundImportDirectory->VirtualAddress);
+  DWORD boundImportDescriptorOffset =
+      rvaToFileOffset(pFileBuffer, pBoundImportDirectory->VirtualAddress);
   pBoundImportDescriptor =
-      (PIMAGE_BOUND_IMPORT_DESCRIPTOR)((DWORD)pFileBuffer +
-                                       (DWORD)pBoundImportDescriptor);
+      (PIMAGE_BOUND_IMPORT_DESCRIPTOR)((DWORD_PTR)pFileBuffer +
+                                      boundImportDescriptorOffset);
 
   PIMAGE_BOUND_IMPORT_DESCRIPTOR pFirstDescriptor = pBoundImportDescriptor;
   while (TRUE) {
@@ -700,7 +701,7 @@ VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
 
     MultiByteToWideChar(
         CP_OEMCP, 0,
-        (char*)((DWORD)pFirstDescriptor + pBoundImportDescriptor->OffsetModuleName),
+        (char*)((DWORD_PTR)pFirstDescriptor + pBoundImportDescriptor->OffsetModuleName),
         -1, szDllName, MAX_PATH + 1);
 
     wsprintf(boundImportInfo.szDllName, TEXT("%s"), szDllName);
@@ -728,7 +729,7 @@ VOID drawBoundImportDirectory(HWND hDebug, int row, DebugInfo& debugInfo,
   vitem.pszText = debugInfo.szCharacteristics;
   vitem.iItem = row;   //第几行
   vitem.iSubItem = 0;  //第几列
-  SendMessage(hDebug, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  SendMessage(hDebug, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hDebug, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
   vitem.pszText = debugInfo.szTimeDateStamp;
@@ -767,10 +768,10 @@ VOID readDebugDirectory(HWND hwnd, HWND hDebug) {
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
 
-  pDebugDirectory = (PIMAGE_DEBUG_DIRECTORY)rvaToFileOffset(
-      pFileBuffer, pDebugDirectoryEntry->VirtualAddress);
+  DWORD debugDirectoryOffset =
+      rvaToFileOffset(pFileBuffer, pDebugDirectoryEntry->VirtualAddress);
   pDebugDirectory =
-      (PIMAGE_DEBUG_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pDebugDirectory);
+      (PIMAGE_DEBUG_DIRECTORY)((DWORD_PTR)pFileBuffer + debugDirectoryOffset);
 
   WORD debugDirectorySize =
       pDebugDirectoryEntry->Size / sizeof(IMAGE_DEBUG_DIRECTORY);

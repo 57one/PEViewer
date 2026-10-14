@@ -180,8 +180,9 @@ VOID EnumProcess(HWND hListProcess) {
                 sizeof(processInfo.szProcessName) / sizeof(TCHAR));
             wsprintf(processInfo.szArchitecture, TEXT("%s"), szX86);
             wsprintf(processInfo.szProcessId, TEXT("%08ld"), iProcesses[i]);
-            wsprintf(processInfo.szImageBase, TEXT("%08X"),
-                     DWORD(module_info.lpBaseOfDll));
+            _stprintf_s(processInfo.szImageBase, TEXT("%0*IX"),
+                        (int)(sizeof(DWORD_PTR) * 2),
+                        (DWORD_PTR)module_info.lpBaseOfDll);
             wsprintf(processInfo.szSizeofImage, TEXT("%08X"),
                      module_info.SizeOfImage);
 
@@ -262,7 +263,8 @@ VOID EnumProcess2(HWND hListProcess) {
     }
 
     CloseHandle(hModuleSnap);
-    wsprintf(processInfo.szImageBase, TEXT("%08X"), (DWORD)(me32.modBaseAddr));
+    _stprintf_s(processInfo.szImageBase, TEXT("%0*IX"),
+                (int)(sizeof(DWORD_PTR) * 2), (DWORD_PTR)me32.modBaseAddr);
     wsprintf(processInfo.szSizeofImage, TEXT("%08X"), me32.modBaseSize);
     wsprintf(processInfo.szProcessName, TEXT("%s"), me32.szModule);
     // GetModuleBaseName(hProcess, hMods[0], szProcessName,

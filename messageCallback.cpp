@@ -70,7 +70,7 @@ void onPeEditor(HWND hwnd) {
     readPeFile(szBuffer, &pFileBuffer);
     initPE();
     DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_PE_EDITOR),
-                   hwnd, (DLGPROC)PeEditorProc, (LPARAM)szBuffer);
+                   hwnd, PeEditorProc, (LPARAM)szBuffer);
   }
 }
 
@@ -89,7 +89,7 @@ void onPeEditorInit(HWND hwnd, LPARAM lParam) {
 void onFileHeader(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL),
             MAKEINTRESOURCE(IDD_DIALOG_IMAGE_FILE_HEADER), hwnd,
-      (DLGPROC)FileHeaderProc);
+      FileHeaderProc);
 }
 
 void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
@@ -103,7 +103,7 @@ void onMachineType(HWND hwnd) {
   GetWindowText(hEditMachine, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_MACHINE_TYPE), hwnd,
-      (DLGPROC)MachineTypeProc, (LPARAM)szBuffer);
+      MachineTypeProc, (LPARAM)szBuffer);
 }
 
 void onMachineTypeInit(HWND hwnd, LPARAM lParam) {
@@ -156,7 +156,7 @@ void onCharacteristics(HWND hwnd) {
   GetWindowText(hCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
-      (DLGPROC)CharacteristicsProc, (LPARAM)szBuffer);
+      CharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoCharacteristics(HWND hwnd) {
@@ -165,7 +165,7 @@ void onHeaderInfoCharacteristics(HWND hwnd) {
   GetWindowText(hCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_CHARACTERISTICS), hwnd,
-      (DLGPROC)CharacteristicsProc, (LPARAM)szBuffer);
+      CharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onCharacteristicsInit(HWND hwnd, LPARAM lParam) {
@@ -228,7 +228,7 @@ void onTimeDateStamp(HWND hwnd) {
   GetWindowText(hTimeDateStamp, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
-      (DLGPROC)TimeDateStampProc, (LPARAM)szBuffer);
+      TimeDateStampProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoTimeDateStamp(HWND hwnd) {
@@ -237,7 +237,7 @@ void onHeaderInfoTimeDateStamp(HWND hwnd) {
   GetWindowText(hTimeDateStamp, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_TIMEDATESTAMP), hwnd,
-      (DLGPROC)TimeDateStampProc, (LPARAM)szBuffer);
+      TimeDateStampProc, (LPARAM)szBuffer);
 }
 
 void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
@@ -254,7 +254,7 @@ void onTimeDateStampInit(HWND hwnd, LPARAM lParam) {
 void onOptinalHeader(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL),
             MAKEINTRESOURCE(IDD_DIALOG_IMAGE_OPTIONAL_HEADER32), hwnd,
-      (DLGPROC)OptionalHeader32Proc);
+      OptionalHeader32Proc);
 }
 
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
@@ -267,7 +267,7 @@ void onMagicType(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
-                 hwnd, (DLGPROC)MagicTypeProc, (LPARAM)szBuffer);
+                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoMagicType(HWND hwnd) {
@@ -275,7 +275,7 @@ void onHeaderInfoMagicType(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditMagic, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_MAGIC_TYPE),
-                 hwnd, (DLGPROC)MagicTypeProc, (LPARAM)szBuffer);
+                 hwnd, MagicTypeProc, (LPARAM)szBuffer);
 }
 
 void onMagicTypeInit(HWND hwnd, LPARAM lParam) {
@@ -420,7 +420,7 @@ void onSubsystem(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
-                 hwnd, (DLGPROC)SubsystemProc, (LPARAM)szBuffer);
+                 hwnd, SubsystemProc, (LPARAM)szBuffer);
 }
 
 void onHeaderInfoSubsystem(HWND hwnd) {
@@ -428,7 +428,7 @@ void onHeaderInfoSubsystem(HWND hwnd) {
   TCHAR szBuffer[8];
   GetWindowText(hEditSubsystem, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBSYSTEM),
-                 hwnd, (DLGPROC)SubsystemProc, (LPARAM)szBuffer);
+                 hwnd, SubsystemProc, (LPARAM)szBuffer);
 }
 
 void onSubsystemInit(HWND hwnd, LPARAM lParam) {
@@ -478,7 +478,7 @@ void onDllCharacteristics(HWND hwnd) {
   GetWindowText(hDllCharacteristics, szBuffer, 8);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_DLLCHARACTERISTICS), hwnd,
-      (DLGPROC)DllCharacteristicsProc, (LPARAM)szBuffer);
+      DllCharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void onDllCharacteristicsInit(HWND hwnd, LPARAM lParam) {
@@ -562,7 +562,7 @@ void minusHeaderInfo32NumRvaSize(HWND hwnd) {
 
 void onHeaderInfo(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_HEADER_INFO),
-            hwnd, (DLGPROC)HeaderInfoProc);
+            hwnd, HeaderInfoProc);
 }
 
 void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
@@ -572,7 +572,7 @@ void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
 
 void onSection(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SECTION), hwnd,
-      (DLGPROC)SectionProc);
+      SectionProc);
 }
 
 VOID InitSectionListView(HWND hwnd) {
@@ -593,25 +593,25 @@ VOID InitSectionListView(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("#"));
   lv.cx = 20;
   lv.iSubItem = 0;
-  SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Name"));
   lv.cx = 60;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListSections, 0, &lv);
-  SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Size"));
   lv.cx = 80;
   lv.iSubItem = 2;
-  SendMessage(hListSections, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
   lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Offset"));
   lv.cx = 80;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListSections, 1, &lv);
-  SendMessage(hListSections, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hListSections, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
   //第五列
   lv.pszText = const_cast<wchar_t*>(TEXT("Raw Size"));
   lv.cx = 80;
@@ -635,7 +635,7 @@ void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
 
 void onDirectory(HWND hwnd) {
   DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_DIRECTORY), hwnd,
-      (DLGPROC)DirectoryProc);
+      DirectoryProc);
 }
 
 void onDirectoryInit(HWND hwnd, LPARAM lParam) {
@@ -646,7 +646,7 @@ void onDirectoryInit(HWND hwnd, LPARAM lParam) {
 void onSectionEdit(HWND hwnd, LPARAM lParam) {
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_SECTION_EDIT), hwnd,
-      (DLGPROC)SectionEditProc, lParam);
+      SectionEditProc, lParam);
 }
 
 void onSectionEditInit(HWND hwnd, LPARAM lParam) {
@@ -661,7 +661,7 @@ void onSectionCharacteristics(HWND hwnd) {
   GetWindowText(hEditectionCharacteristics, szBuffer, 10);
   DialogBoxParam(GetModuleHandle(NULL),
                  MAKEINTRESOURCE(IDD_DIALOG_SECTION_CHARACTERISTICS), hwnd,
-      (DLGPROC)SectionCharacteristicsProc, (LPARAM)szBuffer);
+      SectionCharacteristicsProc, (LPARAM)szBuffer);
 }
 
 void setSectionCharacteristics(HWND hwnd, LPARAM lParam) {
@@ -702,25 +702,25 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
     case IDC_BUTTON_DIRECTORY_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_IMPORT_DIRECTORY), hwnd,
-          (DLGPROC)ImportDirectoryProc);
+          ImportDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_EXPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_EXPORT_DIRECTORY), hwnd,
-          (DLGPROC)ExportDirectoryProc);
+          ExportDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_DEBUG: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_DEBUG_DIRECTORY), hwnd,
-          (DLGPROC)DebugDirectoryProc);
+          DebugDirectoryProc);
       return TRUE;
     }
     case IDC_BUTTON_DIRECTORY_BOUND_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_BOUND_IMPORT_DIRECTORY), hwnd,
-          (DLGPROC)BoundImportDirectoryProc);
+          BoundImportDirectoryProc);
       return TRUE;
     }
     default:
@@ -746,25 +746,25 @@ VOID InitImportDirectory(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
   lv.cx = 80;
   lv.iSubItem = 0;
-  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics/OriginalFirstThunk"));
   lv.cx = 180;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListImportDLL, 0, &lv);
-  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 100;
   lv.iSubItem = 2;
-  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
   lv.pszText = const_cast<wchar_t*>(TEXT("ForwarderChain"));
   lv.cx = 90;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListImportDLL, 1, &lv);
-  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
   //第五列
   lv.pszText = const_cast<wchar_t*>(TEXT("Name(address)"));
   lv.cx = 90;
@@ -797,25 +797,25 @@ VOID InitImportFunction(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("API Name"));
   lv.cx = 150;
   lv.iSubItem = 0;
-  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RVA"));
   lv.cx = 80;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListIntThunk, 0, &lv);
-  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RAW(FOA)"));
   lv.cx = 100;
   lv.iSubItem = 2;
-  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk Value"));
   lv.cx = 80;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListIntThunk, 1, &lv);
-  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
   //第五列
   lv.pszText = const_cast<wchar_t*>(TEXT("Hint"));
   lv.cx = 80;
@@ -847,25 +847,25 @@ VOID InitExportFunction(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("Ordinal"));
   lv.cx = 80;
   lv.iSubItem = 0;
-  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Func RVA"));
   lv.cx = 80;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListExportFunc, 0, &lv);
-  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("Func RAW(FOA)"));
   lv.cx = 100;
   lv.iSubItem = 2;
-  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
   lv.pszText = const_cast<wchar_t*>(TEXT("Func Name"));
   lv.cx = 150;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListExportFunc, 1, &lv);
-  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
   readExportFunc(hwnd, hListExportFunc);
 }
@@ -893,25 +893,25 @@ VOID InitBoundImportDirectory(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
   lv.cx = 80;
   lv.iSubItem = 0;
-  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 100;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hBoundImport, 0, &lv);
-  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("OffsetModuleName"));
   lv.cx = 100;
   lv.iSubItem = 2;
-  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
   lv.pszText = const_cast<wchar_t*>(TEXT("NumberOfModuleForwarderRefs"));
   lv.cx = 150;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hBoundImport, 1, &lv);
-  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hBoundImport, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
   readBoundImportDirectory(hwnd, hBoundImport);
 }
@@ -936,45 +936,45 @@ VOID InitDebugDirectory(HWND hwnd) {
   lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics"));
   lv.cx = 90;
   lv.iSubItem = 0;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 90;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hDebug, 1, &lv);
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
   lv.pszText = const_cast<wchar_t*>(TEXT("MajorVersion"));
   lv.cx = 80;
   lv.iSubItem = 2;
   // ListView_InsertColumn(hDebug, 2, &lv);
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
   lv.pszText = const_cast<wchar_t*>(TEXT("MinorVersion"));
   lv.cx = 80;
   lv.iSubItem = 3;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
   lv.pszText = const_cast<wchar_t*>(TEXT("Type"));
   lv.cx = 80;
   lv.iSubItem = 4;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 4, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 4, (LPARAM)&lv);
 
   lv.pszText = const_cast<wchar_t*>(TEXT("SizeOfData"));
   lv.cx = 80;
   lv.iSubItem = 5;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (LPARAM)&lv);
 
   lv.pszText = const_cast<wchar_t*>(TEXT("AddressOfRawData"));
   lv.cx = 110;
   lv.iSubItem = 6;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 6, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 6, (LPARAM)&lv);
 
   lv.pszText = const_cast<wchar_t*>(TEXT("PointerToRawData"));
   lv.cx = 110;
   lv.iSubItem = 7;
-  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (DWORD)&lv);
+  SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (LPARAM)&lv);
 
   readDebugDirectory(hwnd, hDebug);
 }
