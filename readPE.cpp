@@ -6,8 +6,8 @@ LPVOID pFileBuffer = NULL;
 PIMAGE_DOS_HEADER pDosHeader = NULL;                // dosÍ·
 PIMAGE_NT_HEADERS pNTHeader = NULL;                 // NTÍ·
 PIMAGE_FILE_HEADER pFileHeader = NULL;              // PEÍ·
-PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;  // 32Î» ¿ÉÑ¡PEÍ·
-PIMAGE_SECTION_HEADER pSectionHeader = NULL;        // µÚÒ»¸ö½ÚÇøÍ·
+PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;  // 32Î» ï¿½ï¿½Ñ¡PEÍ·
+PIMAGE_SECTION_HEADER pSectionHeader = NULL;        // ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·
 DWORD sizeOfDataDirectory = 0;
 PIMAGE_DATA_DIRECTORY pDataDirectory = NULL;
 TCHAR buffer[MAX_PATH] = {0};
@@ -48,18 +48,18 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
 
 DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
   PIMAGE_SECTION_HEADER originalSectionHeader = pSectionHeader;
-  //½ÚÇøÊý
+  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   int sectionNums = pFileHeader->NumberOfSections;
 
-  //ÅÐ¶ÏrvaÊÇ·ñÔÚ headers+½Ú±í´¦
+  //ï¿½Ð¶ï¿½rvaï¿½Ç·ï¿½ï¿½ï¿½ headers+ï¿½Ú±ï¿½ï¿½ï¿½
   if (dwRva < pOptionalHeader32->SizeOfHeaders) {
-    //²»ÐèÒª½øÐÐ´¦Àí Ã»ÓÐÀ­Éì ÔÚÎÄ¼þºÍÄÚ´æÖÐ¶¼ÊÇÒ»ÑùµÄ
+    //ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½Ð´ï¿½ï¿½ï¿½ Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½
     return dwRva;
   }
-  //¼ÆËãÏà¶ÔÆ«ÒÆ dwRva ¾ÍÊÇÏà¶ÔÆ«ÒÆÁË va - pImageBuffer
-  //±éÀú½ÚÇø±í½øÐÐ±È½Ï
+  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ dwRva ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½ va - pImageBuffer
+  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð±È½ï¿½
   for (int i = 0; i < sectionNums; i++) {
-    //´ËÊ±nameÊÇÕý³£µÄ Ã»ÓÐÕ¼°ËÎ» ¿ÉÒÔÖ±½ÓÊä³ö
+    //ï¿½ï¿½Ê±nameï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã»ï¿½ï¿½Õ¼ï¿½ï¿½Î» ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ï¿½
     // NAME
     // printf("%s\n",&(pSectionHeader->Name));
     if (dwRva >= (DWORD)(pSectionHeader->VirtualAddress) &&
@@ -69,7 +69,7 @@ DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
     pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
                                              IMAGE_SIZEOF_SECTION_HEADER);
   }
-  //¼ÆËã RAW
+  //ï¿½ï¿½ï¿½ï¿½ RAW
   DWORD RAW =
       dwRva - pSectionHeader->VirtualAddress + pSectionHeader->PointerToRawData;
   pSectionHeader = originalSectionHeader;
@@ -232,17 +232,17 @@ VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer) {
 VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
                   COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = sectionInfo.szIndex;
-  vitem.iItem = Row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = Row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hListSection, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListSection, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
-  //µÚÒ»ÐÐÐ´ÍêÖ®ºó ºóÃæÈ«ÊÇ SETITEM
+  //ï¿½ï¿½Ò»ï¿½ï¿½Ð´ï¿½ï¿½Ö®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ SETITEM
   vitem.pszText = sectionInfo.szSectionName;
   vitem.iSubItem = 1;
   ListView_SetItem(hListSection, &vitem);
@@ -351,13 +351,13 @@ VOID readSectionEdit(HWND hwnd, INT ID) {
 VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
                             ImportDescInfo& importDescInfo, COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = importDescInfo.szDllName;
-  vitem.iItem = Row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = Row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hListImportDLL, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListImportDLL, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -389,8 +389,8 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
   TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
-  // ¶¨Î»µ¼Èë±í
-  // µ¼Èë±íÃèÊö·û IMAGE_IMPORT_DESCRIPTOR RVA->RAW
+  // ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ IMAGE_IMPORT_DESCRIPTOR RVA->RAW
   pImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)rvaToFileOffset(
       pFileBuffer, pImportDirectory->VirtualAddress);
   pImportDescriptor =
@@ -431,13 +431,13 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
 VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
                   COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = intThunkInfo.szAPIName;
-  vitem.iItem = Row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = Row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hListIntThunk, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListIntThunk, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -478,9 +478,9 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
     return;
   }
   // get OriginalFirstThunk
-  lv.iSubItem = 1;                    //Òª»ñÈ¡µÄÁÐ
-  lv.pszText = szOriginalFirstThunk;  //Ö¸¶¨´æ´¢²éÑ¯½á¹ûµÄ»º³åÇø
-  lv.cchTextMax = 0x20;               //Ö¸¶¨»º³åÇø´óÐ¡
+  lv.iSubItem = 1;                    //Òªï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
+  lv.pszText = szOriginalFirstThunk;  //Ö¸ï¿½ï¿½ï¿½æ´¢ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½Ä»ï¿½ï¿½ï¿½ï¿½ï¿½
+  lv.cchTextMax = 0x20;               //Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¡
   SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
   _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &originalFirstThunk);
 
@@ -491,7 +491,7 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
   while (TRUE) {
     if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal == 0x00000000)
       break;
-    //×î¸ßÎ»Îª1 ±íÊ¾´æ·ÅµÄÊÇº¯ÊýµÄµ¼³öÐòºÅ
+    //ï¿½ï¿½ï¿½Î»Îª1 ï¿½ï¿½Ê¾ï¿½ï¿½Åµï¿½ï¿½Çºï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal &
         0x80000000 == 0x80000000) {
       thunkData = *((DWORD*)originalFirstThunk) & 0x7FFFFFFF;
@@ -528,10 +528,10 @@ VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
 
 VOID readExportDirectory(HWND hwnd) {
   PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
-  // µ¼³ö±í PIMAGE_EXPORT_DIRECTORY RVA->RAW
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ PIMAGE_EXPORT_DIRECTORY RVA->RAW
   pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
       pFileBuffer, pDataDirectory->VirtualAddress);
-  //×ª»»ÎªÄÚ´æÖÐµÄÆ«ÒÆ
+  //×ªï¿½ï¿½Îªï¿½Ú´ï¿½ï¿½Ðµï¿½Æ«ï¿½ï¿½
   pExportDirectory =
       (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
 
@@ -562,13 +562,13 @@ VOID readExportDirectory(HWND hwnd) {
 VOID drawExportFunc(HWND hListExportFunc, int Row,
                     ExportFuncInfo& exportFuncInfo, COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = exportFuncInfo.szOrdinal;
-  vitem.iItem = Row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = Row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hListExportFunc, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListExportFunc, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -593,10 +593,10 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
 
-  // µ¼³ö±í PIMAGE_EXPORT_DIRECTORY RVA->RAW
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ PIMAGE_EXPORT_DIRECTORY RVA->RAW
   pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
       pFileBuffer, pDataDirectory->VirtualAddress);
-  //×ª»»ÎªÄÚ´æÖÐµÄÆ«ÒÆ
+  //×ªï¿½ï¿½Îªï¿½Ú´ï¿½ï¿½Ðµï¿½Æ«ï¿½ï¿½
   pExportDirectory =
       (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
 
@@ -613,7 +613,7 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
   // iterate addressOfFunctions get function's ordinal without function name
   DWORD addressOfFunctions =
       rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfFunctions);
-  //×ª»»ÎªÄÚ´æÖÐµÄÆ«ÒÆ
+  //×ªï¿½ï¿½Îªï¿½Ú´ï¿½ï¿½Ðµï¿½Æ«ï¿½ï¿½
   addressOfFunctions = (DWORD)(pFileBuffer) + addressOfFunctions;
   for (WORD i = 0; i < pExportDirectory->NumberOfFunctions; i++) {
     if (((DWORD*)addressOfFunctions)[i] != 0x0 &&
@@ -655,13 +655,13 @@ VOID drawBoundImportDirectory(HWND hBoundImport, int row,
     BoundImportInfo& boundImportInfo,
     COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = boundImportInfo.szDllName;
-  vitem.iItem = row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hBoundImport, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hBoundImport, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -721,13 +721,13 @@ VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
 VOID drawBoundImportDirectory(HWND hDebug, int row, DebugInfo& debugInfo,
     COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //ï¿½ï¿½Ê¼ï¿½ï¿½
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = debugInfo.szCharacteristics;
-  vitem.iItem = row;   //µÚ¼¸ÐÐ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁÐ
+  vitem.iItem = row;   //ï¿½Ú¼ï¿½ï¿½ï¿½
+  vitem.iSubItem = 0;  //ï¿½Ú¼ï¿½ï¿½ï¿½
   SendMessage(hDebug, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hDebug, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 

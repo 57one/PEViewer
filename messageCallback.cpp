@@ -1,4 +1,4 @@
-#include "messageCallback.h"
+ï»¿#include "messageCallback.h"
 
 #include <stdio.h>
 
@@ -579,50 +579,50 @@ VOID InitSectionListView(HWND hwnd) {
   LV_COLUMN lv;
   HWND hListSections;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_PROCESS¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_PROCESSå¥æŸ„ (Listçš„å¥æŸ„)
   hListSections = GetDlgItem(hwnd, IDC_LIST_SECTIONS);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hListSections, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
               LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("#"));
   lv.cx = 20;
   lv.iSubItem = 0;
   SendMessage(hListSections, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Name"));
   lv.cx = 60;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListSections, 0, &lv);
   SendMessage(hListSections, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Size"));
   lv.cx = 80;
   lv.iSubItem = 2;
   SendMessage(hListSections, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Virtual Offset"));
   lv.cx = 80;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListSections, 1, &lv);
   SendMessage(hListSections, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
-  //µÚÎåÁĞ
+  //ç¬¬äº”åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Raw Size"));
   lv.cx = 80;
   lv.iSubItem = 4;
   ListView_InsertColumn(hListSections, 4, &lv);
-  //µÚÁùÁĞ
+  //ç¬¬å…­åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Raw Offset"));
   lv.cx = 80;
   lv.iSubItem = 5;
   ListView_InsertColumn(hListSections, 5, &lv);
-  //µÚÆßÁĞ
+  //ç¬¬ä¸ƒåˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics"));
   lv.cx = 80;
   lv.iSubItem = 6;
@@ -732,45 +732,45 @@ VOID InitImportDirectory(HWND hwnd) {
   LV_COLUMN lv;
   HWND hListImportDLL;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_IMPORT_DLL¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_IMPORT_DLLå¥æŸ„ (Listçš„å¥æŸ„)
   hListImportDLL = GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hListImportDLL, LVM_SETEXTENDEDLISTVIEWSTYLE,
               LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
   lv.cx = 80;
   lv.iSubItem = 0;
   SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics/OriginalFirstThunk"));
   lv.cx = 180;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListImportDLL, 0, &lv);
   SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 100;
   lv.iSubItem = 2;
   SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("ForwarderChain"));
   lv.cx = 90;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListImportDLL, 1, &lv);
   SendMessage(hListImportDLL, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
-  //µÚÎåÁĞ
+  //ç¬¬äº”åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Name(address)"));
   lv.cx = 90;
   lv.iSubItem = 4;
   ListView_InsertColumn(hListImportDLL, 4, &lv);
-  //µÚÁùÁĞ
+  //ç¬¬å…­åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("FirstThunk"));
   lv.cx = 70;
   lv.iSubItem = 5;
@@ -783,40 +783,40 @@ VOID InitImportFunction(HWND hwnd) {
   LV_COLUMN lv;
   HWND hListIntThunk;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_IMPORT_DLL¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_IMPORT_DLLå¥æŸ„ (Listçš„å¥æŸ„)
   hListIntThunk = GetDlgItem(hwnd, IDC_LIST_INT_THUNK);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hListIntThunk, LVM_SETEXTENDEDLISTVIEWSTYLE,
               LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("API Name"));
   lv.cx = 150;
   lv.iSubItem = 0;
   SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RVA"));
   lv.cx = 80;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListIntThunk, 0, &lv);
   SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk RAW(FOA)"));
   lv.cx = 100;
   lv.iSubItem = 2;
   SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Thunk Value"));
   lv.cx = 80;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListIntThunk, 1, &lv);
   SendMessage(hListIntThunk, LVM_INSERTCOLUMN, 3, (DWORD)&lv);
-  //µÚÎåÁĞ
+  //ç¬¬äº”åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Hint"));
   lv.cx = 80;
   lv.iSubItem = 4;
@@ -835,32 +835,32 @@ VOID InitExportFunction(HWND hwnd) {
   LV_COLUMN lv;
   HWND hListExportFunc;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_EXPORT_FUNC¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_EXPORT_FUNCå¥æŸ„ (Listçš„å¥æŸ„)
   hListExportFunc = GetDlgItem(hwnd, IDC_LIST_EXPORT_FUNC);
   SendMessage(hListExportFunc, LVM_SETEXTENDEDLISTVIEWSTYLE,
               LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Ordinal"));
   lv.cx = 80;
   lv.iSubItem = 0;
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Func RVA"));
   lv.cx = 80;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListExportFunc, 0, &lv);
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Func RAW(FOA)"));
   lv.cx = 100;
   lv.iSubItem = 2;
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Func Name"));
   lv.cx = 150;
   lv.iSubItem = 3;
@@ -879,34 +879,34 @@ VOID InitBoundImportDirectory(HWND hwnd) {
   LV_COLUMN lv;
   HWND hBoundImport;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_IMPORT_DLL¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_IMPORT_DLLå¥æŸ„ (Listçš„å¥æŸ„)
   hBoundImport = GetDlgItem(hwnd, IDC_LIST_BOUND_IMPORT_DIRECTORY);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hBoundImport, LVM_SETEXTENDEDLISTVIEWSTYLE,
               LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("DLL Name"));
   lv.cx = 80;
   lv.iSubItem = 0;
   SendMessage(hBoundImport, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 100;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hBoundImport, 0, &lv);
   SendMessage(hBoundImport, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("OffsetModuleName"));
   lv.cx = 100;
   lv.iSubItem = 2;
   SendMessage(hBoundImport, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("NumberOfModuleForwarderRefs"));
   lv.cx = 150;
   lv.iSubItem = 3;
@@ -922,29 +922,29 @@ VOID InitDebugDirectory(HWND hwnd) {
   LV_COLUMN lv;
   HWND hDebug;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_IMPORT_DLL¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_IMPORT_DLLå¥æŸ„ (Listçš„å¥æŸ„)
   hDebug = GetDlgItem(hwnd, IDC_LIST_DEBUG_DIRECTORY);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hDebug, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
               LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("Characteristics"));
   lv.cx = 90;
   lv.iSubItem = 0;
   SendMessage(hDebug, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
   lv.pszText = const_cast<wchar_t*>(TEXT("TimeDateStamp"));
   lv.cx = 90;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hDebug, 1, &lv);
   SendMessage(hDebug, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("MajorVersion"));
   lv.cx = 80;
   lv.iSubItem = 2;

@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -17,7 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(936)
+#pragma code_page(65001)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -59,7 +59,7 @@ BEGIN
     GROUPBOX        "",IDC_GROUP_BUTTON,252,7,78,162
     PUSHBUTTON      "PE Editor",IDC_BUTTON_PE_EDITOR,256,19,67,17,BS_FLAT
     PUSHBUTTON      "About",IDC_BUTTON_ABOUT,256,124,67,17,BS_FLAT
-    PUSHBUTTON      "�˳�",IDC_BUTTON_QUIT,256,145,67,17,BS_FLAT
+    PUSHBUTTON      "退出",IDC_BUTTON_QUIT,256,145,67,17,BS_FLAT
     CONTROL         "",IDC_LIST_PROCESS,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOLABELWRAP | LVS_AUTOARRANGE | LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,15,17,228,68
     CONTROL         "",IDC_LIST_MODULE,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOLABELWRAP | LVS_AUTOARRANGE | LVS_ALIGNLEFT | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,15,94,228,68
 END

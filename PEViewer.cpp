@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <tchar.h>
 #include <commctrl.h>
 #include <stdio.h>
@@ -63,7 +63,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #endif  // DEV
 
   // IN Windows XP common control window must be INIT
-  //ͨ�ÿؼ���ʹ��ǰ����Ҫͨ��INITCOMMONCONTROLSEX���г�ʼ��
+  //通用控件在使用前，需要通过INITCOMMONCONTROLSEX进行初始化
   INITCOMMONCONTROLSEX icex;
   icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
   icex.dwICC = ICC_WIN95_CLASSES;

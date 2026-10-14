@@ -1,4 +1,4 @@
-#include "handleProcessAndModule.h"
+ï»¿#include "handleProcessAndModule.h"
 
 #include <string>
 
@@ -6,39 +6,39 @@ VOID InitProcessListView(HWND hDlg) {
   LV_COLUMN lv;
   HWND hListProcess;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_PROCESS¾ä±ú (ListµÄ¾ä±ú)
+  //è·å–IDC_LIST_PROCESSå¥æŸ„ (Listçš„å¥æŸ„)
   hListProcess = GetDlgItem(hDlg, IDC_LIST_PROCESS);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
-  //µã»÷Ä³ĞĞµÄÊ±ºò ÏÔÊ¾ÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
+  //ç‚¹å‡»æŸè¡Œçš„æ—¶å€™ æ˜¾ç¤ºæ•´è¡Œé€‰ä¸­
   SendMessage(hListProcess, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
               LVS_EX_FULLROWSELECT);
   
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-  lv.pszText = const_cast<wchar_t*>(TEXT("Process"));  //ÁĞ±êÌâ
-  lv.cx = 100;                                         //ÁĞ¿í
-  lv.iSubItem = 0;                                     //µÚ¼¸ÁĞ
+  lv.pszText = const_cast<wchar_t*>(TEXT("Process"));  //åˆ—æ ‡é¢˜
+  lv.cx = 100;                                         //åˆ—å®½
+  lv.iSubItem = 0;                                     //ç¬¬å‡ åˆ—
   // ListView_InsertColumn(hListProcess, 0, &lv);
-  SendMessage(hListProcess, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
-  //µÚ¶şÁĞ
+  SendMessage(hListProcess, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
+  //ç¬¬äºŒåˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Architecture"));
   lv.cx = 50;
   lv.iSubItem = 1;
-  SendMessage(hListProcess, LVM_INSERTCOLUMN, 1, (DWORD)&lv);
-  //µÚÈıÁĞ
+  SendMessage(hListProcess, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
+  //ç¬¬ä¸‰åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("PID"));
   lv.cx = 80;
   lv.iSubItem = 2;
   // ListView_InsertColumn(hListProcess, 1, &lv);
-  SendMessage(hListProcess, LVM_INSERTCOLUMN, 2, (DWORD)&lv);
-  //µÚËÄÁĞ
+  SendMessage(hListProcess, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
+  //ç¬¬å››åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Image Base"));
   lv.cx = 80;
   lv.iSubItem = 3;
   ListView_InsertColumn(hListProcess, 3, &lv);
-  //µÚÎåÁĞ
+  //ç¬¬äº”åˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Size of Image"));
   lv.cx = 80;
   lv.iSubItem = 4;
@@ -51,22 +51,22 @@ VOID InitModulesListView(HWND hDlg) {
   LV_COLUMN lv;
   HWND hListModule;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_COLUMN));
-  //»ñÈ¡IDC_LIST_MODULEµÄ¾ä±ú (moduleµÄ¾ä±ú)
+  //è·å–IDC_LIST_MODULEçš„å¥æŸ„ (moduleçš„å¥æŸ„)
   hListModule = GetDlgItem(hDlg, IDC_LIST_MODULE);
-  //ÉèÖÃÕûĞĞÑ¡ÖĞ
+  //è®¾ç½®æ•´è¡Œé€‰ä¸­
   SendMessage(hListModule, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT,
               LVS_EX_FULLROWSELECT);
 
-  //µÚÒ»ÁĞ
+  //ç¬¬ä¸€åˆ—
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-  lv.pszText = const_cast<wchar_t*>(TEXT("Module"));  //ÁĞ±êÌâ
-  lv.cx = 100;                                        //ÁĞ¿í
-  lv.iSubItem = 0;                                    //µÚ¼¸ÁĞ
-  SendMessage(hListModule, LVM_INSERTCOLUMN, 0, (DWORD)&lv);
+  lv.pszText = const_cast<wchar_t*>(TEXT("Module"));  //åˆ—æ ‡é¢˜
+  lv.cx = 100;                                        //åˆ—å®½
+  lv.iSubItem = 0;                                    //ç¬¬å‡ åˆ—
+  SendMessage(hListModule, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
 
-  //µÚ¶şÁĞ
+  //ç¬¬äºŒåˆ—
   lv.pszText = const_cast<wchar_t*>(TEXT("Path"));
   lv.cx = 250;
   lv.iSubItem = 1;
@@ -78,20 +78,20 @@ VOID InitModulesListView(HWND hDlg) {
 VOID DrawProcess(HWND hListProcess, int Row, ProcessInfo processInfo,
                  COLORREF colorRef) {
   LV_ITEM vitem;
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = processInfo.szProcessName;
-  vitem.iItem = Row;   //µÚ¼¸ĞĞ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁĞ
-  // ÕâÊÇÒ»¸öºê ºÍ sendMessage×öµÄÊÂÇéÒ»Ñù
+  vitem.iItem = Row;   //ç¬¬å‡ è¡Œ
+  vitem.iSubItem = 0;  //ç¬¬å‡ åˆ—
+  // è¿™æ˜¯ä¸€ä¸ªå® å’Œ sendMessageåšçš„äº‹æƒ…ä¸€æ ·
   // ListView_InsertItem(hListProcess, &vitem);
-  //·²ÊÂ½ÔÏûÏ¢
-  SendMessage(hListProcess, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  //å‡¡äº‹çš†æ¶ˆæ¯
+  SendMessage(hListProcess, LVM_INSERTITEM, 0, (LPARAM)&vitem);
   SendMessage(hListProcess, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
-  //µÚÒ»ĞĞĞ´ÍêÖ®ºó ºóÃæÈ«ÊÇ SETITEM
+  //ç¬¬ä¸€è¡Œå†™å®Œä¹‹å åé¢å…¨æ˜¯ SETITEM
   vitem.pszText = processInfo.szArchitecture;
   vitem.iSubItem = 1;
   ListView_SetItem(hListProcess, &vitem);
@@ -112,16 +112,16 @@ VOID DrawProcess(HWND hListProcess, int Row, ProcessInfo processInfo,
 VOID DrawModules(HWND hListModule, int Row, ModuleInfo moduleInfo) {
   LV_ITEM vitem;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = moduleInfo.szModName;
-  vitem.iItem = Row;   //µÚ¼¸ĞĞ
-  vitem.iSubItem = 0;  //µÚ¼¸ÁĞ
-  SendMessage(hListModule, LVM_INSERTITEM, 0, (DWORD)&vitem);
+  vitem.iItem = Row;   //ç¬¬å‡ è¡Œ
+  vitem.iSubItem = 0;  //ç¬¬å‡ åˆ—
+  SendMessage(hListModule, LVM_INSERTITEM, 0, (LPARAM)&vitem);
 
-  //µÚÒ»ĞĞĞ´ÍêÖ®ºó ºóÃæÈ«ÊÇ SETITEM
+  //ç¬¬ä¸€è¡Œå†™å®Œä¹‹å åé¢å…¨æ˜¯ SETITEM
   vitem.pszText = moduleInfo.szModAbsolutePath;
   vitem.iSubItem = 1;
   ListView_SetItem(hListModule, &vitem);
@@ -287,21 +287,21 @@ VOID EnumModules(HWND hListProcess, HWND hListModule, WPARAM wParam,
   TCHAR szPid[0x20] = {0};
   LV_ITEM lv;
 
-  //³õÊ¼»¯
+  //åˆå§‹åŒ–
   memset(&lv, 0, sizeof(LV_ITEM));
   memset(szPid, 0, 0x20);
-  //»ñÈ¡Ñ¡ÔñĞĞ
+  //è·å–é€‰æ‹©è¡Œ
   dwRowId = SendMessage(hListProcess, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
   if (dwRowId == -1) {
     MessageBox(NULL, TEXT("Please select a process"), TEXT("Error"), MB_OK);
     return;
   }
   setDebugPrivilege(TRUE);
-  //»ñÈ¡PID
-  lv.iSubItem = 2;       //Òª»ñÈ¡µÄÁĞ
-  lv.pszText = szPid;    //Ö¸¶¨´æ´¢²éÑ¯½á¹ûµÄ»º³åÇø
-  lv.cchTextMax = 0x20;  //Ö¸¶¨»º³åÇø´óĞ¡
-  SendMessage(hListProcess, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
+  //è·å–PID
+  lv.iSubItem = 2;       //è¦è·å–çš„åˆ—
+  lv.pszText = szPid;    //æŒ‡å®šå­˜å‚¨æŸ¥è¯¢ç»“æœçš„ç¼“å†²åŒº
+  lv.cchTextMax = 0x20;  //æŒ‡å®šç¼“å†²åŒºå¤§å°
+  SendMessage(hListProcess, LVM_GETITEMTEXT, dwRowId, (LPARAM)&lv);
 
   DWORD processID;
   HMODULE hMods[1024];
