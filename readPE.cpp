@@ -1,13 +1,13 @@
-#include "readPE.h"
+﻿#include "readPE.h"
 
 #include "global.h"
 
 LPVOID pFileBuffer = NULL;
-PIMAGE_DOS_HEADER pDosHeader = NULL;                // dosͷ
-PIMAGE_NT_HEADERS pNTHeader = NULL;                 // NTͷ
-PIMAGE_FILE_HEADER pFileHeader = NULL;              // PEͷ
-PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;  // 32λ ��ѡPEͷ
-PIMAGE_SECTION_HEADER pSectionHeader = NULL;        // ��һ������ͷ
+PIMAGE_DOS_HEADER pDosHeader = NULL;                // dos头
+PIMAGE_NT_HEADERS pNTHeader = NULL;                 // NT头
+PIMAGE_FILE_HEADER pFileHeader = NULL;              // PE头
+PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;  // 32位 可选PE头
+PIMAGE_SECTION_HEADER pSectionHeader = NULL;        // 第一个节区头
 DWORD sizeOfDataDirectory = 0;
 PIMAGE_DATA_DIRECTORY pDataDirectory = NULL;
 TCHAR buffer[MAX_PATH] = {0};
@@ -48,18 +48,18 @@ DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
 
 DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
   PIMAGE_SECTION_HEADER originalSectionHeader = pSectionHeader;
-  //������
+  //节区数
   int sectionNums = pFileHeader->NumberOfSections;
 
-  //�ж�rva�Ƿ��� headers+�ڱ���
+  //判断rva是否在 headers+节表处
   if (dwRva < pOptionalHeader32->SizeOfHeaders) {
-    //����Ҫ���д��� û������ ���ļ����ڴ��ж���һ����
+    //不需要进行处理 没有拉伸 在文件和内存中都是一样的
     return dwRva;
   }
-  //�������ƫ�� dwRva �������ƫ���� va - pImageBuffer
-  //�������������бȽ�
+  //计算相对偏移 dwRva 就是相对偏移了 va - pImageBuffer
+  //遍历节区表进行比较
   for (int i = 0; i < sectionNums; i++) {
-    //��ʱname�������� û��ռ��λ ����ֱ�����
+    //此时name是正常的 没有占八位 可以直接输出
     // NAME
     // printf("%s\n",&(pSectionHeader->Name));
     if (dwRva >= (DWORD)(pSectionHeader->VirtualAddress) &&
@@ -69,7 +69,7 @@ DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
     pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD)pSectionHeader +
                                              IMAGE_SIZEOF_SECTION_HEADER);
   }
-  //���� RAW
+  //计算 RAW
   DWORD RAW =
       dwRva - pSectionHeader->VirtualAddress + pSectionHeader->PointerToRawData;
   pSectionHeader = originalSectionHeader;
@@ -232,17 +232,17 @@ VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer) {
 VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
                   COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = sectionInfo.szIndex;
-  vitem.iItem = Row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = Row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hListSection, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListSection, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
-  //��һ��д��֮�� ����ȫ�� SETITEM
+  //第一行写完之后 后面全是 SETITEM
   vitem.pszText = sectionInfo.szSectionName;
   vitem.iSubItem = 1;
   ListView_SetItem(hListSection, &vitem);
@@ -351,13 +351,13 @@ VOID readSectionEdit(HWND hwnd, INT ID) {
 VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
                             ImportDescInfo& importDescInfo, COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = importDescInfo.szDllName;
-  vitem.iItem = Row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = Row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hListImportDLL, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListImportDLL, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -389,8 +389,8 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
   TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
-  // ��λ�����
-  // ����������� IMAGE_IMPORT_DESCRIPTOR RVA->RAW
+  // 定位导入表
+  // 导入表描述符 IMAGE_IMPORT_DESCRIPTOR RVA->RAW
   pImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)rvaToFileOffset(
       pFileBuffer, pImportDirectory->VirtualAddress);
   pImportDescriptor =
@@ -431,13 +431,13 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
 VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
                   COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = intThunkInfo.szAPIName;
-  vitem.iItem = Row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = Row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hListIntThunk, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListIntThunk, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -478,9 +478,9 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
     return;
   }
   // get OriginalFirstThunk
-  lv.iSubItem = 1;                    //Ҫ��ȡ����
-  lv.pszText = szOriginalFirstThunk;  //ָ���洢��ѯ����Ļ�����
-  lv.cchTextMax = 0x20;               //ָ����������С
+  lv.iSubItem = 1;                    //要获取的列
+  lv.pszText = szOriginalFirstThunk;  //指定存储查询结果的缓冲区
+  lv.cchTextMax = 0x20;               //指定缓冲区大小
   SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (DWORD)&lv);
   _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &originalFirstThunk);
 
@@ -491,7 +491,7 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
   while (TRUE) {
     if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal == 0x00000000)
       break;
-    //���λΪ1 ��ʾ��ŵ��Ǻ����ĵ������
+    //最高位为1 表示存放的是函数的导出序号
     if (((PIMAGE_THUNK_DATA)originalFirstThunk)->u1.Ordinal &
         0x80000000 == 0x80000000) {
       thunkData = *((DWORD*)originalFirstThunk) & 0x7FFFFFFF;
@@ -528,10 +528,10 @@ VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
 
 VOID readExportDirectory(HWND hwnd) {
   PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
-  // ������ PIMAGE_EXPORT_DIRECTORY RVA->RAW
+  // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
   pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
       pFileBuffer, pDataDirectory->VirtualAddress);
-  //ת��Ϊ�ڴ��е�ƫ��
+  //转换为内存中的偏移
   pExportDirectory =
       (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
 
@@ -562,13 +562,13 @@ VOID readExportDirectory(HWND hwnd) {
 VOID drawExportFunc(HWND hListExportFunc, int Row,
                     ExportFuncInfo& exportFuncInfo, COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = exportFuncInfo.szOrdinal;
-  vitem.iItem = Row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = Row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hListExportFunc, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hListExportFunc, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -593,10 +593,10 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
   DWORD row = 0;
   COLORREF colorRef = colorWhite;
 
-  // ������ PIMAGE_EXPORT_DIRECTORY RVA->RAW
+  // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
   pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)rvaToFileOffset(
       pFileBuffer, pDataDirectory->VirtualAddress);
-  //ת��Ϊ�ڴ��е�ƫ��
+  //转换为内存中的偏移
   pExportDirectory =
       (PIMAGE_EXPORT_DIRECTORY)((DWORD)pFileBuffer + (DWORD)pExportDirectory);
 
@@ -613,7 +613,7 @@ VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
   // iterate addressOfFunctions get function's ordinal without function name
   DWORD addressOfFunctions =
       rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfFunctions);
-  //ת��Ϊ�ڴ��е�ƫ��
+  //转换为内存中的偏移
   addressOfFunctions = (DWORD)(pFileBuffer) + addressOfFunctions;
   for (WORD i = 0; i < pExportDirectory->NumberOfFunctions; i++) {
     if (((DWORD*)addressOfFunctions)[i] != 0x0 &&
@@ -655,13 +655,13 @@ VOID drawBoundImportDirectory(HWND hBoundImport, int row,
     BoundImportInfo& boundImportInfo,
     COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = boundImportInfo.szDllName;
-  vitem.iItem = row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hBoundImport, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hBoundImport, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
@@ -721,13 +721,13 @@ VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
 VOID drawBoundImportDirectory(HWND hDebug, int row, DebugInfo& debugInfo,
     COLORREF colorRef) {
   LV_ITEM vitem;
-  //��ʼ��
+  //初始化
   memset(&vitem, 0, sizeof(LV_ITEM));
   vitem.mask = LVIF_TEXT;
 
   vitem.pszText = debugInfo.szCharacteristics;
-  vitem.iItem = row;   //�ڼ���
-  vitem.iSubItem = 0;  //�ڼ���
+  vitem.iItem = row;   //第几行
+  vitem.iSubItem = 0;  //第几列
   SendMessage(hDebug, LVM_INSERTITEM, 0, (DWORD)&vitem);
   SendMessage(hDebug, LVM_SETINSERTMARKCOLOR, 0, (DWORD)colorRef);
 
