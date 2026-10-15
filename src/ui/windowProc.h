@@ -2,8 +2,8 @@
 #include <windows.h>
 #include <gdiplus.h>
 
-#include "global.h"
-#include "handleProcessAndModule.h"
+#include "common/global.h"
+#include "process/handleProcessAndModule.h"
 #include "messageCallback.h"
 #include "resource.h"
 using namespace Gdiplus;

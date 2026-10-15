@@ -6,10 +6,10 @@
 #include <tlhelp32.h>
 #include <tchar.h>
 
-#include "global.h"
+#include "common/global.h"
 #include "resource.h"
-#include "structs.h"
-#include "utility.h"
+#include "common/structs.h"
+#include "common/utility.h"
 
 VOID InitProcessListView(HWND hDlg);
 

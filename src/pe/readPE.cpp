@@ -1,6 +1,6 @@
 ﻿#include "readPE.h"
 
-#include "global.h"
+#include "common/global.h"
 
 LPVOID pFileBuffer = NULL;
 PIMAGE_DOS_HEADER pDosHeader = NULL;                // dos头

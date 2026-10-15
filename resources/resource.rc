@@ -919,7 +919,7 @@ END
 // Bitmap
 //
 
-IDB_BITMAP_PEVIEWER     BITMAP                  "resources\\bmp\\7eviewer.bmp"
+IDB_BITMAP_PEVIEWER     BITMAP                  "bmp\\7eviewer.bmp"
 
 #endif    // Chinese (Simplified, PRC) resources
 /////////////////////////////////////////////////////////////////////////////

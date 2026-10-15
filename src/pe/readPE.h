@@ -8,7 +8,7 @@
 #include <map>
 
 #include "resource.h"
-#include "structs.h"
+#include "common/structs.h"
 extern LPVOID pFileBuffer;
 extern PIMAGE_DOS_HEADER pDosHeader;
 extern PIMAGE_NT_HEADERS pNTHeader;

@@ -8,21 +8,21 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| [PEViewer.cpp](PEViewer.cpp) | `WinMain`、公共控件初始化、Common Controls manifest、主对话框入口。 |
-| [windowProc.cpp](windowProc.cpp)、[windowProc.h](windowProc.h) | 各对话框的消息回调，分派初始化、按钮点击和 ListView 通知。 |
-| [messageCallback.cpp](messageCallback.cpp)、[messageCallback.h](messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
-| [readPE.cpp](readPE.cpp)、[readPE.h](readPE.h) | 文件读入、PE 头定位、RVA 转文件偏移、字段和目录解析、结果填入控件。 |
-| [handleProcessAndModule.cpp](handleProcessAndModule.cpp)、[handleProcessAndModule.h](handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
-| [utility.cpp](utility.cpp)、[utility.h](utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
-| [global.cpp](global.cpp)、[global.h](global.h)、[structs.h](structs.h) | 字段说明、控件 ID 对照、颜色以及列表行的显示数据。 |
-| [resource.rc](resource.rc)、[resource.h](resource.h) | 对话框布局、控件 ID 和中文资源。 |
+| [PEViewer.cpp](src/app/PEViewer.cpp) | `WinMain`、公共控件初始化、Common Controls manifest、主对话框入口。 |
+| [windowProc.cpp](src/ui/windowProc.cpp)、[windowProc.h](src/ui/windowProc.h) | 各对话框的消息回调，分派初始化、按钮点击和 ListView 通知。 |
+| [messageCallback.cpp](src/ui/messageCallback.cpp)、[messageCallback.h](src/ui/messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
+| [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 文件读入、PE 头定位、RVA 转文件偏移、字段和目录解析、结果填入控件。 |
+| [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
+| [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
+| [global.cpp](src/common/global.cpp)、[global.h](src/common/global.h)、[structs.h](src/common/structs.h) | 字段说明、控件 ID 对照、颜色以及列表行的显示数据。 |
+| [resource.rc](resources/resource.rc)、[resource.h](resources/resource.h) | 对话框布局、控件 ID 和中文资源。 |
 | [PEViewer.sln](PEViewer.sln)、[PEViewer.vcxproj](PEViewer.vcxproj) | Visual Studio 的 Debug / Release、Win32 / x64 构建配置。 |
 
-## 目录整理规划（待实施）
+## 目录与构建布局
 
-目前源码、头文件和资源脚本集中在仓库根目录。下一步按职责归类文件，继续由一个 `PEViewer.vcxproj` 编译主程序，生成 `PEViewer.exe`；`src` 下的子目录属于同一个工程。相关 `.cpp`、`.h` 放在同一模块目录中，解决方案和工程文件保留在根目录。
+源码、头文件和资源脚本已按职责归类，继续由一个 `PEViewer.vcxproj` 编译主程序，生成 `PEViewer.exe`；`src` 下的子目录属于同一个工程。相关 `.cpp`、`.h` 放在同一模块目录中，解决方案和工程文件保留在根目录。
 
-以下是目标结构，尚未执行文件迁移。`tests` 随正式验证入口落地再建立，其源码单独编译或由测试脚本调用，不加入主程序的 `ClCompile` 列表。
+以下是当前目录结构。`tests` 使用独立工程编译，验证源码和样本生成代码不加入主程序的 `ClCompile` 列表。
 
 ```text
 PEViewer/
@@ -59,26 +59,29 @@ PEViewer/
 ├─ scripts/
 │  └─ build.ps1
 ├─ tests/
+│  ├─ README.md
+│  ├─ portability-smoke.vcxproj
 │  ├─ portability-smoke.cpp
-│  └─ fixtures/                  # 样本生成代码和预期值
+│  └─ fixtures/
+│     └─ pe32.h                 # PE32 样本生成代码和预期值
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
 
-### 第一阶段：文件归类与构建路径
+### 第一阶段：文件归类与构建路径（已完成）
 
 这一阶段完成物理目录整理，保持现有函数职责和程序行为，便于独立检查迁移变更。
 
-- [ ] 按目标结构迁移现有源码、头文件和资源脚本，保持现有文件名与编码；已有 `resources/bmp/7eviewer.bmp` 保留在原位置。上面的文件职责表及正文链接在实际迁移时同步更新。
-- [ ] 更新 `PEViewer.vcxproj` 中的 `ClCompile`、`ClInclude`、`ResourceCompile`、`Image` 路径，以及 `PEViewer.vcxproj.filters` 中的文件路径和模块分组。解决方案中的工程路径保持指向根目录工程文件。
-- [ ] 在工程中配置 C++ 和资源编译所需的搜索路径。跨模块头文件引用使用 `ui/windowProc.h`、`pe/readPE.h`、`common/global.h` 等形式；模块内部可继续引用同目录头文件。
-- [ ] 检查 `resource.rc` 的头文件、位图和资源编辑器引用路径，确保资源编译与 Visual Studio 资源编辑器均能找到文件；保留 UTF-8 BOM 和代码页 65001。
-- [ ] 将可复用构建脚本迁入 `scripts/build.ps1` 并纳入版本控制。脚本从自身目录定位仓库根目录，再查找根目录的工程文件，所有输出路径也以仓库根目录为基准。
-- [ ] 在工程中统一设置 `OutDir = $(ProjectDir)bin\$(Configuration)\$(Platform)\`、`IntDir = $(ProjectDir)obj\$(Configuration)\$(Platform)\`，与构建脚本保持一致，使 Visual Studio 和命令行构建都使用相同目录。项目平台名使用 `Win32` / `x64`。
-- [ ] 继续忽略 `bin`、`obj`、`.vs` 等生成文件。当前 `/build.ps1` 规则只匹配根目录脚本，迁入 `scripts` 后不会被该规则忽略；逐项检查正式源码、资源、文档和脚本没有被其他规则误忽略。
-- [ ] 将需要长期保留的验证源码从 `obj/portability-smoke.cpp` 迁入 `tests`，补充独立的编译 / 运行入口。可重复生成的样本及预期值纳入版本控制，验证输出仍放入 `bin` / `obj`。
+- [x] 源码、头文件和资源脚本已迁入目标目录，保持现有文件名与编码；`resources/bmp/7eviewer.bmp` 保留在原位置，文档链接同步更新。
+- [x] 工程文件与 `.filters` 已更新文件路径和模块分组。解决方案仍指向根目录工程文件。
+- [x] 已配置 C++ 的 `src` / `resources` 搜索路径和资源编译的 `resources` 搜索路径。跨模块引用使用模块前缀，同目录引用保持原形式。
+- [x] `resource.rc` 引用同目录 `resource.h` 和 `bmp/7eviewer.bmp`，保留 UTF-8 BOM、代码页 65001 和资源编辑器的 `TEXTINCLUDE`。
+- [x] 新增可随仓库分发的 `scripts/build.ps1`。脚本从自身目录定位根目录，并初始化对应 Visual Studio 的编译环境。
+- [x] 工程统一设置 `OutDir = $(ProjectDir)bin\$(Configuration)\$(Platform)\`、`IntDir = $(ProjectDir)obj\$(Configuration)\$(Platform)\`；VS 和脚本使用相同目录。
+- [x] `bin`、`obj`、`.vs` 等生成文件继续忽略；移除过时的根目录 `/build.ps1` 忽略规则，正式源码、资源、文档和脚本不被忽略。
+- [x] `tests/portability-smoke.vcxproj` 独立编译验证程序，`tests/fixtures/pe32.h` 保存可重复生成的样本和预期值。生成样本、日志与验证产物位于 `obj` / `bin`。
 
-阶段验收：Debug / Release × Win32 / x64 四组构建通过；Visual Studio 中的模块分组和资源视图正常；现有 PE32 对话框验证结果与迁移前一致。检查 Git 变更能识别文件迁移，正式源码与验证入口可随仓库克隆获得，生成文件不进入提交。
+阶段验收：Debug / Release × Win32 / x64 四组构建及独立验证通过；工程与 `.filters` 的路径、分组和资源引用有效；PE32 页面结果符合确定性样本的预期。源码迁移只调整跨模块引用和资源相对路径，生成文件不进入提交。
 
 建议将这一阶段作为单独提交；之后再推进解析接口和 PE32+ 功能，便于区分路径问题与功能问题。
 
@@ -156,7 +159,7 @@ WinMain
 - ListView 消息的结构体指针参数改用 `LPARAM`。
 - 20 个对话框回调改为 `INT_PTR CALLBACK`，移除调用处的 `DLGPROC` 强转。
 - 已有模块基址显示改为按本进程指针宽度格式化，避免 `DWORD` 截断。
-- 本地 `build.ps1` 支持 `x86`、`x64`、`Win32` 平台参数，并按配置和平台分别设置输出、中间目录。
+- `scripts/build.ps1` 支持 `x86`、`x64`、`Win32` 平台参数；`-All` 批量构建四组配置，`-Test` 编译并运行独立验证程序。VS 和脚本使用工程中的统一输出路径。
 - 中文源码与资源已使用 UTF-8 BOM；`resource.rc` 使用代码页 65001。修改时需要保留编码，避免再次把中文注释保存为 `U+FFFD` 替换字符。
 
 以上解决了双平台指针和调用签名问题，PE32+ 的可选头与导入 thunk 解析仍待实现。
@@ -165,7 +168,7 @@ WinMain
 
 ### 1. 文件读取、格式识别与访问边界
 
-主要文件：[readPE.cpp](readPE.cpp)、[readPE.h](readPE.h)、[messageCallback.cpp](messageCallback.cpp)。
+主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)。
 
 - [ ] 改善 `readPeFile()`：正确检查 `*pFileBuffer` 的分配结果，验证文件长度和实际读取字节数，失败时清空输出指针；打开失败后不要继续执行 `initPE()`。重新打开或关闭文件时释放旧缓冲区。
 - [ ] 在解析状态中明确记录文件长度、PE 格式、可选头 32 / 64 指针、节表、节数量和有效数据目录数量。可逐步将分散的全局指针收拢为一个解析上下文，供读取函数使用。
@@ -178,7 +181,7 @@ WinMain
 
 ### 2. 可选头、汇总页面与 64 位字段显示
 
-主要文件：[readPE.cpp](readPE.cpp)、[readPE.h](readPE.h)、[messageCallback.cpp](messageCallback.cpp)、[windowProc.cpp](windowProc.cpp)、[windowProc.h](windowProc.h)、[resource.rc](resource.rc)、[resource.h](resource.h)。
+主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)、[windowProc.cpp](src/ui/windowProc.cpp)、[windowProc.h](src/ui/windowProc.h)、[resource.rc](resources/resource.rc)、[resource.h](resources/resource.h)。
 
 - [ ] 让 `readOptinalHeader32()`、`readHeaderInfo()` 及调用它们的页面按解析格式选择字段来源。公共字段可使用统一读取函数；`BaseOfData` 只在 PE32 中显示。
 - [ ] 保留 `writeToText()` 的 32 位字段通路，另增接收 `ULONGLONG` 的 64 位显示通路，并同步头文件声明。格式与参数类型配套，例如 64 位十六进制采用 `%016I64X`；不要把参数统一加宽后继续使用 `%X`。
@@ -189,7 +192,7 @@ WinMain
 
 ### 3. 导入表与其他已实现的数据目录
 
-主要文件：[readPE.cpp](readPE.cpp)、[readPE.h](readPE.h)、[messageCallback.cpp](messageCallback.cpp)。
+主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)。
 
 - [ ] 导入 thunk 根据文件格式分别使用 `IMAGE_THUNK_DATA32/64`，步长为 4 / 8；显示值时保留对应宽度。
 - [ ] 使用 `IMAGE_ORDINAL_FLAG32/64`，将判定写为 `(value & flag) != 0`。当前表达式 `value & 0x80000000 == 0x80000000` 存在优先级问题，需要一起修正。
@@ -217,35 +220,36 @@ WinMain
 
 离线读取 PE32+ 文件不依赖 x64 辅助程序。下面的工作属于主窗口的进程查询功能，可以与文件格式解析分开推进。
 
-- [ ] 在 [handleProcessAndModule.cpp](handleProcessAndModule.cpp) 的 x64 分支补模块信息查询。目前它只查进程路径，Image Base 和 Size of Image 直接填写 `<Unknown>`；加载基址格式化已经修正，查询尚未补齐。
+- [ ] 在 [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp) 的 x64 分支补模块信息查询。目前它只查进程路径，Image Base 和 Size of Image 直接填写 `<Unknown>`；加载基址格式化已经修正，查询尚未补齐。
 - [ ] 在 `OpenProcess`、`EnumProcessModules/Ex`、`GetModuleInformation` 和模块路径查询失败后立即记录错误码；区分拒绝访问、进程退出、架构限制和其他错误。仅查询名称时可采用较低的查询权限。
 - [ ] 检查模块数组容量与 `cbNeeded`，避免模块较多时越界；统一关闭进程句柄并处理所有失败路径。
-- [ ] 在 [utility.cpp](utility.cpp) 修正 `setDebugPrivilege()` 的返回值和失败路径资源清理。目前 `GetLastError()` 非零后仍会返回 `TRUE`。权限调整成功也不保证可以访问 System 或受保护进程。
+- [ ] 在 [utility.cpp](src/common/utility.cpp) 修正 `setDebugPrivilege()` 的返回值和失败路径资源清理。目前 `GetLastError()` 非零后仍会返回 `TRUE`。权限调整成功也不保证可以访问 System 或受保护进程。
 - [ ] x64 查看器可用 `EnumProcessModulesEx` 查询普通 x86 / x64 进程；x86 查看器调用这套 API 查询 x64 进程会失败，通常返回 299。若保留 x86 主程序并要求该能力，可由独立 x64 EXE 查询，通过管道等返回模块名称、路径及固定 64 位的基址。辅助程序同样受进程权限限制。
 
 ## 构建与当前验证结果
 
 Visual Studio 解决方案提供 `Debug/Release × x86/x64`，其中项目的 x86 平台名是 `Win32`。需要 Visual Studio C++ 工具集和项目指定的 Windows SDK。
 
-当前本地构建脚本要求 PowerShell 7，可在仓库根目录执行：
+可直接在 Visual Studio 中打开 `PEViewer.sln`，选择配置和平台编译主程序。命令行入口要求 PowerShell 7，可在仓库根目录执行：
 
 ```powershell
-pwsh -File .\build.ps1 -Configuration Debug -Platform x86
-pwsh -File .\build.ps1 -Configuration Debug -Platform x64
-pwsh -File .\build.ps1 -Configuration Release -Platform x86
-pwsh -File .\build.ps1 -Configuration Release -Platform x64
+pwsh -File .\scripts\build.ps1 -Configuration Debug -Platform x86
+pwsh -File .\scripts\build.ps1 -Configuration Debug -Platform x64
+pwsh -File .\scripts\build.ps1 -Configuration Release -Platform x86
+pwsh -File .\scripts\build.ps1 -Configuration Release -Platform x64
+
+# 一次构建全部配置，并运行独立验证程序
+pwsh -File .\scripts\build.ps1 -All -Test
 ```
 
-脚本默认 `Debug/x86`，接受 `Win32` 作为 x86 别名；输出位于 `bin/<配置>/Win32` 或 `bin/<配置>/x64`，中间文件位于对应的 `obj` 目录。它还会合并子进程环境中仅大小写不同的 PATH 项。
+脚本默认 `Debug/x86`，接受 `Win32` 作为 x86 别名；输出位于 `bin/<配置>/Win32` 或 `bin/<配置>/x64`，中间文件位于对应的 `obj` 目录。它会初始化对应 VS 的开发环境，合并子进程环境中仅大小写不同的 PATH 项；`-MSBuildPath` 支持显式指定 MSBuild，`-Rebuild` 强制重新构建。脚本支持从其他工作目录调用。
 
-`build.ps1` 当前按 [.gitignore](.gitignore) 的 `/build.ps1` 规则忽略，不随仓库克隆分发。若保留根目录脚本作为正式入口，需要解除忽略并提交；按目录规划迁入 `scripts` 后，则检查新路径的忽略状态并提交该脚本。
-
-上面的命令对应当前根目录脚本。目录迁移完成后，正式入口改为 `scripts/build.ps1`，从仓库根目录执行 `pwsh -File .\scripts\build.ps1`，并继续接受配置和平台参数；届时同步更新本节命令。
+验证源码、样本生成代码和使用说明位于 [tests](tests/README.md)。`-Test` 为独立验证工程传入主程序对应配置的工具集及 SDK，将验证程序写入 `bin/<配置>/<平台>/tests`，将中间文件、生成样本和构建日志写入 `obj/<配置>/<平台>/tests`。主程序的构建日志位于 `obj/<配置>/<平台>/build.log`。正式入口和验证源码不受 [.gitignore](.gitignore) 的生成文件规则影响。
 
 已完成的验证：
 
 - x86、x64 的 Debug 和 Release 四组构建通过，`C4311/C4312/C4302` 指针转换相关警告为零；其他既有警告仍需按后续任务处理。
-- 两种平台使用合成 PE32 数据创建了 10 个文件查看对话框，检查了节表、导入函数、导出、绑定导入和调试目录的列表及预期输出。
+- 四组配置均调用实际文件读取函数，使用合成 PE32 数据创建 10 个隐藏文件查看对话框，检查头部、节表、导入函数、导出、绑定导入和调试目录的列表及预期输出，并验证位图资源可加载。
 - x64 验证中的缓冲区位于 4 GB 以上，头部 / 节表指针、RVA 转换、目录列表名称和条目数正确；修改后的源码中文注释、编码与差异空白检查通过。
 
 上述验证覆盖已完成的指针和回调适配。完整 PE32+ 支持以及真实文件、损坏输入的完整矩阵仍按前面的验收计划推进。

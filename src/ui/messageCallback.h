@@ -4,10 +4,10 @@
 #include <windows.h>
 #include <windowsx.h>
 
-#include "global.h"
-#include "readPE.h"
+#include "common/global.h"
+#include "pe/readPE.h"
 #include "resource.h"
-#include "utility.h"
+#include "common/utility.h"
 
 // WM_SIZE
 void onSize(HWND mainDialogHwnd, LPSIZE mainDialogSize, WPARAM wParam,

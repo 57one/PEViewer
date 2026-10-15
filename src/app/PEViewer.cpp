@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "resource.h"
-#include "windowProc.h"
+#include "ui/windowProc.h"
 #pragma comment(lib, "comctl32.lib")
 #ifdef _UNICODE
 #if defined _M_IX86

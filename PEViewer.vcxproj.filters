@@ -1,76 +1,120 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="src">
+      <UniqueIdentifier>{676C01EA-9846-440F-A08A-BED0EB24D770}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="src\app">
+      <UniqueIdentifier>{C51EEAB8-F311-4323-83ED-C077C351542D}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{6F912079-F69F-406C-BC59-52E6E3DD5E6F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\pe">
+      <UniqueIdentifier>{7FC42A4E-601B-4620-BBDE-12443350C235}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\process">
+      <UniqueIdentifier>{D5700A14-95E6-4121-960B-FB9F2EE368B2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\common">
+      <UniqueIdentifier>{2B3EB569-FB19-43F8-9CC6-00CBFC63175F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources">
+      <UniqueIdentifier>{45445BB8-4192-42EB-A48F-F2487ADDDD66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources\bmp">
+      <UniqueIdentifier>{5D557233-493C-44D1-A451-A33E26ABAA82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scripts">
+      <UniqueIdentifier>{A991B320-8DFD-40AA-8236-BD3EBBD881B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests">
+      <UniqueIdentifier>{8A3CDD90-94EE-4614-AE2D-3EB0028AB8CC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tests\fixtures">
+      <UniqueIdentifier>{357AE2DC-600D-4C85-A033-106A553557FD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="docs">
+      <UniqueIdentifier>{0E0ED127-DF4C-4962-8324-46A11400C7A5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="PEViewer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\common\global.cpp">
+      <Filter>src\common</Filter>
     </ClCompile>
-    <ClCompile Include="global.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\process\handleProcessAndModule.cpp">
+      <Filter>src\process</Filter>
     </ClCompile>
-    <ClCompile Include="handleProcessAndModule.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\ui\messageCallback.cpp">
+      <Filter>src\ui</Filter>
     </ClCompile>
-    <ClCompile Include="messageCallback.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\app\PEViewer.cpp">
+      <Filter>src\app</Filter>
     </ClCompile>
-    <ClCompile Include="utility.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\pe\readPE.cpp">
+      <Filter>src\pe</Filter>
     </ClCompile>
-    <ClCompile Include="windowProc.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\common\utility.cpp">
+      <Filter>src\common</Filter>
     </ClCompile>
-    <ClCompile Include="readPE.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\ui\windowProc.cpp">
+      <Filter>src\ui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="handleProcessAndModule.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\common\global.h">
+      <Filter>src\common</Filter>
     </ClInclude>
-    <ClInclude Include="messageCallback.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\process\handleProcessAndModule.h">
+      <Filter>src\process</Filter>
     </ClInclude>
-    <ClInclude Include="utility.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\ui\messageCallback.h">
+      <Filter>src\ui</Filter>
     </ClInclude>
-    <ClInclude Include="structs.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\pe\readPE.h">
+      <Filter>src\pe</Filter>
     </ClInclude>
-    <ClInclude Include="global.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="resources\resource.h">
+      <Filter>resources</Filter>
     </ClInclude>
-    <ClInclude Include="windowProc.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\common\structs.h">
+      <Filter>src\common</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\common\utility.h">
+      <Filter>src\common</Filter>
     </ClInclude>
-    <ClInclude Include="readPE.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\ui\windowProc.h">
+      <Filter>src\ui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="resource.rc">
-      <Filter>Resource Files</Filter>
+    <ResourceCompile Include="resources\resource.rc">
+      <Filter>resources</Filter>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\bmp\7eviewer.bmp">
-      <Filter>Resource Files</Filter>
+      <Filter>resources\bmp</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="architecture.md">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="scripts\build.ps1">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="tests\README.md">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\portability-smoke.vcxproj">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\portability-smoke.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\pe32.h">
+      <Filter>tests\fixtures</Filter>
+    </None>
   </ItemGroup>
 </Project>
