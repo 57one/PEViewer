@@ -2,231 +2,148 @@
 
 #include "common/global.h"
 
-LPVOID pFileBuffer = NULL;
-PIMAGE_DOS_HEADER pDosHeader = NULL;                // dos头
-PIMAGE_NT_HEADERS pNTHeader = NULL;                 // NT头
-PIMAGE_FILE_HEADER pFileHeader = NULL;              // PE头
-PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = NULL;  // 32位 可选PE头
-PIMAGE_SECTION_HEADER pSectionHeader = NULL;        // 第一个节区头
-DWORD sizeOfDataDirectory = 0;
-PIMAGE_DATA_DIRECTORY pDataDirectory = NULL;
-TCHAR buffer[MAX_PATH] = {0};
-DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer) {
-  FILE* file = NULL;
-  DWORD fileSize = 0;
-  _tfopen_s(&file, lpszFile, TEXT("rb"));
-  if (!file) {
-#ifdef DEV
-    _tprintf(TEXT("cannot open file"));
-#endif  // DEV
-    return NULL;
-  }
-  // get size of file
-  fseek(file, 0, SEEK_END);
-  fileSize = ftell(file);
-  fseek(file, 0, SEEK_SET);
-  *pFileBuffer = malloc(fileSize);
-  if (!pFileBuffer) {
-#ifdef DEV
-    _tprintf(TEXT("malloc failed"));
-#endif  // DEV
-    fclose(file);
-    return NULL;
-  }
-  size_t n = fread(*pFileBuffer, fileSize, 1, file);
-  if (!n) {
-#ifdef DEV
-    _tprintf(TEXT("read data failed"));
-#endif  // DEV
-    free(*pFileBuffer);
-    fclose(file);
-    return NULL;
-  }
-  fclose(file);
-  return n;
-}
+#include <cstddef>
 
-DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva) {
-  PIMAGE_SECTION_HEADER originalSectionHeader = pSectionHeader;
-  //节区数
-  int sectionNums = pFileHeader->NumberOfSections;
-
-  //判断rva是否在 headers+节表处
-  if (dwRva < pOptionalHeader32->SizeOfHeaders) {
-    //不需要进行处理 没有拉伸 在文件和内存中都是一样的
-    return dwRva;
-  }
-  //计算相对偏移 dwRva 就是相对偏移了 va - pImageBuffer
-  //遍历节区表进行比较
-  for (int i = 0; i < sectionNums; i++) {
-    //此时name是正常的 没有占八位 可以直接输出
-    // NAME
-    // printf("%s\n",&(pSectionHeader->Name));
-    if (dwRva >= (DWORD)(pSectionHeader->VirtualAddress) &&
-        dwRva < (DWORD)(pSectionHeader->VirtualAddress) +
-                    (DWORD)(pSectionHeader->Misc.VirtualSize))
-      break;
-    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
-                                             IMAGE_SIZEOF_SECTION_HEADER);
-  }
-  //计算 RAW
-  DWORD RAW =
-      dwRva - pSectionHeader->VirtualAddress + pSectionHeader->PointerToRawData;
-  pSectionHeader = originalSectionHeader;
-  return RAW;
-}
-
-VOID initPE() {
-  pDosHeader = (PIMAGE_DOS_HEADER)pFileBuffer;
-  pNTHeader = (PIMAGE_NT_HEADERS)((DWORD_PTR)pFileBuffer + pDosHeader->e_lfanew);
-  pFileHeader = (PIMAGE_FILE_HEADER)(((DWORD_PTR)pNTHeader) + 4);
-  pOptionalHeader32 =
-      (PIMAGE_OPTIONAL_HEADER32)((DWORD_PTR)pFileHeader + IMAGE_SIZEOF_FILE_HEADER);
-  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
-  pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
-  sizeOfDataDirectory = pOptionalHeader32->NumberOfRvaAndSizes;
-  pDataDirectory = pOptionalHeader32->DataDirectory;
-}
-
-VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer) {
-  memset(buffer, 0, sizeof(buffer));
+VOID readDosHeader(HWND hwnd, const PEContext& context) {
+  if (!context.IsValid()) return;
   // set DosHeader Text
-  writeToText(hwnd, IDC_EDIT_MAGIC_NUMBER, TEXT("%04X"), pDosHeader->e_magic);
-  writeToText(hwnd, IDC_EDIT_BLP, TEXT("%04X"), pDosHeader->e_cblp);
-  writeToText(hwnd, IDC_EDIT_PAGES, TEXT("%04X"), pDosHeader->e_cp);
-  writeToText(hwnd, IDC_EDIT_RLC, TEXT("%04X"), pDosHeader->e_crlc);
-  writeToText(hwnd, IDC_EDIT_PARHDR, TEXT("%04X"), pDosHeader->e_cparhdr);
-  writeToText(hwnd, IDC_EDIT_MIN_ALLOC, TEXT("%04X"), pDosHeader->e_minalloc);
-  writeToText(hwnd, IDC_EDIT_MAX_ALLOC, TEXT("%04X"), pDosHeader->e_maxalloc);
-  writeToText(hwnd, IDC_EDIT_INIT_SS, TEXT("%04X"), pDosHeader->e_ss);
-  writeToText(hwnd, IDC_EDIT_INIT_SP, TEXT("%04X"), pDosHeader->e_sp);
-  writeToText(hwnd, IDC_EDIT_CHECKSUM, TEXT("%04X"), pDosHeader->e_csum);
-  writeToText(hwnd, IDC_EDIT_INIT_IP, TEXT("%04X"), pDosHeader->e_ip);
-  writeToText(hwnd, IDC_EDIT_INIT_CS, TEXT("%04X"), pDosHeader->e_cs);
-  writeToText(hwnd, IDC_EDIT_LFARLC, TEXT("%04X"), pDosHeader->e_lfarlc);
-  writeToText(hwnd, IDC_EDIT_OVNO, TEXT("%04X"), pDosHeader->e_ovno);
-  writeToText(hwnd, IDC_EDIT_OEM_ID, TEXT("%04X"), pDosHeader->e_oemid);
-  writeToText(hwnd, IDC_EDIT_OEM_INFO, TEXT("%04X"), pDosHeader->e_oeminfo);
-  writeToText(hwnd, IDC_EDIT_PE_ADDRESS, TEXT("%08X"), pDosHeader->e_lfanew);
+  writeToText(hwnd, IDC_EDIT_MAGIC_NUMBER, TEXT("%04X"), context.dosHeader->e_magic);
+  writeToText(hwnd, IDC_EDIT_BLP, TEXT("%04X"), context.dosHeader->e_cblp);
+  writeToText(hwnd, IDC_EDIT_PAGES, TEXT("%04X"), context.dosHeader->e_cp);
+  writeToText(hwnd, IDC_EDIT_RLC, TEXT("%04X"), context.dosHeader->e_crlc);
+  writeToText(hwnd, IDC_EDIT_PARHDR, TEXT("%04X"), context.dosHeader->e_cparhdr);
+  writeToText(hwnd, IDC_EDIT_MIN_ALLOC, TEXT("%04X"), context.dosHeader->e_minalloc);
+  writeToText(hwnd, IDC_EDIT_MAX_ALLOC, TEXT("%04X"), context.dosHeader->e_maxalloc);
+  writeToText(hwnd, IDC_EDIT_INIT_SS, TEXT("%04X"), context.dosHeader->e_ss);
+  writeToText(hwnd, IDC_EDIT_INIT_SP, TEXT("%04X"), context.dosHeader->e_sp);
+  writeToText(hwnd, IDC_EDIT_CHECKSUM, TEXT("%04X"), context.dosHeader->e_csum);
+  writeToText(hwnd, IDC_EDIT_INIT_IP, TEXT("%04X"), context.dosHeader->e_ip);
+  writeToText(hwnd, IDC_EDIT_INIT_CS, TEXT("%04X"), context.dosHeader->e_cs);
+  writeToText(hwnd, IDC_EDIT_LFARLC, TEXT("%04X"), context.dosHeader->e_lfarlc);
+  writeToText(hwnd, IDC_EDIT_OVNO, TEXT("%04X"), context.dosHeader->e_ovno);
+  writeToText(hwnd, IDC_EDIT_OEM_ID, TEXT("%04X"), context.dosHeader->e_oemid);
+  writeToText(hwnd, IDC_EDIT_OEM_INFO, TEXT("%04X"), context.dosHeader->e_oeminfo);
+  writeToText(hwnd, IDC_EDIT_PE_ADDRESS, TEXT("%08X"), context.dosHeader->e_lfanew);
 }
 
-VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer) {
-  memset(buffer, 0, sizeof(buffer));
+VOID readFileHeader(HWND hwnd, const PEContext& context) {
+  if (!context.IsValid()) return;
   // set FileHeader
-  writeToText(hwnd, IDC_EDIT_MACHINE, TEXT("%04X"), pFileHeader->Machine);
+  writeToText(hwnd, IDC_EDIT_MACHINE, TEXT("%04X"), context.fileHeader->Machine);
   writeToText(hwnd, IDC_EDIT_NUMBER_OF_SECTIONS, TEXT("%04X"),
-              pFileHeader->NumberOfSections);
+              context.fileHeader->NumberOfSections);
   writeToText(hwnd, IDC_EDIT_TIMEDATESTAMP, TEXT("%08X"),
-              pFileHeader->TimeDateStamp);
+              context.fileHeader->TimeDateStamp);
   writeToText(hwnd, IDC_EDIT_P_SYMTAB, TEXT("%08X"),
-              pFileHeader->PointerToSymbolTable);
+              context.fileHeader->PointerToSymbolTable);
   writeToText(hwnd, IDC_EDIT_NUMBER_OF_SYMBOL, TEXT("%08X"),
-              pFileHeader->NumberOfSymbols);
+              context.fileHeader->NumberOfSymbols);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_OPT_HEADER, TEXT("%04X"),
-              pFileHeader->SizeOfOptionalHeader);
+              context.fileHeader->SizeOfOptionalHeader);
   writeToText(hwnd, IDC_EDIT_CHARACTERISTICS, TEXT("%04X"),
-              pFileHeader->Characteristics);
+              context.fileHeader->Characteristics);
 }
 
-VOID readOptinalHeader32(HWND hwnd, LPVOID pFileBuffer) {
+VOID readOptinalHeader32(HWND hwnd, const PEContext& context) {
+  if (!context.optionalHeader32) return;
   // set OptinalHeader32
-  writeToText(hwnd, IDC_EDIT_MAGIC, TEXT("%04X"), pOptionalHeader32->Magic);
+  writeToText(hwnd, IDC_EDIT_MAGIC, TEXT("%04X"), context.optionalHeader32->Magic);
   writeToText(hwnd, IDC_EDIT_MAJ_LINK_VER, TEXT("%02X"),
-              pOptionalHeader32->MajorLinkerVersion);
+              context.optionalHeader32->MajorLinkerVersion);
   writeToText(hwnd, IDC_EDIT_MIN_LINK_VER, TEXT("%02X"),
-              pOptionalHeader32->MinorLinkerVersion);
+              context.optionalHeader32->MinorLinkerVersion);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_CODE, TEXT("%08X"),
-              pOptionalHeader32->SizeOfCode);
+              context.optionalHeader32->SizeOfCode);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_INIT_DATA, TEXT("%08X"),
-              pOptionalHeader32->SizeOfInitializedData);
+              context.optionalHeader32->SizeOfInitializedData);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_UNINIT_DATA, TEXT("%08X"),
-              pOptionalHeader32->SizeOfUninitializedData);
+              context.optionalHeader32->SizeOfUninitializedData);
 
   writeToText(hwnd, IDC_EDIT_ADDR_OF_ENTRY, TEXT("%08X"),
-              pOptionalHeader32->AddressOfEntryPoint);
+              context.optionalHeader32->AddressOfEntryPoint);
   writeToText(hwnd, IDC_EDIT_BASE_OF_CODE, TEXT("%08X"),
-              pOptionalHeader32->BaseOfCode);
+              context.optionalHeader32->BaseOfCode);
   writeToText(hwnd, IDC_EDIT_BASE_OF_DATA, TEXT("%08X"),
-              pOptionalHeader32->BaseOfData);
+              context.optionalHeader32->BaseOfData);
   writeToText(hwnd, IDC_EDIT_IMAGE_BASE, TEXT("%08X"),
-              pOptionalHeader32->ImageBase);
+              context.optionalHeader32->ImageBase);
   writeToText(hwnd, IDC_EDIT_SECTION_ALIGNMENT, TEXT("%08X"),
-              pOptionalHeader32->SectionAlignment);
+              context.optionalHeader32->SectionAlignment);
   writeToText(hwnd, IDC_EDIT_FILE_ALIGNMENT, TEXT("%08X"),
-              pOptionalHeader32->FileAlignment);
+              context.optionalHeader32->FileAlignment);
   writeToText(hwnd, IDC_EDIT_MAJ_OS_VER, TEXT("%04X"),
-              pOptionalHeader32->MajorOperatingSystemVersion);
+              context.optionalHeader32->MajorOperatingSystemVersion);
   writeToText(hwnd, IDC_EDIT_MIN_OS_VER, TEXT("%04X"),
-              pOptionalHeader32->MinorOperatingSystemVersion);
+              context.optionalHeader32->MinorOperatingSystemVersion);
   writeToText(hwnd, IDC_EDIT_MAJ_IMAGE_VER, TEXT("%04X"),
-              pOptionalHeader32->MajorImageVersion);
+              context.optionalHeader32->MajorImageVersion);
   writeToText(hwnd, IDC_EDIT_MIN_IMAGE_VER, TEXT("%04X"),
-              pOptionalHeader32->MinorImageVersion);
+              context.optionalHeader32->MinorImageVersion);
   writeToText(hwnd, IDC_EDIT_MAJ_SUBSTM_VER, TEXT("%04X"),
-              pOptionalHeader32->MajorSubsystemVersion);
+              context.optionalHeader32->MajorSubsystemVersion);
   writeToText(hwnd, IDC_EDIT_MIN_SUBSTM_VER, TEXT("%04X"),
-              pOptionalHeader32->MinorSubsystemVersion);
+              context.optionalHeader32->MinorSubsystemVersion);
   writeToText(hwnd, IDC_EDIT_WIN32_VER_VAL, TEXT("%08X"),
-              pOptionalHeader32->Win32VersionValue);
+              context.optionalHeader32->Win32VersionValue);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_IMAGE, TEXT("%08X"),
-              pOptionalHeader32->SizeOfImage);
+              context.optionalHeader32->SizeOfImage);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_HEADERS, TEXT("%08X"),
-              pOptionalHeader32->SizeOfHeaders);
+              context.optionalHeader32->SizeOfHeaders);
   writeToText(hwnd, IDC_EDIT_CHECKSUM, TEXT("%08X"),
-              pOptionalHeader32->CheckSum);
+              context.optionalHeader32->CheckSum);
   writeToText(hwnd, IDC_EDIT_SUB_STM, TEXT("%04X"),
-              pOptionalHeader32->Subsystem);
+              context.optionalHeader32->Subsystem);
   writeToText(hwnd, IDC_EDIT_DLL_CHARAC, TEXT("%04X"),
-              pOptionalHeader32->DllCharacteristics);
+              context.optionalHeader32->DllCharacteristics);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_REV, TEXT("%08X"),
-              pOptionalHeader32->SizeOfStackReserve);
+              context.optionalHeader32->SizeOfStackReserve);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_COMMIT, TEXT("%08X"),
-              pOptionalHeader32->SizeOfStackCommit);
+              context.optionalHeader32->SizeOfStackCommit);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_REV, TEXT("%08X"),
-              pOptionalHeader32->SizeOfHeapReserve);
+              context.optionalHeader32->SizeOfHeapReserve);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_COMMIT, TEXT("%08X"),
-              pOptionalHeader32->SizeOfHeapCommit);
+              context.optionalHeader32->SizeOfHeapCommit);
   writeToText(hwnd, IDC_EDIT_LOADER_FLAGS, TEXT("%08X"),
-              pOptionalHeader32->LoaderFlags);
+              context.optionalHeader32->LoaderFlags);
   writeToText(hwnd, IDC_EDIT_NUM_OF_RVA_SIZES, TEXT("%08X"),
-              pOptionalHeader32->NumberOfRvaAndSizes);
+              context.optionalHeader32->NumberOfRvaAndSizes);
 }
 
-VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer) {
+VOID readHeaderInfo(HWND hwnd, const PEContext& context) {
+  if (!context.optionalHeader32) return;
   // set HeaderInfo
   writeToText(hwnd, IDC_EDIT_HEADER_ADDR_OF_ENTRY, TEXT("%08X"),
-              pOptionalHeader32->AddressOfEntryPoint);
+              context.optionalHeader32->AddressOfEntryPoint);
   writeToText(hwnd, IDC_EDIT_HEADER_IMAGE_BASE, TEXT("%08X"),
-              pOptionalHeader32->ImageBase);
+              context.optionalHeader32->ImageBase);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE, TEXT("%08X"),
-              pOptionalHeader32->SizeOfImage);
+              context.optionalHeader32->SizeOfImage);
   writeToText(hwnd, IDC_EDIT_HEADER_BASE_OF_CODE, TEXT("%08X"),
-              pOptionalHeader32->BaseOfCode);
+              context.optionalHeader32->BaseOfCode);
   writeToText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, TEXT("%08X"),
-              pOptionalHeader32->BaseOfData);
+              context.optionalHeader32->BaseOfData);
   writeToText(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT, TEXT("%08X"),
-              pOptionalHeader32->SectionAlignment);
+              context.optionalHeader32->SectionAlignment);
   writeToText(hwnd, IDC_EDIT_HEADER_FILE_ALIGNMENT, TEXT("%08X"),
-              pOptionalHeader32->FileAlignment);
+              context.optionalHeader32->FileAlignment);
   writeToText(hwnd, IDC_EDIT_HEADER_MAGIC, TEXT("%04X"),
-              pOptionalHeader32->Magic);
+              context.optionalHeader32->Magic);
   writeToText(hwnd, IDC_EDIT_HEADER_SUB_STM, TEXT("%04X"),
-              pOptionalHeader32->Subsystem);
+              context.optionalHeader32->Subsystem);
   writeToText(hwnd, IDC_EDIT_HEADER_NUMBER_OF_SECTIONS, TEXT("%04X"),
-              pFileHeader->NumberOfSections);
+              context.fileHeader->NumberOfSections);
   writeToText(hwnd, IDC_EDIT_HEADER_TIMEDATESTAMP, TEXT("%08X"),
-              pFileHeader->TimeDateStamp);
+              context.fileHeader->TimeDateStamp);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_HEADERS, TEXT("%08X"),
-              pOptionalHeader32->SizeOfHeaders);
+              context.optionalHeader32->SizeOfHeaders);
   writeToText(hwnd, IDC_EDIT_HEADER_CHARACTERISTICS, TEXT("%04X"),
-              pFileHeader->Characteristics);
+              context.fileHeader->Characteristics);
   writeToText(hwnd, IDC_EDIT_HEADER_CHECKSUM, TEXT("%08X"),
-              pOptionalHeader32->CheckSum);
+              context.optionalHeader32->CheckSum);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_OPT_HEADER, TEXT("%04X"),
-              pFileHeader->SizeOfOptionalHeader);
+              context.fileHeader->SizeOfOptionalHeader);
   writeToText(hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES, TEXT("%08X"),
-              pOptionalHeader32->NumberOfRvaAndSizes);
+              context.optionalHeader32->NumberOfRvaAndSizes);
 }
 
 VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
@@ -268,84 +185,50 @@ VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
   ListView_SetItem(hListSection, &vitem);
 }
 
-VOID readSections(HWND hwnd, HWND hListSection) {
-  // number of sections
-  int sectionNums = pFileHeader->NumberOfSections;
-  SectionInfo sectionInfo;
-  TCHAR szSectionName[MAX_PATH] = TEXT("<unknown>");
-  COLORREF colorRef;
-  colorRef = colorWhite;
-  // colorRef = (count % 2 == 1) ? colorGrey : colorWhite;
-  for (int i = 0; i < sectionNums; i++) {
-    wsprintf(sectionInfo.szIndex, TEXT("%d"), i);
-    MultiByteToWideChar(CP_OEMCP, 0, (char*)(pSectionHeader->Name), -1,
-                        szSectionName, MAX_PATH + 1);
-    wsprintf(sectionInfo.szSectionName, TEXT("%s"), szSectionName);
-    wsprintf(sectionInfo.szVirtualSize, TEXT("%08X"), pSectionHeader->Misc);
-    wsprintf(sectionInfo.szVirtualOffset, TEXT("%08X"),
-             pSectionHeader->VirtualAddress);
-    wsprintf(sectionInfo.szRawSize, TEXT("%08X"),
-             pSectionHeader->SizeOfRawData);
-    wsprintf(sectionInfo.szRawOffset, TEXT("%08X"),
-             pSectionHeader->PointerToRawData);
-    wsprintf(sectionInfo.szCharacteristics, TEXT("%08X"),
-             pSectionHeader->Characteristics);
-    drawSections(hListSection, i, sectionInfo, colorRef);
-    pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
-                                             IMAGE_SIZEOF_SECTION_HEADER);
-  }
-  // restore pSectionHeader
-  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
-  pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
-}
-
-VOID readDirectory(HWND hwnd) {
-  // set Directory
-  for (int i = 0; i < sizeOfDataDirectory; i++) {
-    // printf("%x\n%x\n",pOptionalHeader->DataDirectory[i].VirtualAddress,pOptionalHeader->DataDirectory[i].VirtualAddress);
-    writeToText(hwnd, directoryRVAEditID[i], TEXT("%08X"),
-                pDataDirectory[i].VirtualAddress);
-    writeToText(hwnd, directorySizeEditID[i], TEXT("%08X"),
-                pDataDirectory[i].Size);
-    if (!pDataDirectory[i].VirtualAddress && !pDataDirectory[i].Size) {
-      EnableWindow(GetDlgItem(hwnd, directoryMoreInfoButtonID[i]), FALSE);
-      EnableWindow(GetDlgItem(hwnd, directoryHexButtonID[i]), FALSE);
-    }
+VOID readSections(HWND hwnd, HWND hListSection, const PEContext& context) {
+  if (!context.IsValid()) return;
+  for (WORD i = 0; i < context.sectionCount; ++i) {
+    const IMAGE_SECTION_HEADER* section = context.sectionHeaders + i;
+    SectionInfo info;
+    char name[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
+    memcpy(name, section->Name, IMAGE_SIZEOF_SHORT_NAME);
+    MultiByteToWideChar(CP_OEMCP, 0, name, -1, info.szSectionName, MAX_PATH);
+    wsprintf(info.szIndex, TEXT("%u"), i);
+    wsprintf(info.szVirtualSize, TEXT("%08X"), section->Misc.VirtualSize);
+    wsprintf(info.szVirtualOffset, TEXT("%08X"), section->VirtualAddress);
+    wsprintf(info.szRawSize, TEXT("%08X"), section->SizeOfRawData);
+    wsprintf(info.szRawOffset, TEXT("%08X"), section->PointerToRawData);
+    wsprintf(info.szCharacteristics, TEXT("%08X"), section->Characteristics);
+    drawSections(hListSection, i, info, colorWhite);
   }
 }
 
-VOID readSectionEdit(HWND hwnd, INT ID) {
-  // number of sections
-  int sectionNums = pFileHeader->NumberOfSections;
-  SectionInfo sectionInfo;
-  TCHAR szSectionName[MAX_PATH] = TEXT("<unknown>");
-  COLORREF colorRef;
-  colorRef = colorWhite;
-  // colorRef = (count % 2 == 1) ? colorGrey : colorWhite;
-  pSectionHeader = (PIMAGE_SECTION_HEADER)((DWORD_PTR)pSectionHeader +
-                                           IMAGE_SIZEOF_SECTION_HEADER * ID);
+VOID readDirectory(HWND hwnd, const PEContext& context) {
+  if (!context.IsValid()) return;
+  for (DWORD i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i) {
+    const IMAGE_DATA_DIRECTORY* entry =
+        i < context.directoryCount ? context.dataDirectories + i : NULL;
+    writeToText(hwnd, directoryRVAEditID[i], TEXT("%08X"), entry ? entry->VirtualAddress : 0);
+    writeToText(hwnd, directorySizeEditID[i], TEXT("%08X"), entry ? entry->Size : 0);
+    BOOL present = context.Directory(i) != NULL;
+    EnableWindow(GetDlgItem(hwnd, directoryMoreInfoButtonID[i]), present);
+    EnableWindow(GetDlgItem(hwnd, directoryHexButtonID[i]), present);
+  }
+}
 
-  MultiByteToWideChar(CP_OEMCP, 0, (char*)(pSectionHeader->Name), -1,
-                      szSectionName, MAX_PATH + 1);
-  SetWindowText(GetDlgItem(hwnd, IDC_EDIT_SECTION_NAME), szSectionName);
-  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_SIZE, TEXT("%08X"),
-              (pSectionHeader->Misc.VirtualSize));
-  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_SIZE, TEXT("%08X"),
-              pSectionHeader->Misc.VirtualSize);
-  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_OFFSET, TEXT("%08X"),
-              pSectionHeader->VirtualAddress);
-  writeToText(hwnd, IDC_EDIT_SECTION_RAW_SIZE, TEXT("%08X"),
-              pSectionHeader->SizeOfRawData);
-  writeToText(hwnd, IDC_EDIT_SECTION_RAW_OffSET, TEXT("%08X"),
-              pSectionHeader->PointerToRawData);
-  writeToText(hwnd, IDC_EDIT_SECTION_CHARACTERISTICS, TEXT("%08X"),
-              pSectionHeader->Characteristics);
-
-  // restore pSectionHeader
-  int sizeOfOptionalHeader = pFileHeader->SizeOfOptionalHeader;
-  pSectionHeader =
-      (PIMAGE_SECTION_HEADER)((DWORD_PTR)pOptionalHeader32 + sizeOfOptionalHeader);
+VOID readSectionEdit(HWND hwnd, INT ID, const PEContext& context) {
+  if (!context.IsValid() || ID < 0 || ID >= context.sectionCount) return;
+  const IMAGE_SECTION_HEADER* section = context.sectionHeaders + ID;
+  char name[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
+  TCHAR sectionName[MAX_PATH] = {};
+  memcpy(name, section->Name, IMAGE_SIZEOF_SHORT_NAME);
+  MultiByteToWideChar(CP_OEMCP, 0, name, -1, sectionName, MAX_PATH);
+  SetWindowText(GetDlgItem(hwnd, IDC_EDIT_SECTION_NAME), sectionName);
+  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_SIZE, TEXT("%08X"), section->Misc.VirtualSize);
+  writeToText(hwnd, IDC_EDIT_SECTION_VIRTUAL_OFFSET, TEXT("%08X"), section->VirtualAddress);
+  writeToText(hwnd, IDC_EDIT_SECTION_RAW_SIZE, TEXT("%08X"), section->SizeOfRawData);
+  writeToText(hwnd, IDC_EDIT_SECTION_RAW_OffSET, TEXT("%08X"), section->PointerToRawData);
+  writeToText(hwnd, IDC_EDIT_SECTION_CHARACTERISTICS, TEXT("%08X"), section->Characteristics);
 }
 
 VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
@@ -382,50 +265,27 @@ VOID drawDllImportDirectory(HWND hListImportDLL, int Row,
   ListView_SetItem(hListImportDLL, &vitem);
 }
 
-VOID readImportDirectory(HWND hwnd, HWND hListImportDLL) {
-  PIMAGE_DATA_DIRECTORY pImportDirectory = pDataDirectory + 1;
-  PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor = NULL;
-  ImportDescInfo importDescInfo;
-  TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
+VOID readImportDirectory(HWND hwnd, HWND hListImportDLL, const PEContext& context) {
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_IMPORT);
+  if (!directory) return;
+  const BYTE* descriptors = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!descriptors) return;
   DWORD row = 0;
-  COLORREF colorRef = colorWhite;
-  // 定位导入表
-  // 导入表描述符 IMAGE_IMPORT_DESCRIPTOR RVA->RAW
-  DWORD importDescriptorOffset =
-      rvaToFileOffset(pFileBuffer, pImportDirectory->VirtualAddress);
-  pImportDescriptor =
-      (PIMAGE_IMPORT_DESCRIPTOR)((DWORD_PTR)pFileBuffer + importDescriptorOffset);
-  while (TRUE) {
-    if (pImportDescriptor->OriginalFirstThunk == 0 &&
-        pImportDescriptor->FirstThunk == 0) {
-      break;
-    }
-
-    wsprintf(importDescInfo.szOriginalFirstThunk, TEXT("%08X"),
-             pImportDescriptor->OriginalFirstThunk);
-    wsprintf(importDescInfo.szTimeDateStamp, TEXT("%08X"),
-             pImportDescriptor->TimeDateStamp);
-    wsprintf(importDescInfo.szForwarderChain, TEXT("%08X"),
-             pImportDescriptor->ForwarderChain);
-    wsprintf(importDescInfo.szName, TEXT("%08X"), pImportDescriptor->Name);
-    wsprintf(importDescInfo.szFirstThunk, TEXT("%08X"),
-             pImportDescriptor->FirstThunk);
-    DWORD_PTR addressOfName = 0;
-    // dll name RVA->RAW
-    addressOfName = rvaToFileOffset(pFileBuffer, pImportDescriptor->Name);
-    addressOfName = (DWORD_PTR)pFileBuffer + addressOfName;
-    MultiByteToWideChar(CP_OEMCP, 0, (char*)(addressOfName), -1, szDllName,
-                        MAX_PATH + 1);
-    wsprintf(importDescInfo.szDllName, TEXT("%s"), szDllName);
-    drawDllImportDirectory(hListImportDLL, row, importDescInfo, colorRef);
-
-    pImportDescriptor += 1;
-    row += 1;
+  for (SIZE_T pos = 0; directory->Size - pos >= sizeof(IMAGE_IMPORT_DESCRIPTOR);
+       pos += sizeof(IMAGE_IMPORT_DESCRIPTOR)) {
+    const IMAGE_IMPORT_DESCRIPTOR* descriptor = (const IMAGE_IMPORT_DESCRIPTOR*)(descriptors + pos);
+    if (!descriptor->OriginalFirstThunk && !descriptor->FirstThunk) break;
+    const char* name = context.ReadString(descriptor->Name);
+    if (!name) return;
+    ImportDescInfo info;
+    MultiByteToWideChar(CP_OEMCP, 0, name, -1, info.szDllName, MAX_PATH);
+    wsprintf(info.szOriginalFirstThunk, TEXT("%08X"), descriptor->OriginalFirstThunk);
+    wsprintf(info.szTimeDateStamp, TEXT("%08X"), descriptor->TimeDateStamp);
+    wsprintf(info.szForwarderChain, TEXT("%08X"), descriptor->ForwarderChain);
+    wsprintf(info.szName, TEXT("%08X"), descriptor->Name);
+    wsprintf(info.szFirstThunk, TEXT("%08X"), descriptor->FirstThunk);
+    drawDllImportDirectory(hListImportDLL, row++, info, colorWhite);
   }
-
-  // here would be a bug and i dont know why
-  /*HWND hListIntThunk = GetDlgItem(hwnd, IDC_LIST_INT_THUNK);
-  readIntThunk(hwnd, hListIntThunk, pImportDescriptor - row);*/
 }
 
 VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
@@ -458,83 +318,61 @@ VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
   ListView_SetItem(hListIntThunk, &vitem);
 }
 
-VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk) {
+VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PEContext& context) {
   ListView_DeleteAllItems(hListIntThunk);
-  DWORD_PTR originalFirstThunk = 0;
-  DWORD rvaOriginalFirstThunk = 0;
-  DWORD thunkData = 0;
-  IntThunkInfo intThunkInfo;
-  TCHAR szAPIName[MAX_PATH] = TEXT("<unknown>");
-  DWORD row = 0;
-  COLORREF colorRef = colorWhite;
-
-  // get selected DLL's OriginalFirstThunk
-  DWORD dwRowId;
-  TCHAR szOriginalFirstThunk[0x20] = {0};
-  LV_ITEM lv;
-  memset(&lv, 0, sizeof(LV_ITEM));
-  dwRowId = SendMessage(hListImportDLL, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
-  if (dwRowId == -1) {
-    MessageBox(NULL, TEXT("Please select a DLL"), TEXT("Error"), MB_OK);
-    return;
+  if (!context.optionalHeader32) return;
+  int selected = ListView_GetNextItem(hListImportDLL, -1, LVNI_SELECTED);
+  if (selected < 0) return;
+  TCHAR value[32] = {};
+  ListView_GetItemText(hListImportDLL, selected, 1, value, 32);
+  DWORD thunkRva = _tcstoul(value, NULL, 16);
+  if (!thunkRva) {
+    ListView_GetItemText(hListImportDLL, selected, 5, value, 32);
+    thunkRva = _tcstoul(value, NULL, 16);
   }
-  // get OriginalFirstThunk
-  lv.iSubItem = 1;                    //要获取的列
-  lv.pszText = szOriginalFirstThunk;  //指定存储查询结果的缓冲区
-  lv.cchTextMax = 0x20;               //指定缓冲区大小
-  SendMessage(hListImportDLL, LVM_GETITEMTEXT, dwRowId, (LPARAM)&lv);
-  _stscanf_s(szOriginalFirstThunk, TEXT("%X"), &rvaOriginalFirstThunk);
+  if (!thunkRva) return;
 
-  originalFirstThunk = (DWORD_PTR)pFileBuffer +
-                       rvaToFileOffset(pFileBuffer, rvaOriginalFirstThunk);
-
-  // The current parser reads PE32 thunks regardless of the viewer platform.
-  while (TRUE) {
-    if (((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal == 0x00000000)
-      break;
-    //最高位为1 表示存放的是函数的导出序号
-    if (((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal &
-        0x80000000 == 0x80000000) {
-      thunkData = *((DWORD*)originalFirstThunk) & 0x7FFFFFFF;
+  for (DWORD row = 0;; ++row) {
+    ULONGLONG rva = (ULONGLONG)thunkRva + (ULONGLONG)row * sizeof(IMAGE_THUNK_DATA32);
+    if (rva > MAXDWORD) return;
+    const IMAGE_THUNK_DATA32* thunk =
+        (const IMAGE_THUNK_DATA32*)context.ReadRva((DWORD)rva, sizeof(IMAGE_THUNK_DATA32));
+    if (!thunk || !thunk->u1.Ordinal) return;
+    SIZE_T offset = 0;
+    if (!context.RvaToFileOffset((DWORD)rva, sizeof(*thunk), offset)) return;
+    IntThunkInfo info;
+    wsprintf(info.szThunkRVA, TEXT("%010X"), (DWORD)rva);
+    _stprintf_s(info.szThunkRAW, TEXT("%08IX"), offset);
+    wsprintf(info.szThunkValue, TEXT("%08X"), thunk->u1.Ordinal);
+    if (IMAGE_SNAP_BY_ORDINAL32(thunk->u1.Ordinal)) {
+      wsprintf(info.szAPIName, TEXT("Ordinal #%u"), IMAGE_ORDINAL32(thunk->u1.Ordinal));
+      wsprintf(info.szHint, TEXT("-"));
     } else {
-      thunkData =
-          ((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal & 0x7FFFFFFF;
-      // RVA->PRAW
-      DWORD_PTR addressOfImportName =
-          (DWORD_PTR)pFileBuffer + rvaToFileOffset(pFileBuffer, thunkData);
-
-      wsprintf(intThunkInfo.szThunkRVA, TEXT("%010X"),
-               rvaOriginalFirstThunk + 4 * row);
-      wsprintf(intThunkInfo.szThunkRAW, TEXT("%08X"),
-               rvaToFileOffset(pFileBuffer, rvaOriginalFirstThunk + 4 * row));
-      wsprintf(intThunkInfo.szThunkValue, TEXT("%08X"),
-               ((PIMAGE_THUNK_DATA32)originalFirstThunk)->u1.Ordinal);
-      wsprintf(intThunkInfo.szHint, TEXT("%04X"),
-                ((PIMAGE_IMPORT_BY_NAME)addressOfImportName)->Hint);
-      MultiByteToWideChar(CP_OEMCP, 0,
-                          (char*)((PIMAGE_IMPORT_BY_NAME)addressOfImportName)->Name, -1,
-                          szAPIName, MAX_PATH + 1);
-      wsprintf(intThunkInfo.szAPIName, TEXT("%s"), szAPIName);
-      drawIntThunk(hListIntThunk, row, intThunkInfo, colorRef);
+      DWORD nameRva = thunk->u1.AddressOfData;
+      const IMAGE_IMPORT_BY_NAME* imported =
+          (const IMAGE_IMPORT_BY_NAME*)context.ReadRva(nameRva, sizeof(WORD));
+      if (!imported || nameRva > MAXDWORD - offsetof(IMAGE_IMPORT_BY_NAME, Name)) return;
+      const char* name = context.ReadString(nameRva + (DWORD)offsetof(IMAGE_IMPORT_BY_NAME, Name));
+      if (!name) return;
+      MultiByteToWideChar(CP_OEMCP, 0, name, -1, info.szAPIName, MAX_PATH);
+      wsprintf(info.szHint, TEXT("%04X"), imported->Hint);
     }
-    originalFirstThunk += 4;
-    row += 1;
+    drawIntThunk(hListIntThunk, row, info, colorWhite);
   }
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
+  TCHAR buffer[MAX_PATH] = {};
   _stprintf_s(buffer, format, data);
   SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
 }
 
-VOID readExportDirectory(HWND hwnd) {
-  PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
-  // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
-  DWORD exportDirectoryOffset =
-      rvaToFileOffset(pFileBuffer, pDataDirectory->VirtualAddress);
-  //转换为内存中的偏移
-  pExportDirectory =
-      (PIMAGE_EXPORT_DIRECTORY)((DWORD_PTR)pFileBuffer + exportDirectoryOffset);
+VOID readExportDirectory(HWND hwnd, const PEContext& context) {
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
+  if (!directory) return;
+  const IMAGE_EXPORT_DIRECTORY* pExportDirectory =
+      (const IMAGE_EXPORT_DIRECTORY*)context.ReadRva(directory->VirtualAddress, sizeof(IMAGE_EXPORT_DIRECTORY));
+  if (!pExportDirectory) return;
 
   writeToText(hwnd, IDC_EDIT_EXPORT_DIRECTORY_CHARAC, TEXT("%08X"),
               pExportDirectory->Characteristics);
@@ -586,69 +424,49 @@ VOID drawExportFunc(HWND hListExportFunc, int Row,
   ListView_SetItem(hListExportFunc, &vitem);
 }
 
-VOID readExportFunc(HWND hwnd, HWND hListExportFunc) {
-  PIMAGE_EXPORT_DIRECTORY pExportDirectory = NULL;
-  std::map<WORD, WORD> funcIndexToNameIndex;
-  ExportFuncInfo exportFuncInfo;
-  TCHAR szFuncName[MAX_PATH] = TEXT("<unknown>");
+VOID readExportFunc(HWND hwnd, HWND hListExportFunc, const PEContext& context) {
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
+  if (!directory) return;
+  const IMAGE_EXPORT_DIRECTORY* exports =
+      (const IMAGE_EXPORT_DIRECTORY*)context.ReadRva(directory->VirtualAddress, sizeof(IMAGE_EXPORT_DIRECTORY));
+  if (!exports || exports->NumberOfFunctions > context.fileSize / sizeof(DWORD) ||
+      exports->NumberOfNames > context.fileSize / sizeof(DWORD)) return;
+  const DWORD* functions = (const DWORD*)context.ReadRva(
+      exports->AddressOfFunctions, (SIZE_T)exports->NumberOfFunctions * sizeof(DWORD));
+  if (!functions) return;
+  std::map<DWORD, DWORD> namesByFunction;
+  if (exports->NumberOfNames) {
+    const DWORD* names = (const DWORD*)context.ReadRva(
+        exports->AddressOfNames, (SIZE_T)exports->NumberOfNames * sizeof(DWORD));
+    const WORD* ordinals = (const WORD*)context.ReadRva(
+        exports->AddressOfNameOrdinals, (SIZE_T)exports->NumberOfNames * sizeof(WORD));
+    if (!names || !ordinals) return;
+    for (DWORD i = 0; i < exports->NumberOfNames; ++i) {
+      if (ordinals[i] >= exports->NumberOfFunctions) return;
+      namesByFunction.insert({ordinals[i], names[i]});
+    }
+  }
   DWORD row = 0;
-  COLORREF colorRef = colorWhite;
-
-  // 导出表 PIMAGE_EXPORT_DIRECTORY RVA->RAW
-  DWORD exportDirectoryOffset =
-      rvaToFileOffset(pFileBuffer, pDataDirectory->VirtualAddress);
-  //转换为内存中的偏移
-  pExportDirectory =
-      (PIMAGE_EXPORT_DIRECTORY)((DWORD_PTR)pFileBuffer + exportDirectoryOffset);
-
-  // iterate addressOfNameOrdinals to generate map between funcIndex and
-  // nameIndex
-  DWORD_PTR addressOfNameOrdinals =
-      rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfNameOrdinals);
-  addressOfNameOrdinals = (DWORD_PTR)pFileBuffer + addressOfNameOrdinals;
-
-  for (WORD i = 0; i < pExportDirectory->NumberOfNames; i++) {
-    funcIndexToNameIndex.insert({((WORD*)addressOfNameOrdinals)[i], i});
-  }
-
-  // iterate addressOfFunctions get function's ordinal without function name
-  DWORD_PTR addressOfFunctions =
-      rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfFunctions);
-  //转换为内存中的偏移
-  addressOfFunctions = (DWORD_PTR)pFileBuffer + addressOfFunctions;
-  for (WORD i = 0; i < pExportDirectory->NumberOfFunctions; i++) {
-    if (((DWORD*)addressOfFunctions)[i] != 0x0 &&
-        funcIndexToNameIndex.end() == funcIndexToNameIndex.find(i)) {
-      funcIndexToNameIndex.insert({i, -1});
-    }
-  }
-
-  DWORD_PTR addressOfNames =
-      rvaToFileOffset(pFileBuffer, pExportDirectory->AddressOfNames);
-  addressOfNames = (DWORD_PTR)pFileBuffer + addressOfNames;
-
-  for (auto it : funcIndexToNameIndex) {
-    if (it.second != -1) {
-      DWORD_PTR addressOfName = 0;
-      addressOfName =
-          (DWORD_PTR)pFileBuffer +
-          rvaToFileOffset(pFileBuffer, ((DWORD*)addressOfNames)[it.second]);
-      MultiByteToWideChar(CP_OEMCP, 0, (char*)(addressOfName), -1, szFuncName,
-                          MAX_PATH + 1);
-      wsprintf(exportFuncInfo.szFuncName, TEXT("%s"), szFuncName);
+  for (DWORD i = 0; i < exports->NumberOfFunctions; ++i) {
+    if (!functions[i]) continue;
+    ExportFuncInfo info;
+    auto name = namesByFunction.find(i);
+    if (name == namesByFunction.end()) {
+      wsprintf(info.szFuncName, TEXT("-"));
     } else {
-      wsprintf(exportFuncInfo.szFuncName, TEXT("-"));
+      const char* text = context.ReadString(name->second);
+      if (!text) return;
+      MultiByteToWideChar(CP_OEMCP, 0, text, -1, info.szFuncName, MAX_PATH);
     }
-    wsprintf(exportFuncInfo.szOrdinal, TEXT("%04X"), it.first);
-
-    wsprintf(exportFuncInfo.szFuncRVA, TEXT("%08X"),
-             ((DWORD*)addressOfFunctions)[it.first]);
-
-    DWORD funcRaw =
-        rvaToFileOffset(pFileBuffer, ((DWORD*)addressOfFunctions)[it.first]);
-    wsprintf(exportFuncInfo.szFuncRAW, TEXT("%08X"), funcRaw);
-    drawExportFunc(hListExportFunc, row, exportFuncInfo, colorRef);
-    row += 1;
+    if (i > MAXDWORD - exports->Base) return;
+    wsprintf(info.szOrdinal, TEXT("%04X"), exports->Base + i);
+    wsprintf(info.szFuncRVA, TEXT("%08X"), functions[i]);
+    SIZE_T offset = 0;
+    if (context.RvaToFileOffset(functions[i], 1, offset))
+      _stprintf_s(info.szFuncRAW, TEXT("%08IX"), offset);
+    else
+      wsprintf(info.szFuncRAW, TEXT("-"));
+    drawExportFunc(hListExportFunc, row++, info, colorWhite);
   }
 }
 
@@ -679,43 +497,30 @@ VOID drawBoundImportDirectory(HWND hBoundImport, int row,
   ListView_SetItem(hBoundImport, &vitem);
 }
 
-VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport) {
-  PIMAGE_DATA_DIRECTORY pBoundImportDirectory = pDataDirectory + 11;
-  PIMAGE_BOUND_IMPORT_DESCRIPTOR pBoundImportDescriptor = NULL;
-  BoundImportInfo boundImportInfo;
-  TCHAR szDllName[MAX_PATH] = TEXT("<unknown>");
+VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport, const PEContext& context) {
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
+  if (!directory) return;
+  const BYTE* data = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!data) return;
   DWORD row = 0;
-  COLORREF colorRef = colorWhite;
-
-  DWORD boundImportDescriptorOffset =
-      rvaToFileOffset(pFileBuffer, pBoundImportDirectory->VirtualAddress);
-  pBoundImportDescriptor =
-      (PIMAGE_BOUND_IMPORT_DESCRIPTOR)((DWORD_PTR)pFileBuffer +
-                                      boundImportDescriptorOffset);
-
-  PIMAGE_BOUND_IMPORT_DESCRIPTOR pFirstDescriptor = pBoundImportDescriptor;
-  while (TRUE) {
-    if (pBoundImportDescriptor->TimeDateStamp == 0 &&
-        pBoundImportDescriptor->OffsetModuleName == 0)
-      break;
-
-    MultiByteToWideChar(
-        CP_OEMCP, 0,
-        (char*)((DWORD_PTR)pFirstDescriptor + pBoundImportDescriptor->OffsetModuleName),
-        -1, szDllName, MAX_PATH + 1);
-
-    wsprintf(boundImportInfo.szDllName, TEXT("%s"), szDllName);
-    wsprintf(boundImportInfo.szTimeDateStamp, TEXT("%08X H"),
-             pBoundImportDescriptor->TimeDateStamp);
-    wsprintf(boundImportInfo.szOffsetModuleName, TEXT("%04X H"),
-             pBoundImportDescriptor->OffsetModuleName);
-    wsprintf(boundImportInfo.szNumberOfModuleForwarderRefs, TEXT("%04X H"),
-             pBoundImportDescriptor->NumberOfModuleForwarderRefs);
-    drawBoundImportDirectory(hBoundImport, row, boundImportInfo, colorRef);
-
-    pBoundImportDescriptor +=
-        pBoundImportDescriptor->NumberOfModuleForwarderRefs + 1; 
-    row += 1;
+  SIZE_T pos = 0;
+  while (directory->Size - pos >= sizeof(IMAGE_BOUND_IMPORT_DESCRIPTOR)) {
+    const IMAGE_BOUND_IMPORT_DESCRIPTOR* descriptor =
+        (const IMAGE_BOUND_IMPORT_DESCRIPTOR*)(data + pos);
+    if (!descriptor->TimeDateStamp && !descriptor->OffsetModuleName) return;
+    SIZE_T nameOffset = descriptor->OffsetModuleName;
+    if (nameOffset >= directory->Size ||
+        !memchr(data + nameOffset, 0, directory->Size - nameOffset)) return;
+    BoundImportInfo info;
+    MultiByteToWideChar(CP_OEMCP, 0, (const char*)(data + nameOffset), -1, info.szDllName, MAX_PATH);
+    wsprintf(info.szTimeDateStamp, TEXT("%08X H"), descriptor->TimeDateStamp);
+    wsprintf(info.szOffsetModuleName, TEXT("%04X H"), descriptor->OffsetModuleName);
+    wsprintf(info.szNumberOfModuleForwarderRefs, TEXT("%04X H"), descriptor->NumberOfModuleForwarderRefs);
+    drawBoundImportDirectory(hBoundImport, row++, info, colorWhite);
+    SIZE_T step = ((SIZE_T)descriptor->NumberOfModuleForwarderRefs + 1) *
+                 sizeof(IMAGE_BOUND_IMPORT_DESCRIPTOR);
+    if (step > directory->Size - pos) return;
+    pos += step;
   }
 }
 
@@ -761,35 +566,26 @@ VOID drawBoundImportDirectory(HWND hDebug, int row, DebugInfo& debugInfo,
   ListView_SetItem(hDebug, &vitem);
 }
 
-VOID readDebugDirectory(HWND hwnd, HWND hDebug) {
-  PIMAGE_DATA_DIRECTORY pDebugDirectoryEntry = pDataDirectory + 6;
-  PIMAGE_DEBUG_DIRECTORY pDebugDirectory = NULL;
-  DebugInfo debugInfo;
-  DWORD row = 0;
-  COLORREF colorRef = colorWhite;
-
-  DWORD debugDirectoryOffset =
-      rvaToFileOffset(pFileBuffer, pDebugDirectoryEntry->VirtualAddress);
-  pDebugDirectory =
-      (PIMAGE_DEBUG_DIRECTORY)((DWORD_PTR)pFileBuffer + debugDirectoryOffset);
-
-  WORD debugDirectorySize =
-      pDebugDirectoryEntry->Size / sizeof(IMAGE_DEBUG_DIRECTORY);
-  for (WORD i = 0; i < debugDirectorySize; i++) {
-    wsprintf(debugInfo.szCharacteristics, TEXT("%08X"), pDebugDirectory->Characteristics);
-    wsprintf(debugInfo.szTimeDateStamp, TEXT("%08X"), pDebugDirectory->TimeDateStamp);
-    wsprintf(debugInfo.szMajorVersion, TEXT("%04X"), pDebugDirectory->MajorVersion);
-    wsprintf(debugInfo.szMinorVersion, TEXT("%04X"), pDebugDirectory->MinorVersion);
-    wsprintf(debugInfo.szType, TEXT("%s(%X)"),
-             szDebugInfoType[pDebugDirectory->Type],
-             pDebugDirectory->Type);
-    wsprintf(debugInfo.szSizeOfData, TEXT("%08X"), pDebugDirectory->SizeOfData);
-    wsprintf(debugInfo.szAddressOfRawData, TEXT("%08X"), pDebugDirectory->AddressOfRawData);
-    wsprintf(debugInfo.szPointerToRawData, TEXT("%08X"), pDebugDirectory->PointerToRawData);
-
-    drawBoundImportDirectory(hDebug, row, debugInfo, colorRef);
-
-    pDebugDirectory += 1;
-    row += 1;
+VOID readDebugDirectory(HWND hwnd, HWND hDebug, const PEContext& context) {
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
+  if (!directory) return;
+  const IMAGE_DEBUG_DIRECTORY* entries =
+      (const IMAGE_DEBUG_DIRECTORY*)context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!entries) return;
+  SIZE_T count = directory->Size / sizeof(IMAGE_DEBUG_DIRECTORY);
+  for (SIZE_T i = 0; i < count; ++i) {
+    const IMAGE_DEBUG_DIRECTORY& entry = entries[i];
+    DebugInfo info;
+    wsprintf(info.szCharacteristics, TEXT("%08X"), entry.Characteristics);
+    wsprintf(info.szTimeDateStamp, TEXT("%08X"), entry.TimeDateStamp);
+    wsprintf(info.szMajorVersion, TEXT("%04X"), entry.MajorVersion);
+    wsprintf(info.szMinorVersion, TEXT("%04X"), entry.MinorVersion);
+    LPCTSTR typeName = entry.Type < 7 ? szDebugInfoType[entry.Type] :
+                       entry.Type == IMAGE_DEBUG_TYPE_BORLAND ? TEXT("BORLAND") : TEXT("UNKNOWN");
+    wsprintf(info.szType, TEXT("%s(%X)"), typeName, entry.Type);
+    wsprintf(info.szSizeOfData, TEXT("%08X"), entry.SizeOfData);
+    wsprintf(info.szAddressOfRawData, TEXT("%08X"), entry.AddressOfRawData);
+    wsprintf(info.szPointerToRawData, TEXT("%08X"), entry.PointerToRawData);
+    drawBoundImportDirectory(hDebug, (int)i, info, colorWhite);
   }
 }

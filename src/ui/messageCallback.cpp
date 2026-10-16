@@ -3,6 +3,9 @@
 #include <stdio.h>
 
 #include "windowProc.h"
+
+PEContext g_peContext;
+
 void onSize(HWND mainDialogHwnd, LPSIZE mainDialogSize, WPARAM wParam,
             LPARAM lParam) {
   switch (wParam) {
@@ -67,10 +70,19 @@ void onPeEditor(HWND hwnd) {
   if (GetOpenFileName(&ofn) == TRUE) {
     /*_tprintf(TEXT("%s\n"), szBuffer);*/
     // Display the Open dialog box.
-    readPeFile(szBuffer, &pFileBuffer);
-    initPE();
+    if (!g_peContext.LoadFile(szBuffer)) {
+      MessageBox(hwnd, g_peContext.errorMessage, TEXT("Cannot open PE file"), MB_OK | MB_ICONERROR);
+      return;
+    }
+    if (g_peContext.format != PEFormat::PE32) {
+      MessageBox(hwnd, TEXT("PE32+ was recognized, but its pages are not supported yet."),
+                 TEXT("Unsupported display format"), MB_OK | MB_ICONINFORMATION);
+      g_peContext.Reset();
+      return;
+    }
     DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_PE_EDITOR),
                    hwnd, PeEditorProc, (LPARAM)szBuffer);
+    g_peContext.Reset();
   }
 }
 
@@ -83,7 +95,7 @@ void onPeEditorInit(HWND hwnd, LPARAM lParam) {
   SetWindowText(hwnd, szTitle);
 
   // set text about dos header
-  readDosHeader(hwnd, pFileBuffer);
+  readDosHeader(hwnd, g_peContext);
 }
 
 void onFileHeader(HWND hwnd) {
@@ -94,7 +106,7 @@ void onFileHeader(HWND hwnd) {
 
 void onFileHeaderInit(HWND hwnd, LPARAM lParam) {
   // set text about file header
-  readFileHeader(hwnd, pFileBuffer);
+  readFileHeader(hwnd, g_peContext);
 }
 
 void onMachineType(HWND hwnd) {
@@ -259,7 +271,7 @@ void onOptinalHeader(HWND hwnd) {
 
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
   // set text about optinal header
-  readOptinalHeader32(hwnd, pFileBuffer);
+  readOptinalHeader32(hwnd, g_peContext);
 }
 
 void onMagicType(HWND hwnd) {
@@ -317,8 +329,8 @@ void checkHeader32Image(HWND hwnd) {
   GetWindowText(hsectionAlignment, szBuffer, 10);
   _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
   remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
-  sizeOfImage = sizeOfImage < pOptionalHeader32->SizeOfImage
-                    ? pOptionalHeader32->SizeOfImage
+  sizeOfImage = sizeOfImage < g_peContext.optionalHeader32->SizeOfImage
+                    ? g_peContext.optionalHeader32->SizeOfImage
                     : sizeOfImage - remainder;
   memset(szBuffer, 0, sizeof(szBuffer));
   wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
@@ -336,8 +348,8 @@ void checkHeaderInfo32Image(HWND hwnd) {
   GetWindowText(hsectionAlignment, szBuffer, 10);
   _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
   remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
-  sizeOfImage = sizeOfImage < pOptionalHeader32->SizeOfImage
-                    ? pOptionalHeader32->SizeOfImage
+  sizeOfImage = sizeOfImage < g_peContext.optionalHeader32->SizeOfImage
+                    ? g_peContext.optionalHeader32->SizeOfImage
                     : sizeOfImage - remainder;
   memset(szBuffer, 0, sizeof(szBuffer));
   wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
@@ -387,8 +399,8 @@ void checkHeader32Headers(HWND hwnd) {
   GetWindowText(hfileAlignment, szBuffer, 10);
   _stscanf_s(szBuffer, TEXT("%x"), &fileAlignment);
   remainder = fileAlignment == 0 ? 0 : sizeOfHeaders % fileAlignment;
-  sizeOfHeaders = sizeOfHeaders < pOptionalHeader32->SizeOfHeaders
-                      ? pOptionalHeader32->SizeOfHeaders
+  sizeOfHeaders = sizeOfHeaders < g_peContext.optionalHeader32->SizeOfHeaders
+                      ? g_peContext.optionalHeader32->SizeOfHeaders
                       : sizeOfHeaders - remainder;
   memset(szBuffer, 0, sizeof(szBuffer));
   wsprintf(szBuffer, TEXT("%08X"), sizeOfHeaders);
@@ -567,7 +579,7 @@ void onHeaderInfo(HWND hwnd) {
 
 void onHeaderInfoInit(HWND hwnd, LPARAM lParam) {
   // set text about [Header Info]
-  readHeaderInfo(hwnd, pFileBuffer);
+  readHeaderInfo(hwnd, g_peContext);
 }
 
 void onSection(HWND hwnd) {
@@ -628,7 +640,7 @@ VOID InitSectionListView(HWND hwnd) {
   lv.iSubItem = 6;
   ListView_InsertColumn(hListSections, 6, &lv);
 
-  readSections(hwnd, hListSections);
+  readSections(hwnd, hListSections, g_peContext);
 }
 
 void onSectionInit(HWND hwnd, LPARAM lParam) { InitSectionListView(hwnd); }
@@ -640,7 +652,7 @@ void onDirectory(HWND hwnd) {
 
 void onDirectoryInit(HWND hwnd, LPARAM lParam) {
   // set text about Directory
-  readDirectory(hwnd);
+  readDirectory(hwnd, g_peContext);
 }
 
 void onSectionEdit(HWND hwnd, LPARAM lParam) {
@@ -651,7 +663,7 @@ void onSectionEdit(HWND hwnd, LPARAM lParam) {
 
 void onSectionEditInit(HWND hwnd, LPARAM lParam) {
   LPNMITEMACTIVATE lpnmitem = (LPNMITEMACTIVATE)lParam;
-  readSectionEdit(hwnd, lpnmitem->iItem);
+  readSectionEdit(hwnd, lpnmitem->iItem, g_peContext);
 }
 
 void onSectionCharacteristics(HWND hwnd) {
@@ -776,7 +788,7 @@ VOID InitImportDirectory(HWND hwnd) {
   lv.iSubItem = 5;
   ListView_InsertColumn(hListImportDLL, 5, &lv);
 
-  readImportDirectory(hwnd, hListImportDLL);
+  readImportDirectory(hwnd, hListImportDLL, g_peContext);
 }
 
 VOID InitImportFunction(HWND hwnd) {
@@ -867,12 +879,12 @@ VOID InitExportFunction(HWND hwnd) {
   // ListView_InsertColumn(hListExportFunc, 1, &lv);
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
-  readExportFunc(hwnd, hListExportFunc);
+  readExportFunc(hwnd, hListExportFunc, g_peContext);
 }
 
 void onExportDirectoryInit(HWND hwnd) { 
     InitExportFunction(hwnd); 
-    readExportDirectory(hwnd);
+    readExportDirectory(hwnd, g_peContext);
 }
 
 VOID InitBoundImportDirectory(HWND hwnd) {
@@ -913,7 +925,7 @@ VOID InitBoundImportDirectory(HWND hwnd) {
   // ListView_InsertColumn(hBoundImport, 1, &lv);
   SendMessage(hBoundImport, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
-  readBoundImportDirectory(hwnd, hBoundImport);
+  readBoundImportDirectory(hwnd, hBoundImport, g_peContext);
 }
 
 void onBoundImportDirectoryInit(HWND hwnd) { InitBoundImportDirectory(hwnd); }
@@ -976,7 +988,7 @@ VOID InitDebugDirectory(HWND hwnd) {
   lv.iSubItem = 7;
   SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (LPARAM)&lv);
 
-  readDebugDirectory(hwnd, hDebug);
+  readDebugDirectory(hwnd, hDebug, g_peContext);
 }
 
 void onDebugDirectoryInit(HWND hwnd) { InitDebugDirectory(hwnd); }

@@ -9,6 +9,8 @@
 #include "resource.h"
 #include "common/utility.h"
 
+extern PEContext g_peContext;
+
 // WM_SIZE
 void onSize(HWND mainDialogHwnd, LPSIZE mainDialogSize, WPARAM wParam,
             LPARAM lParam);

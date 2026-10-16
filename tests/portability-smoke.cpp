@@ -12,6 +12,8 @@
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+void CheckPEContext(LPCTSTR filePath);
+
 namespace {
 void Check(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
@@ -105,9 +107,55 @@ void CheckPages() {
   Check(bitmap != NULL, "Bitmap resource is missing");
   DeleteObject(bitmap);
 }
+
+void CheckContextDirectoryReads() {
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  pe32_fixture::Fill(image.data());
+  PEContext context;
+  Check(context.Initialize(image.data(), image.size()), "Directory test context setup failed");
+
+  // Page rendering must use the explicitly supplied context, not the active file.
+  auto descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(image.data() + 0x400);
+  descriptor->OriginalFirstThunk = 0;
+  *(DWORD*)(image.data() + 0x460) = IMAGE_ORDINAL_FLAG32 | 42;
+  Dialog imports(IDD_DIALOG_IMPORT_DIRECTORY, ImportDirectoryProc);
+  HWND dlls = GetDlgItem(imports.hwnd, IDC_LIST_IMPORT_DLL);
+  HWND thunks = GetDlgItem(imports.hwnd, IDC_LIST_INT_THUNK);
+  ListView_DeleteAllItems(dlls);
+  readImportDirectory(imports.hwnd, dlls, context);
+  ListView_SetItemState(dlls, 0, LVIS_SELECTED, LVIS_SELECTED);
+  readIntThunk(imports.hwnd, dlls, thunks, context);
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #42");
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 2, L"00000460");
+
+  auto exported = (PIMAGE_EXPORT_DIRECTORY)(image.data() + 0x300);
+  exported->NumberOfNames = 0;
+  exported->Base = 0x100;
+  Dialog exports(IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc);
+  HWND functions = GetDlgItem(exports.hwnd, IDC_LIST_EXPORT_FUNC);
+  ListView_DeleteAllItems(functions);
+  readExportFunc(exports.hwnd, functions, context);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 0, L"0100");
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 2, L"00000A00");
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, L"-");
+
+  ((PIMAGE_DEBUG_DIRECTORY)(image.data() + 0x600))->Type = IMAGE_DEBUG_TYPE_REPRO;
+  Dialog debug(IDD_DIALOG_DEBUG_DIRECTORY, DebugDirectoryProc);
+  HWND debugList = GetDlgItem(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY);
+  ListView_DeleteAllItems(debugList);
+  readDebugDirectory(debug.hwnd, debugList, context);
+  CheckList(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY, 4, L"UNKNOWN(10)");
+
+  auto nt = (PIMAGE_NT_HEADERS32)(image.data() + 0x80);
+  nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = MAXDWORD;
+  ListView_DeleteAllItems(dlls);
+  readImportDirectory(imports.hwnd, dlls, context);
+  Check(ListView_GetItemCount(dlls) == 0, "An invalid directory RVA was dereferenced");
+}
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+  std::setvbuf(stdout, NULL, _IONBF, 0);
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
   LPVOID allocatedBuffer = NULL;
   try {
@@ -121,10 +169,12 @@ int wmain(int argc, wchar_t** argv) {
     SIZE_T written = std::fwrite(fixture.data(), 1, fixture.size(), file);
     int closeResult = std::fclose(file);
     Check(written == fixture.size() && closeResult == 0, "Cannot write fixture file");
-    Check(readPeFile(argv[1], &pFileBuffer) != 0, "Production file reader failed");
-    Check(std::memcmp(pFileBuffer, fixture.data(), fixture.size()) == 0, "File bytes differ");
-    std::free(pFileBuffer);
-    pFileBuffer = NULL;
+    Check(g_peContext.LoadFile(argv[1]), "Production file reader failed");
+    Check(g_peContext.fileSize == fixture.size() &&
+          std::memcmp(g_peContext.fileBuffer, fixture.data(), fixture.size()) == 0,
+          "File bytes or length differ");
+    CheckPEContext(argv[1]);
+    g_peContext.Reset();
 
 #ifdef _WIN64
     allocatedBuffer = VirtualAlloc((LPVOID)0x0000000200000000ULL, fixture.size(),
@@ -136,24 +186,25 @@ int wmain(int argc, wchar_t** argv) {
     Check(allocatedBuffer != NULL, "Cannot allocate test buffer");
 #endif
     std::memcpy(allocatedBuffer, fixture.data(), fixture.size());
-    pFileBuffer = allocatedBuffer;
-    initPE();
-    Check(pDosHeader->e_magic == IMAGE_DOS_SIGNATURE, "DOS header pointer mismatch");
-    Check(pOptionalHeader32->ImageBase == pe32_fixture::kImageBase, "Optional header pointer mismatch");
-    Check(rvaToFileOffset(pFileBuffer, 0x80) == 0x80, "Header RVA conversion mismatch");
-    Check(rvaToFileOffset(pFileBuffer, pe32_fixture::kThunkRva) == pe32_fixture::kThunkRaw,
-          "Section RVA conversion mismatch");
+    Check(g_peContext.Initialize(allocatedBuffer, fixture.size()), "Borrowed buffer initialization failed");
+    Check(g_peContext.dosHeader->e_magic == IMAGE_DOS_SIGNATURE, "DOS header pointer mismatch");
+    Check(g_peContext.optionalHeader32->ImageBase == pe32_fixture::kImageBase, "Optional header pointer mismatch");
+    SIZE_T offset = 0;
+    Check(g_peContext.RvaToFileOffset(0x80, 1, offset) && offset == 0x80,
+          "Header RVA conversion mismatch");
+    Check(g_peContext.RvaToFileOffset(pe32_fixture::kThunkRva, 4, offset) &&
+          offset == pe32_fixture::kThunkRaw, "Section RVA conversion mismatch");
     CheckPages();
+    CheckContextDirectoryReads();
     std::printf("PASS: %s, PE32 reader, 10 dialogs, headers, sections, imports, exports, bound imports, debug, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
+    g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);
-    pFileBuffer = NULL;
     return 0;
   } catch (const std::exception& error) {
     std::fprintf(stderr, "FAIL: %s\n", error.what());
+    g_peContext.Reset();
     if (allocatedBuffer) VirtualFree(allocatedBuffer, 0, MEM_RELEASE);
-    else if (pFileBuffer) std::free(pFileBuffer);
-    pFileBuffer = NULL;
     return 1;
   }
 }

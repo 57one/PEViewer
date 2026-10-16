@@ -9,42 +9,32 @@
 
 #include "resource.h"
 #include "common/structs.h"
-extern LPVOID pFileBuffer;
-extern PIMAGE_DOS_HEADER pDosHeader;
-extern PIMAGE_NT_HEADERS pNTHeader;
-extern PIMAGE_FILE_HEADER pFileHeader;
-extern PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32;
+#include "PEContext.h"
 
-DWORD readPeFile(IN PTCHAR lpszFile, OUT LPVOID* pFileBuffer);
+VOID readDosHeader(HWND hwnd, const PEContext& context);
 
-DWORD rvaToFileOffset(IN LPVOID pFileBuffer, IN DWORD dwRva);
+VOID readFileHeader(HWND hwnd, const PEContext& context);
 
-VOID initPE();
+VOID readOptinalHeader32(HWND hwnd, const PEContext& context);
 
-VOID readDosHeader(HWND hwnd, LPVOID pFileBuffer);
+VOID readHeaderInfo(HWND hwnd, const PEContext& context);
 
-VOID readFileHeader(HWND hwnd, LPVOID pFileBuffer);
+VOID readSections(HWND hwnd, HWND hListSection, const PEContext& context);
 
-VOID readOptinalHeader32(HWND hwnd, LPVOID pFileBuffer);
+VOID readDirectory(HWND hwnd, const PEContext& context);
 
-VOID readHeaderInfo(HWND hwnd, LPVOID pFileBuffer);
+VOID readSectionEdit(HWND hwnd, INT ID, const PEContext& context);
 
-VOID readSections(HWND hwnd, HWND hListSection);
+VOID readImportDirectory(HWND hwnd, HWND hListImportDLL, const PEContext& context);
 
-VOID readDirectory(HWND hwnd);
-
-VOID readSectionEdit(HWND hwnd, INT ID);
-
-VOID readImportDirectory(HWND hwnd, HWND hListImportDLL);
-
-VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk);
+VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PEContext& context);
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
 
-VOID readExportDirectory(HWND hwnd);
+VOID readExportDirectory(HWND hwnd, const PEContext& context);
 
-VOID readExportFunc(HWND hwnd, HWND hListExportFunc);
+VOID readExportFunc(HWND hwnd, HWND hListExportFunc, const PEContext& context);
 
-VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport);
+VOID readBoundImportDirectory(HWND hwnd, HWND hBoundImport, const PEContext& context);
 
-VOID readDebugDirectory(HWND hwnd, HWND hDebug);
+VOID readDebugDirectory(HWND hwnd, HWND hDebug, const PEContext& context);

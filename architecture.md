@@ -1,6 +1,6 @@
 # PEViewer 架构与 PE32 / PE32+ 支持计划
 
-本文按当前工作区实现记录程序入口、数据流和类型约定，并列出支持 PE32、PE32+ 文件需要继续完成的工作。当前已完成查看器的 x86 / x64 指针与回调适配；文件解析仍按 PE32 布局实现。
+本文按当前工作区实现记录程序入口、数据流和类型约定，并列出支持 PE32、PE32+ 文件需要继续完成的工作。当前已完成查看器的 x86 / x64 指针与回调适配；已建立统一 PEContext，解析层支持 PE32 / PE32+ 头部识别；现有页面仍显示 PE32 文件。
 
 ## 入口与文件职责
 
@@ -11,7 +11,8 @@
 | [PEViewer.cpp](src/app/PEViewer.cpp) | `WinMain`、公共控件初始化、Common Controls manifest、主对话框入口。 |
 | [windowProc.cpp](src/ui/windowProc.cpp)、[windowProc.h](src/ui/windowProc.h) | 各对话框的消息回调，分派初始化、按钮点击和 ListView 通知。 |
 | [messageCallback.cpp](src/ui/messageCallback.cpp)、[messageCallback.h](src/ui/messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
-| [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 文件读入、PE 头定位、RVA 转文件偏移、字段和目录解析、结果填入控件。 |
+| [PEContext.cpp](src/pe/PEContext.cpp)、[PEContext.h](src/pe/PEContext.h) | 文件所有权、长度、格式、头部与节表校验，以及有边界检查的 RVA / 字符串访问；独立于界面。 |
+| [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 显式接收 `const PEContext&`，读取字段和目录并将结果填入控件。 |
 | [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
 | [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
 | [global.cpp](src/common/global.cpp)、[global.h](src/common/global.h)、[structs.h](src/common/structs.h) | 字段说明、控件 ID 对照、颜色以及列表行的显示数据。 |
@@ -40,6 +41,8 @@ PEViewer/
 │  │  ├─ messageCallback.cpp
 │  │  └─ messageCallback.h
 │  ├─ pe/
+│  │  ├─ PEContext.cpp
+│  │  ├─ PEContext.h
 │  │  ├─ readPE.cpp
 │  │  └─ readPE.h
 │  ├─ process/
@@ -62,8 +65,10 @@ PEViewer/
 │  ├─ README.md
 │  ├─ portability-smoke.vcxproj
 │  ├─ portability-smoke.cpp
+│  ├─ pe-context-tests.cpp
 │  └─ fixtures/
-│     └─ pe32.h                 # PE32 样本生成代码和预期值
+│     ├─ pe32.h                 # PE32 页面与解析样本
+│     └─ pe64.h                 # PE32+ 头部识别样本
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
@@ -99,10 +104,18 @@ PEViewer/
 | `resources` | 界面布局、资源 ID 和图片。 |
 | `scripts` / `tests` | 可复用构建、验证入口、样本生成和预期结果。 |
 
-- [ ] 在 PE32 / PE32+ 文件读取的第一阶段建立统一解析上下文，明确文件缓冲区的所有权、长度、格式和头部 / 目录信息；替代分散的可变全局解析状态。
+- [x] 已建立统一 `PEContext`，集中管理文件所有权、长度、格式和头部 / 目录信息；UI 持有当前文档上下文，读取函数显式接收上下文，原分散全局解析指针已移除。
 - [ ] 将 `readPE.cpp` 中的解析与显示逐步拆开。解析结果保留文件字段原值，UI 负责十六进制格式化和控件更新，避免从列表文字反查解析状态。
 - [ ] `global`、`structs`、`utility` 放入 `common` 是初次迁移时的归类。后续把控件 ID 对照、颜色、列表行显示结构和窗口布局辅助函数移入 `ui`；权限、进程架构和句柄辅助函数移入 `process`。
 - [ ] 根据功能规模将 `pe` 下的头部、导入、导出、调试等解析拆为独立文件。`pe`、`process` 和共用基础代码保持对界面模块的独立性，使验证程序能够直接调用解析与查询接口。
+
+## 统一解析上下文（已实现）
+
+`PEContext` 的接口位于 [PEContext.h](src/pe/PEContext.h)，不依赖窗口、资源 ID 或 ListView。`LoadFile()` 拥有并释放文件缓冲区；`Initialize()` 借用外部缓冲区，调用者需保证其有效期，并在释放外部内存前重置上下文。上下文禁止复制，`Reset()` 可重复调用；加载或解析失败会清空旧状态并保存错误说明。
+
+当前 UI 在模态查看窗口结束后重置上下文。所有字段和目录读取函数接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已有目录访问增加边界检查，并修正 PE32 序号导入 / 回退、无名导出的序号，以及未知调试类型的处理；完整的解析结果模型与界面解耦仍按后续计划推进。
+
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。PE32+ 页面和目录的完整测试仍待后续实现。
 
 ## 数据与页面
 
@@ -115,16 +128,16 @@ WinMain
 
 点击 PE Editor
   → onPeEditor → GetOpenFileName
-  → readPeFile → pFileBuffer（磁盘文件的原始字节）
-  → initPE → DOS / NT / File / Optional / Section Header 与 DataDirectory
+  → g_peContext.LoadFile → 文件读取、格式识别和头部校验
+  → PEContext → 文件缓冲区、长度、DOS / File / Optional / Section Header 与 DataDirectory
   → PeEditorProc
   → 文件头、可选头、汇总、节表、数据目录对话框
   → 导入表、导出表、绑定导入、调试目录及导入函数列表
 ```
 
-`readPeFile()` 将文件读入堆缓冲区。此缓冲区保留磁盘文件布局；节的数据仍位于 `PointerToRawData` 指定的位置。它没有被 Windows 加载器映射为可执行映像，所以 RVA 通常需要先转为文件偏移，才能加到缓冲区起点上。
+`PEContext::LoadFile()` 将文件读入其拥有的缓冲区，记录实际字节长度并校验头部。缓冲区保留磁盘文件布局，节的数据仍位于 `PointerToRawData` 指定的位置；RVA 需要转换为文件偏移。
 
-`initPE()` 当前把解析结果保存在全局指针中。它固定设置 `pOptionalHeader32`，并由该结构读取 `NumberOfRvaAndSizes` 和 `DataDirectory`。`readIntThunk()` 当前显式使用 `IMAGE_THUNK_DATA32`，每项前进 4 字节。这些布局假设是 PE32+ 支持的主要改造位置。
+`PEContext` 按 `Magic` 选择 `optionalHeader32` / `optionalHeader64`，记录目录数量和稳定的节表起点。`RvaToFileOffset()` 分开返回成功状态与偏移，`ReadRva()` / `ReadString()` 检查文件和节的原始数据边界。PE32+ 页面与 64 位 thunk 仍待实现，文件选择入口对此格式提示当前显示限制。
 
 界面包含编辑按钮和字段调整逻辑，但尚未形成完整的文件保存 / 写回流程。以下计划先以正确读取和显示为验收范围。
 
@@ -144,7 +157,7 @@ WinMain
 
 | 数据 | 类型与处理方式 |
 | --- | --- |
-| 本进程缓冲区地址、需要保存地址的整数 | 指针或 `DWORD_PTR`。地址运算使用 `(DWORD_PTR)pFileBuffer + fileOffset`，不得先存进 `DWORD`。 |
+| 本进程缓冲区地址、需要保存地址的整数 | 指针或 `DWORD_PTR`。地址运算使用 `context.fileBuffer + fileOffset`，不得先存进 `DWORD`。 |
 | 通过控件消息传递结构体指针 | `LPARAM`，例如 `(LPARAM)&lv`、`(LPARAM)&vitem`。 |
 | 对话框回调 | `INT_PTR CALLBACK`，声明与定义一致，直接传给 `DialogBox` / `DialogBoxParam`。 |
 | PE 的 RVA、32 位字段、导出函数 / 名称 RVA 数组 | `DWORD`，PE32+ 中这些字段也保持 32 位。 |
@@ -162,7 +175,7 @@ WinMain
 - `scripts/build.ps1` 支持 `x86`、`x64`、`Win32` 平台参数；`-All` 批量构建四组配置，`-Test` 编译并运行独立验证程序。VS 和脚本使用工程中的统一输出路径。
 - 中文源码与资源已使用 UTF-8 BOM；`resource.rc` 使用代码页 65001。修改时需要保留编码，避免再次把中文注释保存为 `U+FFFD` 替换字符。
 
-以上解决了双平台指针和调用签名问题，PE32+ 的可选头与导入 thunk 解析仍待实现。
+以上覆盖双平台指针、调用签名和解析上下文基础。PE32+ 头部识别已完成，可选头页面显示和 64 位 thunk 仍待实现。
 
 ## 后续工作：PE32 / PE32+ 文件读取
 
@@ -170,14 +183,14 @@ WinMain
 
 主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)。
 
-- [ ] 改善 `readPeFile()`：正确检查 `*pFileBuffer` 的分配结果，验证文件长度和实际读取字节数，失败时清空输出指针；打开失败后不要继续执行 `initPE()`。重新打开或关闭文件时释放旧缓冲区。
-- [ ] 在解析状态中明确记录文件长度、PE 格式、可选头 32 / 64 指针、节表、节数量和有效数据目录数量。可逐步将分散的全局指针收拢为一个解析上下文，供读取函数使用。
-- [ ] 验证 DOS 签名、非负且在文件范围内的 `e_lfanew`、NT 签名、File Header、Optional Header 和整个节表的可读范围；检查偏移加法、数量乘法是否溢出。
-- [ ] 读取 `Magic` 后选择 `IMAGE_OPTIONAL_HEADER32` 或 `IMAGE_OPTIONAL_HEADER64`。不支持的格式明确报错；节表位置使用 File Header 的 `SizeOfOptionalHeader`。
-- [ ] 从对应可选头取得数据目录；结合 `SizeOfOptionalHeader`、`NumberOfRvaAndSizes` 和文件边界验证，避免读越界或超过当前 UI 支持的 16 项。
-- [ ] 改造 `rvaToFileOffset()`，将成功 / 失败与偏移结果分开。头部 RVA、找不到所属节、节的虚拟零填充尾部、缺失原始数据、越界字符串都要有明确处理；遍历使用局部节指针，避免临时移动全局 `pSectionHeader`。
+- [x] `PEContext::LoadFile()` 使用 64 位文件长度接口，检查分配和实际读取字节数；失败清空状态，UI 停止打开页面。重载、关闭和析构统一释放拥有的缓冲区。
+- [x] 统一解析上下文记录文件长度、格式、32 / 64 位可选头、节表、节数量和有效数据目录数量；移除分散的全局解析指针。
+- [x] 校验 DOS / NT 签名、非负且有效的 `e_lfanew`、文件头、可选头、节表和 `SizeOfHeaders`；使用减法 / 除法检查访问范围，避免数量与偏移溢出。
+- [x] 按 `Magic` 选择 `IMAGE_OPTIONAL_HEADER32/64`，未知格式返回错误；节表位置使用 `SizeOfOptionalHeader`。
+- [x] 从对应可选头取得目录，验证声明数量和可选头容量；最多提供 16 项，缺失目录的控件清零并禁用。
+- [x] `PEContext::RvaToFileOffset()` 分开返回成功状态与偏移；拒绝无所属节、虚拟零填充、缺失原始数据与越界访问。字符串搜索有范围限制，节遍历使用局部指针。
 
-阶段验收：x86、x64 查看器均能正确识别两种格式，定位 File Header、节表和数据目录；空文件、截断头部和非法偏移得到错误提示。
+阶段验收：x86、x64 构建中的解析层均能识别两种格式并定位头部、节表和目录；非法头部返回失败并清空上下文。PE32+ 的页面显示由下一阶段实现。
 
 ### 2. 可选头、汇总页面与 64 位字段显示
 
@@ -186,7 +199,7 @@ WinMain
 - [ ] 让 `readOptinalHeader32()`、`readHeaderInfo()` 及调用它们的页面按解析格式选择字段来源。公共字段可使用统一读取函数；`BaseOfData` 只在 PE32 中显示。
 - [ ] 保留 `writeToText()` 的 32 位字段通路，另增接收 `ULONGLONG` 的 64 位显示通路，并同步头文件声明。格式与参数类型配套，例如 64 位十六进制采用 `%016I64X`；不要把参数统一加宽后继续使用 `%X`。
 - [ ] PE32+ 的 `ImageBase`、`SizeOfStackReserve/Commit`、`SizeOfHeapReserve/Commit` 全程保留 64 位值，包括控件输入、扫描和后续计算。
-- [ ] 检查控件宽度、输入限制、可选头标题和所有直接引用 `pOptionalHeader32` 的字段调整函数。共享的 `SizeOfImage`、对齐、RVA 等字段仍按规范保持 32 位。
+- [ ] 检查控件宽度、输入限制、可选头标题和所有直接引用 `optionalHeader32` 的字段调整函数。共享的 `SizeOfImage`、对齐、RVA 等字段仍按规范保持 32 位。
 
 阶段验收：两种查看器都能完整显示高于 4 GB 的 PE32+ 首选基址和 64 位字段；PE32 的原有显示正确。
 
@@ -195,9 +208,9 @@ WinMain
 主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)。
 
 - [ ] 导入 thunk 根据文件格式分别使用 `IMAGE_THUNK_DATA32/64`，步长为 4 / 8；显示值时保留对应宽度。
-- [ ] 使用 `IMAGE_ORDINAL_FLAG32/64`，将判定写为 `(value & flag) != 0`。当前表达式 `value & 0x80000000 == 0x80000000` 存在优先级问题，需要一起修正。
-- [ ] 支持名称导入和序号导入；`OriginalFirstThunk` 为零时按未绑定文件的有效信息处理 `FirstThunk` 回退；缺失或无法解释的数据明确提示。循环、名称字符串和终止项必须位于可读范围内。
-- [ ] 导出表继续使用 32 位 RVA 数组和 16 位名称序号索引；修正无名导出的索引 / 哨兵处理，导出序号使用 `Base + functionIndex`，识别转发导出，并检查所有数组和字符串边界。
+- [ ] PE32 已使用 `IMAGE_SNAP_BY_ORDINAL32` 修正序号判定；接入 PE32+ thunk 时使用相应 64 位标志和字段宽度。
+- [ ] PE32 已支持名称 / 序号导入及有效 `FirstThunk` 回退；继续接入 PE32+。现有读取使用上下文检查范围，后续为绑定后地址、缺失终止项等情况提供具体错误提示。
+- [ ] 导出表已校验数组与字符串范围，修正无名导出和 `Base + functionIndex`；继续识别转发导出并提供具体错误提示。数组保持 32 位 RVA、16 位名称序号索引。
 - [ ] 复核节表、绑定导入和调试目录的范围与错误处理。它们的大部分字段布局在 PE32 / PE32+ 间共用，不能因为目标为 64 位就把所有字段加宽。
 - [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；TLS、Load Config 等结构具有需要区分的 32 / 64 位形式。
 
@@ -205,7 +218,7 @@ WinMain
 
 ### 4. 建立可重复的验收用例
 
-- [ ] 保存可重复生成的 PE32 和 PE32+ 样本、对应预期值及测试入口；临时 `obj` 文件夹内的验证程序不会随仓库提交，不能替代正式回归测试。
+- [ ] 已提交 PE32 页面样本、PE32+ 头部样本和上下文回归用例；继续补齐 PE32+ 目录样本及预期值。正式测试位于 `tests`，生成产物放入 `obj` / `bin`。
 - [ ] 四种“查看器位数 × 文件格式”组合都验证头部、首选基址、节表、目录定位、名称 / 序号导入、无名 / 转发导出和字段宽度。
 - [ ] x64 测试将文件缓冲区放在 4 GB 以上；x86 测试读取首选基址高于 4 GB 的 PE32+ 文件，分别检测本进程指针截断和文件字段截断。
 - [ ] 增加缺失目录、异常长度、截断 thunk、无终止符字符串等失败用例，确认错误路径不崩溃、不遗留悬空指针。
@@ -248,6 +261,7 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 已完成的验证：
 
+- 主程序和验证工程默认工具集已统一为 Visual Studio 2022 的 v143，SDK 保持 10.0.22621.0；`PEContext` 改造通过 Debug / Release × Win32 / x64 四组构建及回归。构建入口见 [tests/README.md](tests/README.md)。
 - x86、x64 的 Debug 和 Release 四组构建通过，`C4311/C4312/C4302` 指针转换相关警告为零；其他既有警告仍需按后续任务处理。
 - 四组配置均调用实际文件读取函数，使用合成 PE32 数据创建 10 个隐藏文件查看对话框，检查头部、节表、导入函数、导出、绑定导入和调试目录的列表及预期输出，并验证位图资源可加载。
 - x64 验证中的缓冲区位于 4 GB 以上，头部 / 节表指针、RVA 转换、目录列表名称和条目数正确；修改后的源码中文注释、编码与差异空白检查通过。

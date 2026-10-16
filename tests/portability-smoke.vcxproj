@@ -16,7 +16,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
     <UseDebugLibraries Condition="'$(Configuration)'!='Debug'">false</UseDebugLibraries>
-    <PlatformToolset Condition="'$(PlatformToolset)'==''">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)'==''">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -45,13 +45,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="portability-smoke.cpp" />
+    <ClCompile Include="pe-context-tests.cpp" />
     <ClCompile Include="..\src\common\global.cpp" />
     <ClCompile Include="..\src\common\utility.cpp" />
     <ClCompile Include="..\src\process\handleProcessAndModule.cpp" />
+    <ClCompile Include="..\src\pe\PEContext.cpp" />
     <ClCompile Include="..\src\pe\readPE.cpp" />
     <ClCompile Include="..\src\ui\messageCallback.cpp" />
     <ClCompile Include="..\src\ui\windowProc.cpp" />
     <ClInclude Include="fixtures\pe32.h" />
+    <ClInclude Include="fixtures\pe64.h" />
+    <ClInclude Include="..\src\pe\PEContext.h" />
     <ResourceCompile Include="..\resources\resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

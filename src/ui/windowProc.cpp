@@ -658,7 +658,7 @@ INT_PTR CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
       if (wParam == IDC_LIST_IMPORT_DLL && pNMHDR->code == NM_CLICK) {
         
         readIntThunk(hwnd, GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL),
-                     GetDlgItem(hwnd, IDC_LIST_INT_THUNK));
+                     GetDlgItem(hwnd, IDC_LIST_INT_THUNK), g_peContext);
       }
       return TRUE;
     }

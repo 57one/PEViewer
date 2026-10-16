@@ -51,6 +51,9 @@
     <ClCompile Include="src\app\PEViewer.cpp">
       <Filter>src\app</Filter>
     </ClCompile>
+    <ClCompile Include="src\pe\PEContext.cpp">
+      <Filter>src\pe</Filter>
+    </ClCompile>
     <ClCompile Include="src\pe\readPE.cpp">
       <Filter>src\pe</Filter>
     </ClCompile>
@@ -70,6 +73,9 @@
     </ClInclude>
     <ClInclude Include="src\ui\messageCallback.h">
       <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pe\PEContext.h">
+      <Filter>src\pe</Filter>
     </ClInclude>
     <ClInclude Include="src\pe\readPE.h">
       <Filter>src\pe</Filter>
@@ -112,6 +118,12 @@
     </None>
     <None Include="tests\portability-smoke.cpp">
       <Filter>tests</Filter>
+    </None>
+    <None Include="tests\pe-context-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\pe64.h">
+      <Filter>tests\fixtures</Filter>
     </None>
     <None Include="tests\fixtures\pe32.h">
       <Filter>tests\fixtures</Filter>
