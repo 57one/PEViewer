@@ -8,6 +8,10 @@ constexpr ULONGLONG kStackReserve = 0x0000000200000000ULL;
 constexpr ULONGLONG kStackCommit = 0x0000000100001000ULL;
 constexpr ULONGLONG kHeapReserve = 0x0000000300000000ULL;
 constexpr ULONGLONG kHeapCommit = 0x0000000100002000ULL;
+constexpr DWORD kThunkRva = 0x1280;
+constexpr DWORD kThunkRaw = 0x480;
+constexpr DWORD kIatRva = 0x12A0;
+constexpr DWORD kIatRaw = 0x4A0;
 
 inline void Fill(BYTE* data) {
   pe32_fixture::Fill(data);
@@ -40,5 +44,19 @@ inline void Fill(BYTE* data) {
   nt->OptionalHeader.NumberOfRvaAndSizes = IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
   std::memcpy(nt->OptionalHeader.DataDirectory, directories, sizeof(directories));
   *IMAGE_FIRST_SECTION(nt) = section;
+
+  // Use real 8-byte lookup/IAT entries: name, ordinal, name, terminator.
+  auto imports = (PIMAGE_IMPORT_DESCRIPTOR)(data + 0x400);
+  imports->OriginalFirstThunk = kThunkRva;
+  imports->FirstThunk = kIatRva;
+  std::memset(data + 0x450, 0, 0x20);
+  auto thunks = (PIMAGE_THUNK_DATA64)(data + kThunkRaw);
+  thunks[0].u1.AddressOfData = 0x1270;
+  thunks[1].u1.Ordinal = IMAGE_ORDINAL_FLAG64 | 42;
+  thunks[2].u1.AddressOfData = 0x12C0;
+  std::memcpy(data + kIatRaw, thunks, sizeof(IMAGE_THUNK_DATA64) * 4);
+  auto secondName = (PIMAGE_IMPORT_BY_NAME)(data + 0x4C0);
+  secondName->Hint = 0x5678;
+  std::memcpy(secondName->Name, "SecondFunc", 11);
 }
 }  // namespace pe64_fixture

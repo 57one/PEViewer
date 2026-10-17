@@ -303,6 +303,17 @@ INT_PTR CALLBACK OptionalHeader32Proc(HWND hwnd, UINT message, WPARAM wParam,
       return TRUE;
     }
     case WM_COMMAND: {
+      if (HIWORD(wParam) == EN_KILLFOCUS) {
+        switch (LOWORD(wParam)) {
+          case IDC_EDIT_IMAGE_BASE:
+          case IDC_EDIT_SIZE_OF_STACK_REV:
+          case IDC_EDIT_SIZE_OF_STACK_COMMIT:
+          case IDC_EDIT_SIZE_OF_HEAP_REV:
+          case IDC_EDIT_SIZE_OF_HEAP_COMMIT:
+            normalizeHeaderValue(hwnd, LOWORD(wParam), g_peContext);
+            return TRUE;
+        }
+      }
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_OPTIONAL_HEADER32_MAGIC: {
           onMagicType(hwnd);
@@ -464,6 +475,10 @@ INT_PTR CALLBACK HeaderInfoProc(HWND hwnd, UINT message, WPARAM wParam,
       return TRUE;
     }
     case WM_COMMAND: {
+      if (HIWORD(wParam) == EN_KILLFOCUS && LOWORD(wParam) == IDC_EDIT_HEADER_IMAGE_BASE) {
+        normalizeHeaderValue(hwnd, IDC_EDIT_HEADER_IMAGE_BASE, g_peContext);
+        return TRUE;
+      }
       switch (LOWORD(wParam)) {
         case IDC_BUTTON_HEADER_ENTRY: {
           return TRUE;

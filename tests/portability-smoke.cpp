@@ -57,12 +57,13 @@ void CheckText(HWND dialog, int controlId, const wchar_t* expected) {
   }
 }
 
-void CheckList(HWND dialog, int controlId, int column, const wchar_t* expected) {
+void CheckList(HWND dialog, int controlId, int column, const wchar_t* expected,
+               int row = 0, int count = 1) {
   HWND list = GetDlgItem(dialog, controlId);
   Check(list != NULL, "Expected list is missing");
-  Check(ListView_GetItemCount(list) == 1, "Expected exactly one list row");
+  Check(ListView_GetItemCount(list) == count, "Unexpected list row count");
   wchar_t actual[MAX_PATH] = {};
-  ListView_GetItemText(list, 0, column, actual, MAX_PATH);
+  ListView_GetItemText(list, row, column, actual, MAX_PATH);
   if (std::wcscmp(actual, expected) != 0) {
     std::fwprintf(stderr, L"List %d column %d: expected [%ls], got [%ls]\n", controlId, column, expected, actual);
     throw std::runtime_error("List value mismatch");
@@ -70,13 +71,18 @@ void CheckList(HWND dialog, int controlId, int column, const wchar_t* expected) 
 }
 
 void CheckPages() {
-  Dialog editor(IDD_DIALOG_PE_EDITOR, PeEditorProc, (LPARAM)L"synthetic-pe32.exe");
+  bool wide = g_peContext.format == PEFormat::PE32Plus;
+  Dialog editor(IDD_DIALOG_PE_EDITOR, PeEditorProc, (LPARAM)L"synthetic.exe");
+  wchar_t title[MAX_PATH] = {};
+  GetWindowText(editor.hwnd, title, MAX_PATH);
+  Check(std::wcsstr(title, wide ? L"[PE32+]" : L"[PE32]") != NULL,
+        "Editor title has the wrong file format");
   CheckText(editor.hwnd, IDC_EDIT_MAGIC_NUMBER, L"5A4D");
   Dialog fileHeader(IDD_DIALOG_IMAGE_FILE_HEADER, FileHeaderProc);
   CheckText(fileHeader.hwnd, IDC_EDIT_NUMBER_OF_SECTIONS, L"0001");
   Dialog optionalHeader(IDD_DIALOG_IMAGE_OPTIONAL_HEADER32, OptionalHeader32Proc);
-  CheckText(optionalHeader.hwnd, IDC_EDIT_MAGIC, L"010B");
-  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"00400000");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_MAGIC, wide ? L"020B" : L"010B");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, wide ? L"0000000140000000" : L"00400000");
   Dialog summary(IDD_DIALOG_HEADER_INFO, HeaderInfoProc);
   CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE, L"00002000");
   Dialog sections(IDD_DIALOG_SECTION, SectionProc);
@@ -94,8 +100,20 @@ void CheckPages() {
   // Dispatch the same notification as a user selecting an imported DLL.
   NMHDR notification = {dllList, IDC_LIST_IMPORT_DLL, NM_CLICK};
   SendMessage(imports.hwnd, WM_NOTIFY, IDC_LIST_IMPORT_DLL, (LPARAM)&notification);
-  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName);
-  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"1234");
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName, 0, wide ? 3 : 1);
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"1234", 0, wide ? 3 : 1);
+  if (wide) {
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 3, L"0000000000001270", 0, 3);
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #42", 1, 3);
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 3, L"800000000000002A", 1, 3);
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"SecondFunc", 2, 3);
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 2, L"00000490", 2, 3);
+    CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"5678", 2, 3);
+    HWND thunks = GetDlgItem(imports.hwnd, IDC_LIST_INT_THUNK);
+    Check(ListView_GetColumnWidth(thunks, 3) >=
+          ListView_GetStringWidth(thunks, L"800000000000002A"),
+          "The thunk value column clips 64-bit values");
+  }
   Dialog exports(IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc);
   CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, pe32_fixture::kExportName);
   Dialog boundImports(IDD_DIALOG_BOUND_IMPORT_DIRECTORY, BoundImportDirectoryProc);
@@ -154,6 +172,113 @@ void CheckContextDirectoryReads() {
   Check(ListView_GetItemCount(dlls) == 0, "An invalid directory RVA was dereferenced");
 }
 
+void CheckWideControl(HWND dialog, int controlId) {
+  HWND edit = GetDlgItem(dialog, controlId);
+  RECT client = {};
+  GetClientRect(edit, &client);
+  HDC dc = GetDC(edit);
+  HGDIOBJ previous = SelectObject(dc, (HFONT)SendMessage(edit, WM_GETFONT, 0, 0));
+  SIZE extent = {};
+  GetTextExtentPoint32(dc, L"FFFFFFFFFFFFFFFF", 16, &extent);
+  SelectObject(dc, previous);
+  ReleaseDC(edit, dc);
+  DWORD margins = (DWORD)SendMessage(edit, EM_GETMARGINS, 0, 0);
+  Check(client.right >= extent.cx + LOWORD(margins) + HIWORD(margins) + 2,
+        "A 64-bit field requires horizontal scrolling");
+}
+
+void CheckValueEditor(HWND dialog, int controlId, const PEContext& context) {
+  bool wide = context.format == PEFormat::PE32Plus;
+  wchar_t original[MAX_PATH] = {};
+  GetDlgItemText(dialog, controlId, original, MAX_PATH);
+  Check(SendDlgItemMessage(dialog, controlId, EM_GETLIMITTEXT, 0, 0) == (wide ? 18 : 10),
+        "Hex input limit does not match the file format");
+  HWND edit = GetDlgItem(dialog, controlId);
+  SendMessage(edit, EM_SETSEL, 0, -1);
+  SendMessage(edit, EM_REPLACESEL, FALSE, (LPARAM)(wide ? L"0xfedcba9876543210" : L"0xffffffff"));
+  if (&context == &g_peContext)
+    SendMessage(dialog, WM_COMMAND, MAKEWPARAM(controlId, EN_KILLFOCUS), (LPARAM)edit);
+  else
+    Check(normalizeHeaderValue(dialog, controlId, context), "Valid PE32 input was rejected");
+  CheckText(dialog, controlId, wide ? L"FEDCBA9876543210" : L"FFFFFFFF");
+  for (const wchar_t* invalid : {L"10000000000000000", L"-1", L"+1", L"12xyz", L"", L"0x"}) {
+    SetDlgItemText(dialog, controlId, invalid);
+    Check(!normalizeHeaderValue(dialog, controlId, context), "Invalid hex input was accepted");
+    CheckText(dialog, controlId, original);
+  }
+  if (!wide) {
+    SetDlgItemText(dialog, controlId, L"100000000");
+    Check(!normalizeHeaderValue(dialog, controlId, context), "A 32-bit input overflowed");
+    CheckText(dialog, controlId, original);
+  }
+  SetDlgItemText(dialog, controlId, L"  0x123  ");
+  Check(normalizeHeaderValue(dialog, controlId, context), "Whitespace/prefix parsing failed");
+  CheckText(dialog, controlId, wide ? L"0000000000000123" : L"00000123");
+  SetDlgItemText(dialog, controlId, original);
+}
+
+void CheckImportVariants(bool wide) {
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  if (wide) pe64_fixture::Fill(image.data());
+  else pe32_fixture::Fill(image.data());
+  PEContext context;
+  Check(context.Initialize(image.data(), image.size()), "Import context setup failed");
+  Dialog imports(IDD_DIALOG_IMPORT_DIRECTORY, ImportDirectoryProc);
+  HWND dlls = GetDlgItem(imports.hwnd, IDC_LIST_IMPORT_DLL);
+  HWND thunks = GetDlgItem(imports.hwnd, IDC_LIST_INT_THUNK);
+  auto descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(image.data() + 0x400);
+  auto render = [&]() {
+    ListView_DeleteAllItems(dlls);
+    readImportDirectory(imports.hwnd, dlls, context);
+    ListView_SetItemState(dlls, 0, LVIS_SELECTED, LVIS_SELECTED);
+    // Rendering must obtain the lookup RVA from the context, not display text.
+    ListView_SetItemText(dlls, 0, 1, const_cast<wchar_t*>(L"FFFFFFFF"));
+    readIntThunk(imports.hwnd, dlls, thunks, context);
+  };
+  auto put = [&](DWORD raw, ULONGLONG value) {
+    if (wide) std::memcpy(image.data() + raw, &value, sizeof(ULONGLONG));
+    else { DWORD narrow = (DWORD)value; std::memcpy(image.data() + raw, &narrow, sizeof(DWORD)); }
+  };
+  render();
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName, 0, wide ? 3 : 1);
+  descriptor->OriginalFirstThunk = 0;
+  descriptor->TimeDateStamp = 0xFFFFFFFF;
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "A bound IAT replaced the missing lookup table");
+  descriptor->TimeDateStamp = 0;
+  render();
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName, 0, wide ? 3 : 1);
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 2, wide ? L"000004A0" : L"00000460", 0, wide ? 3 : 1);
+  DWORD iatRaw = wide ? pe64_fixture::kIatRaw : 0x460;
+  DWORD stride = wide ? 8 : 4;
+  ULONGLONG flag = wide ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32;
+  put(iatRaw, flag | 0xFFFF);
+  put(iatRaw + stride, 0);
+  render();
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #65535");
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 3, wide ? L"800000000000FFFF" : L"8000FFFF");
+  put(iatRaw, flag | 0x10000 | 42);
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "Reserved ordinal bits were accepted");
+  put(iatRaw, wide ? 0x0000000100001270ULL : 0x76543210);
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "A bound address or truncated name RVA was accepted");
+  std::memset(image.data() + image.size() - 16, 'Z', 16);
+  put(iatRaw, 0x1FF0);
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "An unterminated import name was read");
+  descriptor->FirstThunk = wide ? 0x1FFC : 0x1FFE;
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "A truncated thunk was read");
+  descriptor->FirstThunk = 0x2000 - stride;
+  put((DWORD)image.size() - stride, flag | 42);
+  render();
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #42");
+  descriptor->FirstThunk = 0;
+  render();
+  Check(ListView_GetItemCount(thunks) == 0, "Missing import tables left stale rows");
+}
+
 void CheckHeaderPages(LPVOID buffer) {
   pe64_fixture::Fill((BYTE*)buffer);
   Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize),
@@ -188,6 +313,33 @@ void CheckHeaderPages(LPVOID buffer) {
           !IsWindowEnabled(GetDlgItem(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA)),
           "PE32+ BaseOfData controls must be disabled");
   };
+  checkPE64();
+  wchar_t title[MAX_PATH] = {};
+  GetWindowText(summary.hwnd, title, MAX_PATH);
+  Check(std::wcscmp(title, L"[Header Info - PE32+]") == 0, "Summary title is incorrect");
+  for (int id : {IDC_EDIT_IMAGE_BASE, IDC_EDIT_SIZE_OF_STACK_REV, IDC_EDIT_SIZE_OF_STACK_COMMIT,
+                 IDC_EDIT_SIZE_OF_HEAP_REV, IDC_EDIT_SIZE_OF_HEAP_COMMIT}) {
+    CheckWideControl(optionalHeader.hwnd, id);
+    CheckValueEditor(optionalHeader.hwnd, id, g_peContext);
+  }
+  CheckWideControl(summary.hwnd, IDC_EDIT_HEADER_IMAGE_BASE);
+  CheckValueEditor(summary.hwnd, IDC_EDIT_HEADER_IMAGE_BASE, g_peContext);
+  Check(g_peContext.optionalHeader64->ImageBase == pe64_fixture::kImageBase,
+        "Editing preview fields modified the file context");
+  SendMessage(optionalHeader.hwnd, WM_COMMAND, IDC_BUTTON_OPTIONAL_HEADER32_IMAGE_ADD, 0);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_IMAGE, L"00003000");
+  SendMessage(optionalHeader.hwnd, WM_COMMAND, IDC_BUTTON_OPTIONAL_HEADER32_HEADER_ADD, 0);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEADERS, L"00000400");
+  SendMessage(summary.hwnd, WM_COMMAND, IDC_BUTTON_HEADER_IMAGE_ADD, 0);
+  CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE, L"00003000");
+  SetDlgItemText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_IMAGE, L"FFFFFFFF");
+  SendMessage(optionalHeader.hwnd, WM_COMMAND, IDC_BUTTON_OPTIONAL_HEADER32_IMAGE_ADD, 0);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_IMAGE, L"FFFFF000");
+  SetDlgItemText(optionalHeader.hwnd, IDC_EDIT_SECTION_ALIGNMENT, L"0");
+  SendMessage(optionalHeader.hwnd, WM_COMMAND, IDC_BUTTON_OPTIONAL_HEADER32_SIZE_OF_IMAGE, 0);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_IMAGE, L"00002000");
+  readOptionalHeader(optionalHeader.hwnd, g_peContext);
+  readHeaderInfo(summary.hwnd, g_peContext);
   checkPE64();
 
   writeToText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, ~0ULL);
@@ -224,6 +376,8 @@ void CheckHeaderPages(LPVOID buffer) {
   Check(IsWindowEnabled(GetDlgItem(optionalHeader.hwnd, IDC_EDIT_BASE_OF_DATA)) &&
         IsWindowEnabled(GetDlgItem(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA)),
         "PE32 BaseOfData controls must be re-enabled");
+  CheckValueEditor(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, pe32);
+  CheckValueEditor(summary.hwnd, IDC_EDIT_HEADER_IMAGE_BASE, pe32);
 
   readOptionalHeader(optionalHeader.hwnd, g_peContext);
   readHeaderInfo(summary.hwnd, g_peContext);
@@ -274,7 +428,10 @@ int wmain(int argc, wchar_t** argv) {
     CheckPages();
     CheckContextDirectoryReads();
     CheckHeaderPages(allocatedBuffer);
-    std::printf("PASS: %s, PE32/PE32+ header pages, 64-bit fields, PE32 directory pages, bitmap\n",
+    CheckPages();
+    CheckImportVariants(false);
+    CheckImportVariants(true);
+    std::printf("PASS: %s, PE32/PE32+ pages, 64-bit input/layout, name/ordinal thunks, malformed imports, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

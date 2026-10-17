@@ -94,6 +94,18 @@ void CheckPEContext(LPCTSTR filePath) {
   Check(loaded.LoadFile(filePath) && loaded.fileSize == pe32_fixture::kFileSize,
         "File loading did not populate the context");
   Check(loaded.LoadFile(filePath), "Reloading the current document failed");
+  std::basic_string<TCHAR> path64(filePath);
+  path64 += TEXT(".pe64.exe");
+  FILE* file64 = NULL;
+  Check(_tfopen_s(&file64, path64.c_str(), TEXT("wb")) == 0,
+        "Cannot create the PE32+ disk fixture");
+  SIZE_T written64 = std::fwrite(image64.data(), 1, image64.size(), file64);
+  int closed64 = std::fclose(file64);
+  Check(written64 == image64.size() && closed64 == 0, "Cannot write the PE32+ disk fixture");
+  Check(loaded.LoadFile(path64.c_str()) && loaded.format == PEFormat::PE32Plus &&
+        loaded.optionalHeader64->ImageBase == pe64_fixture::kImageBase &&
+        loaded.optionalHeader64->SizeOfHeapReserve == pe64_fixture::kHeapReserve,
+        "PE32+ disk loading truncated a 64-bit field");
   Check(!loaded.LoadFile(TEXT("")) && !loaded.fileBuffer && !loaded.IsValid(),
         "A failed load retained the previous file");
   Check(!loaded.LoadFile(NULL), "A null file path was accepted");

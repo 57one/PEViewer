@@ -3,6 +3,7 @@
 #include "common/global.h"
 
 #include <cstddef>
+#include <climits>
 
 VOID readDosHeader(HWND hwnd, const PEContext& context) {
   if (!context.IsValid()) return;
@@ -156,11 +157,13 @@ VOID readOptionalHeader(HWND hwnd, const PEContext& context) {
 
 VOID readHeaderInfo(HWND hwnd, const PEContext& context) {
   if (context.format == PEFormat::PE32 && context.optionalHeader32) {
+    SetWindowText(hwnd, TEXT("[Header Info - PE32]"));
     readHeaderInfoFields(hwnd, context, *context.optionalHeader32);
     TCHAR baseOfData[9] = {};
     _stprintf_s(baseOfData, TEXT("%08X"), context.optionalHeader32->BaseOfData);
     writeText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, baseOfData);
   } else if (context.format == PEFormat::PE32Plus && context.optionalHeader64) {
+    SetWindowText(hwnd, TEXT("[Header Info - PE32+]"));
     readHeaderInfoFields(hwnd, context, *context.optionalHeader64);
     writeText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, NULL);
   }
@@ -338,37 +341,35 @@ VOID drawIntThunk(HWND hListIntThunk, int Row, IntThunkInfo& intThunkInfo,
   ListView_SetItem(hListIntThunk, &vitem);
 }
 
-VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PEContext& context) {
-  ListView_DeleteAllItems(hListIntThunk);
-  if (!context.optionalHeader32) return;
-  int selected = ListView_GetNextItem(hListImportDLL, -1, LVNI_SELECTED);
-  if (selected < 0) return;
-  TCHAR value[32] = {};
-  ListView_GetItemText(hListImportDLL, selected, 1, value, 32);
-  DWORD thunkRva = _tcstoul(value, NULL, 16);
-  if (!thunkRva) {
-    ListView_GetItemText(hListImportDLL, selected, 5, value, 32);
-    thunkRva = _tcstoul(value, NULL, 16);
-  }
-  if (!thunkRva) return;
-
-  for (DWORD row = 0;; ++row) {
-    ULONGLONG rva = (ULONGLONG)thunkRva + (ULONGLONG)row * sizeof(IMAGE_THUNK_DATA32);
+namespace {
+template <typename Thunk>
+VOID readImportThunks(HWND list, DWORD thunkRva, const PEContext& context) {
+  const ULONGLONG ordinalFlag = sizeof(Thunk) == sizeof(IMAGE_THUNK_DATA64)
+                                   ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32;
+  for (int row = 0; row < INT_MAX; ++row) {
+    ULONGLONG rva = (ULONGLONG)thunkRva + (ULONGLONG)row * sizeof(Thunk);
     if (rva > MAXDWORD) return;
-    const IMAGE_THUNK_DATA32* thunk =
-        (const IMAGE_THUNK_DATA32*)context.ReadRva((DWORD)rva, sizeof(IMAGE_THUNK_DATA32));
-    if (!thunk || !thunk->u1.Ordinal) return;
+    const BYTE* bytes = context.ReadRva((DWORD)rva, sizeof(Thunk));
+    if (!bytes) return;
+    Thunk thunk = {};
+    memcpy(&thunk, bytes, sizeof(thunk));
+    ULONGLONG value = thunk.u1.Ordinal;
+    if (!value) return;
     SIZE_T offset = 0;
-    if (!context.RvaToFileOffset((DWORD)rva, sizeof(*thunk), offset)) return;
+    if (!context.RvaToFileOffset((DWORD)rva, sizeof(thunk), offset)) return;
     IntThunkInfo info;
     wsprintf(info.szThunkRVA, TEXT("%010X"), (DWORD)rva);
     _stprintf_s(info.szThunkRAW, TEXT("%08IX"), offset);
-    wsprintf(info.szThunkValue, TEXT("%08X"), thunk->u1.Ordinal);
-    if (IMAGE_SNAP_BY_ORDINAL32(thunk->u1.Ordinal)) {
-      wsprintf(info.szAPIName, TEXT("Ordinal #%u"), IMAGE_ORDINAL32(thunk->u1.Ordinal));
+    _stprintf_s(info.szThunkValue, sizeof(Thunk) == 8 ? TEXT("%016I64X") : TEXT("%08I64X"), value);
+    if ((value & ordinalFlag) != 0) {
+      if ((value & ~(ordinalFlag | 0xFFFFULL)) != 0) return;
+      wsprintf(info.szAPIName, TEXT("Ordinal #%u"), (WORD)(value & 0xFFFF));
       wsprintf(info.szHint, TEXT("-"));
     } else {
-      DWORD nameRva = thunk->u1.AddressOfData;
+      // Name imports carry a 31-bit RVA even in a PE32+ lookup table.
+      // Reject bound addresses and reserved high bits before narrowing.
+      if (value > 0x7FFFFFFFULL) return;
+      DWORD nameRva = (DWORD)value;
       const IMAGE_IMPORT_BY_NAME* imported =
           (const IMAGE_IMPORT_BY_NAME*)context.ReadRva(nameRva, sizeof(WORD));
       if (!imported || nameRva > MAXDWORD - offsetof(IMAGE_IMPORT_BY_NAME, Name)) return;
@@ -377,8 +378,33 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PECo
       MultiByteToWideChar(CP_OEMCP, 0, name, -1, info.szAPIName, MAX_PATH);
       wsprintf(info.szHint, TEXT("%04X"), imported->Hint);
     }
-    drawIntThunk(hListIntThunk, row, info, colorWhite);
+    drawIntThunk(list, row, info, colorWhite);
   }
+}
+}  // namespace
+
+VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PEContext& context) {
+  ListView_DeleteAllItems(hListIntThunk);
+  if (!context.IsValid()) return;
+  int selected = ListView_GetNextItem(hListImportDLL, -1, LVNI_SELECTED);
+  const IMAGE_DATA_DIRECTORY* directory = context.Directory(IMAGE_DIRECTORY_ENTRY_IMPORT);
+  if (selected < 0 || !directory ||
+      (SIZE_T)selected >= directory->Size / sizeof(IMAGE_IMPORT_DESCRIPTOR)) return;
+  const BYTE* bytes = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!bytes) return;
+  const IMAGE_IMPORT_DESCRIPTOR* descriptor =
+      (const IMAGE_IMPORT_DESCRIPTOR*)(bytes + (SIZE_T)selected * sizeof(IMAGE_IMPORT_DESCRIPTOR));
+  // A bound IAT contains resolved addresses and cannot replace a missing lookup table.
+  if (!descriptor->OriginalFirstThunk && descriptor->TimeDateStamp) return;
+  DWORD thunkRva = descriptor->OriginalFirstThunk ? descriptor->OriginalFirstThunk
+                                                : descriptor->FirstThunk;
+  if (!thunkRva) return;
+  if (context.format == PEFormat::PE32Plus)
+    readImportThunks<IMAGE_THUNK_DATA64>(hListIntThunk, thunkRva, context);
+  else
+    readImportThunks<IMAGE_THUNK_DATA32>(hListIntThunk, thunkRva, context);
+  ListView_SetColumnWidth(hListIntThunk, 2, LVSCW_AUTOSIZE_USEHEADER);
+  ListView_SetColumnWidth(hListIntThunk, 3, LVSCW_AUTOSIZE_USEHEADER);
 }
 
 VOID writeText(HWND hwnd, INT controlId, LPCTSTR text) {
@@ -393,10 +419,12 @@ VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, DWORD data) {
+  SendDlgItemMessage(hwnd, TEXT_ID, EM_SETLIMITTEXT, 10, 0);
   writeToText(hwnd, TEXT_ID, TEXT("%08X"), data);
 }
 
 VOID writeToText(HWND hwnd, INT TEXT_ID, ULONGLONG data) {
+  SendDlgItemMessage(hwnd, TEXT_ID, EM_SETLIMITTEXT, 18, 0);
   TCHAR buffer[MAX_PATH] = {};
   _stprintf_s(buffer, TEXT("%016I64X"), data);
   SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);

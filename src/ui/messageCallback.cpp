@@ -1,6 +1,7 @@
 ﻿#include "messageCallback.h"
 
 #include <stdio.h>
+#include <cerrno>
 
 #include "windowProc.h"
 
@@ -74,12 +75,6 @@ void onPeEditor(HWND hwnd) {
       MessageBox(hwnd, g_peContext.errorMessage, TEXT("Cannot open PE file"), MB_OK | MB_ICONERROR);
       return;
     }
-    if (g_peContext.format != PEFormat::PE32) {
-      MessageBox(hwnd, TEXT("PE32+ was recognized, but its pages are not supported yet."),
-                 TEXT("Unsupported display format"), MB_OK | MB_ICONINFORMATION);
-      g_peContext.Reset();
-      return;
-    }
     DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_PE_EDITOR),
                    hwnd, PeEditorProc, (LPARAM)szBuffer);
     g_peContext.Reset();
@@ -88,10 +83,10 @@ void onPeEditor(HWND hwnd) {
 
 void onPeEditorInit(HWND hwnd, LPARAM lParam) {
   // dynamically change the title of dialogbox
-  TCHAR szTitle[MAX_PATH];
-  GetWindowText(hwnd, szTitle, sizeof(szTitle) / sizeof(*szTitle));
-  _tcscat_s(szTitle, TEXT(" -- "));
-  _tcscat_s(szTitle, (PTCHAR)lParam);
+  TCHAR szTitle[MAX_PATH * 10 + 64];
+  _sntprintf_s(szTitle, _TRUNCATE, TEXT("PE Editor [%s] -- %s"),
+               g_peContext.format == PEFormat::PE32Plus ? TEXT("PE32+") : TEXT("PE32"),
+               lParam ? (LPCTSTR)lParam : TEXT(""));
   SetWindowText(hwnd, szTitle);
 
   // set text about dos header
@@ -274,6 +269,82 @@ void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
   readOptionalHeader(hwnd, g_peContext);
 }
 
+namespace {
+BOOL readHexValue(HWND hwnd, INT controlId, ULONGLONG maximum, ULONGLONG& value) {
+  HWND edit = GetDlgItem(hwnd, controlId);
+  TCHAR text[64] = {};
+  int length = GetWindowTextLength(edit);
+  if (!edit || length <= 0 || length >= (int)_countof(text)) return FALSE;
+  GetWindowText(edit, text, _countof(text));
+  TCHAR* begin = text;
+  while (_istspace(*begin)) ++begin;
+  if (*begin == TEXT('-') || *begin == TEXT('+')) return FALSE;
+  errno = 0;
+  TCHAR* end = NULL;
+  ULONGLONG result = _tcstoui64(begin, &end, 16);
+  if (begin == end || errno == ERANGE || result > maximum) return FALSE;
+  while (_istspace(*end)) ++end;
+  if (*end) return FALSE;
+  value = result;
+  return TRUE;
+}
+
+template <typename Header>
+ULONGLONG originalHeaderValue(const Header& header, INT controlId) {
+  switch (controlId) {
+    case IDC_EDIT_IMAGE_BASE:
+    case IDC_EDIT_HEADER_IMAGE_BASE: return header.ImageBase;
+    case IDC_EDIT_SIZE_OF_STACK_REV: return header.SizeOfStackReserve;
+    case IDC_EDIT_SIZE_OF_STACK_COMMIT: return header.SizeOfStackCommit;
+    case IDC_EDIT_SIZE_OF_HEAP_REV: return header.SizeOfHeapReserve;
+    case IDC_EDIT_SIZE_OF_HEAP_COMMIT: return header.SizeOfHeapCommit;
+  }
+  return 0;
+}
+
+VOID adjustSizeField(HWND hwnd, INT sizeId, INT alignmentId, DWORD minimum, BOOL add) {
+  ULONGLONG size = 0, alignment = 0;
+  if (!readHexValue(hwnd, sizeId, MAXDWORD, size) ||
+      !readHexValue(hwnd, alignmentId, MAXDWORD, alignment) || !alignment) {
+    writeToText(hwnd, sizeId, minimum);
+    return;
+  }
+  size = size < minimum ? minimum : size - size % alignment;
+  if (add && size <= MAXDWORD - alignment) size += alignment;
+  writeToText(hwnd, sizeId, (DWORD)size);
+}
+
+VOID adjustImageSize(HWND hwnd, BOOL summary, BOOL add) {
+  if (!g_peContext.IsValid()) return;
+  DWORD minimum = g_peContext.optionalHeader64 ? g_peContext.optionalHeader64->SizeOfImage
+                                             : g_peContext.optionalHeader32->SizeOfImage;
+  adjustSizeField(hwnd, summary ? IDC_EDIT_HEADER_SIZE_OF_IMAGE : IDC_EDIT_SIZE_OF_IMAGE,
+                  summary ? IDC_EDIT_HEADER_SECTION_ALIGNMENT : IDC_EDIT_SECTION_ALIGNMENT,
+                  minimum, add);
+}
+}  // namespace
+
+BOOL normalizeHeaderValue(HWND hwnd, INT controlId, const PEContext& context) {
+  if (!context.IsValid()) return FALSE;
+  switch (controlId) {
+    case IDC_EDIT_IMAGE_BASE:
+    case IDC_EDIT_HEADER_IMAGE_BASE:
+    case IDC_EDIT_SIZE_OF_STACK_REV:
+    case IDC_EDIT_SIZE_OF_STACK_COMMIT:
+    case IDC_EDIT_SIZE_OF_HEAP_REV:
+    case IDC_EDIT_SIZE_OF_HEAP_COMMIT: break;
+    default: return FALSE;
+  }
+  BOOL wide = context.format == PEFormat::PE32Plus;
+  ULONGLONG value = 0;
+  BOOL valid = readHexValue(hwnd, controlId, wide ? ~0ULL : MAXDWORD, value);
+  if (!valid) value = wide ? originalHeaderValue(*context.optionalHeader64, controlId)
+                           : originalHeaderValue(*context.optionalHeader32, controlId);
+  if (wide) writeToText(hwnd, controlId, value);
+  else writeToText(hwnd, controlId, (DWORD)value);
+  return valid;
+}
+
 void onMagicType(HWND hwnd) {
   HWND hEditMagic = GetDlgItem(hwnd, IDC_EDIT_MAGIC);
   TCHAR szBuffer[8];
@@ -318,109 +389,24 @@ void onMagicTypeChange(HWND hwnd, HWND hCombo) {
   SetWindowText(hwnd, szTitle);
 }
 
-void checkHeader32Image(HWND hwnd) {
-  DWORD sizeOfImage, sectionAlignment, remainder;
-  HWND hEditHeader32Image, hsectionAlignment;
-  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_IMAGE);
-  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_SECTION_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Image, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
-  GetWindowText(hsectionAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
-  remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
-  sizeOfImage = sizeOfImage < g_peContext.optionalHeader32->SizeOfImage
-                    ? g_peContext.optionalHeader32->SizeOfImage
-                    : sizeOfImage - remainder;
-  memset(szBuffer, 0, sizeof(szBuffer));
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
-  SetWindowText(hEditHeader32Image, szBuffer);
-}
+void checkHeader32Image(HWND hwnd) { adjustImageSize(hwnd, FALSE, FALSE); }
 
-void checkHeaderInfo32Image(HWND hwnd) {
-  DWORD sizeOfImage, sectionAlignment, remainder;
-  HWND hEditHeader32Image, hsectionAlignment;
-  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE);
-  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Image, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
-  GetWindowText(hsectionAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
-  remainder = sectionAlignment == 0 ? 0 : sizeOfImage % sectionAlignment;
-  sizeOfImage = sizeOfImage < g_peContext.optionalHeader32->SizeOfImage
-                    ? g_peContext.optionalHeader32->SizeOfImage
-                    : sizeOfImage - remainder;
-  memset(szBuffer, 0, sizeof(szBuffer));
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
-  SetWindowText(hEditHeader32Image, szBuffer);
-}
+void checkHeaderInfo32Image(HWND hwnd) { adjustImageSize(hwnd, TRUE, FALSE); }
 
-void addHeader32Image(HWND hwnd) {
-  checkHeader32Image(hwnd);
-  DWORD sizeOfImage, sectionAlignment;
-  HWND hEditHeader32Image, hsectionAlignment;
-  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_IMAGE);
-  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_SECTION_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Image, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
-  GetWindowText(hsectionAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
-  sizeOfImage += sectionAlignment;
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
-  SetWindowText(hEditHeader32Image, szBuffer);
-}
+void addHeader32Image(HWND hwnd) { adjustImageSize(hwnd, FALSE, TRUE); }
 
-void addHeaderInfo32Image(HWND hwnd) {
-  checkHeaderInfo32Image(hwnd);
-  DWORD sizeOfImage, sectionAlignment;
-  HWND hEditHeader32Image, hsectionAlignment;
-  hEditHeader32Image = GetDlgItem(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE);
-  hsectionAlignment = GetDlgItem(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Image, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfImage);
-  GetWindowText(hsectionAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sectionAlignment);
-  sizeOfImage += sectionAlignment;
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfImage);
-  SetWindowText(hEditHeader32Image, szBuffer);
-}
+void addHeaderInfo32Image(HWND hwnd) { adjustImageSize(hwnd, TRUE, TRUE); }
 
 void checkHeader32Headers(HWND hwnd) {
-  DWORD sizeOfHeaders, fileAlignment, remainder;
-  HWND hEditHeader32Headers, hfileAlignment;
-  hEditHeader32Headers = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_HEADERS);
-  hfileAlignment = GetDlgItem(hwnd, IDC_EDIT_FILE_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Headers, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfHeaders);
-  GetWindowText(hfileAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &fileAlignment);
-  remainder = fileAlignment == 0 ? 0 : sizeOfHeaders % fileAlignment;
-  sizeOfHeaders = sizeOfHeaders < g_peContext.optionalHeader32->SizeOfHeaders
-                      ? g_peContext.optionalHeader32->SizeOfHeaders
-                      : sizeOfHeaders - remainder;
-  memset(szBuffer, 0, sizeof(szBuffer));
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfHeaders);
-  SetWindowText(hEditHeader32Headers, szBuffer);
+  if (!g_peContext.IsValid()) return;
+  adjustSizeField(hwnd, IDC_EDIT_SIZE_OF_HEADERS, IDC_EDIT_FILE_ALIGNMENT,
+                  g_peContext.sizeOfHeaders, FALSE);
 }
 
 void addHeader32Headers(HWND hwnd) {
-  checkHeader32Headers(hwnd);
-  DWORD sizeOfHeaders, fileAlignment, remainder;
-  HWND hEditHeader32Headers, hfileAlignment;
-  hEditHeader32Headers = GetDlgItem(hwnd, IDC_EDIT_SIZE_OF_HEADERS);
-  hfileAlignment = GetDlgItem(hwnd, IDC_EDIT_FILE_ALIGNMENT);
-  TCHAR szBuffer[10];
-  GetWindowText(hEditHeader32Headers, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &sizeOfHeaders);
-  GetWindowText(hfileAlignment, szBuffer, 10);
-  _stscanf_s(szBuffer, TEXT("%x"), &fileAlignment);
-  sizeOfHeaders += fileAlignment;
-  wsprintf(szBuffer, TEXT("%08X"), sizeOfHeaders);
-  SetWindowText(hEditHeader32Headers, szBuffer);
+  if (!g_peContext.IsValid()) return;
+  adjustSizeField(hwnd, IDC_EDIT_SIZE_OF_HEADERS, IDC_EDIT_FILE_ALIGNMENT,
+                  g_peContext.sizeOfHeaders, TRUE);
 }
 
 void checkHeader32CheckSum(HWND hwnd) {}

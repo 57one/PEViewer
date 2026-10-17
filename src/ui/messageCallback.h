@@ -68,6 +68,10 @@ void onOptinalHeader(HWND hwnd);
 // WM_INITDIALOG
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam);
 
+// Validate edited ImageBase/stack/heap hexadecimal values without changing the file.
+// Invalid input is restored to the original header value.
+BOOL normalizeHeaderValue(HWND hwnd, INT controlId, const PEContext& context);
+
 // WM_COMMAND IDC_BUTTON_OPTIONAL_HEADER32_MAGIC
 void onMagicType(HWND hwnd);
 
