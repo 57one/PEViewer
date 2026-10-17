@@ -271,7 +271,7 @@ void onOptinalHeader(HWND hwnd) {
 
 void onOptinalHeaderInit(HWND hwnd, LPARAM lParam) {
   // set text about optinal header
-  readOptinalHeader32(hwnd, g_peContext);
+  readOptionalHeader(hwnd, g_peContext);
 }
 
 void onMagicType(HWND hwnd) {

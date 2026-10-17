@@ -115,7 +115,7 @@ PEViewer/
 
 当前 UI 在模态查看窗口结束后重置上下文。所有字段和目录读取函数接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已有目录访问增加边界检查，并修正 PE32 序号导入 / 回退、无名导出的序号，以及未知调试类型的处理；完整的解析结果模型与界面解耦仍按后续计划推进。
 
-[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。PE32+ 页面和目录的完整测试仍待后续实现。
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。PE32+ 可选头与汇总页面已有回归，覆盖 64 位数值及格式切换；目录的完整测试仍待后续实现。
 
 ## 数据与页面
 
@@ -137,7 +137,7 @@ WinMain
 
 `PEContext::LoadFile()` 将文件读入其拥有的缓冲区，记录实际字节长度并校验头部。缓冲区保留磁盘文件布局，节的数据仍位于 `PointerToRawData` 指定的位置；RVA 需要转换为文件偏移。
 
-`PEContext` 按 `Magic` 选择 `optionalHeader32` / `optionalHeader64`，记录目录数量和稳定的节表起点。`RvaToFileOffset()` 分开返回成功状态与偏移，`ReadRva()` / `ReadString()` 检查文件和节的原始数据边界。PE32+ 页面与 64 位 thunk 仍待实现，文件选择入口对此格式提示当前显示限制。
+`PEContext` 按 `Magic` 选择 `optionalHeader32` / `optionalHeader64`，记录目录数量和稳定的节表起点。`RvaToFileOffset()` 分开返回成功状态与偏移，`ReadRva()` / `ReadString()` 检查文件和节的原始数据边界。可选头与汇总读取函数已支持 PE32+，64 位 thunk、页面字段调整及入口开放仍待实现，文件选择入口继续提示当前显示限制。
 
 界面包含编辑按钮和字段调整逻辑，但尚未形成完整的文件保存 / 写回流程。以下计划先以正确读取和显示为验收范围。
 
@@ -175,7 +175,7 @@ WinMain
 - `scripts/build.ps1` 支持 `x86`、`x64`、`Win32` 平台参数；`-All` 批量构建四组配置，`-Test` 编译并运行独立验证程序。VS 和脚本使用工程中的统一输出路径。
 - 中文源码与资源已使用 UTF-8 BOM；`resource.rc` 使用代码页 65001。修改时需要保留编码，避免再次把中文注释保存为 `U+FFFD` 替换字符。
 
-以上覆盖双平台指针、调用签名和解析上下文基础。PE32+ 头部识别已完成，可选头页面显示和 64 位 thunk 仍待实现。
+以上覆盖双平台指针、调用签名和解析上下文基础。PE32+ 头部识别、可选头及汇总字段显示已完成；正常入口开放、页面字段调整和 64 位 thunk 仍待实现。
 
 ## 后续工作：PE32 / PE32+ 文件读取
 
@@ -196,12 +196,12 @@ WinMain
 
 主要文件：[readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h)、[messageCallback.cpp](src/ui/messageCallback.cpp)、[windowProc.cpp](src/ui/windowProc.cpp)、[windowProc.h](src/ui/windowProc.h)、[resource.rc](resources/resource.rc)、[resource.h](resources/resource.h)。
 
-- [ ] 让 `readOptinalHeader32()`、`readHeaderInfo()` 及调用它们的页面按解析格式选择字段来源。公共字段可使用统一读取函数；`BaseOfData` 只在 PE32 中显示。
-- [ ] 保留 `writeToText()` 的 32 位字段通路，另增接收 `ULONGLONG` 的 64 位显示通路，并同步头文件声明。格式与参数类型配套，例如 64 位十六进制采用 `%016I64X`；不要把参数统一加宽后继续使用 `%X`。
-- [ ] PE32+ 的 `ImageBase`、`SizeOfStackReserve/Commit`、`SizeOfHeapReserve/Commit` 全程保留 64 位值，包括控件输入、扫描和后续计算。
+- [x] `readOptionalHeader()`（原 `readOptinalHeader32()`）、`readHeaderInfo()` 按解析格式选择字段来源，公共字段复用显示逻辑；PE32+ 的 `BaseOfData` 显示 `N/A` 并禁用，PE32 恢复原值和启用状态。可选头标题随格式更新。
+- [x] `writeToText()` 保留接收格式字符串的 32 位通路，并增加三参数的 `DWORD` / `ULONGLONG` 重载，分别默认显示 8 / 16 位十六进制。64 位格式固定使用 `%016I64X`，与参数类型配套；声明和调用已同步。
+- [ ] PE32+ 的 `ImageBase`、`SizeOfStackReserve/Commit`、`SizeOfHeapReserve/Commit` 的读取与显示已保留完整 64 位值；继续适配控件输入、扫描和后续计算。
 - [ ] 检查控件宽度、输入限制、可选头标题和所有直接引用 `optionalHeader32` 的字段调整函数。共享的 `SizeOfImage`、对齐、RVA 等字段仍按规范保持 32 位。
 
-阶段验收：两种查看器都能完整显示高于 4 GB 的 PE32+ 首选基址和 64 位字段；PE32 的原有显示正确。
+阶段验收：两种查看器都能完整显示高于 4 GB 的 PE32+ 首选基址和 64 位字段；PE32 的原有显示正确。当前已覆盖读取与控件文本回归，正常文件选择入口仍拦截 PE32+；控件布局、输入和字段调整适配完成后再开放入口。
 
 ### 3. 导入表与其他已实现的数据目录
 

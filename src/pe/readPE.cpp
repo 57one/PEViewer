@@ -44,106 +44,126 @@ VOID readFileHeader(HWND hwnd, const PEContext& context) {
               context.fileHeader->Characteristics);
 }
 
-VOID readOptinalHeader32(HWND hwnd, const PEContext& context) {
-  if (!context.optionalHeader32) return;
-  // set OptinalHeader32
-  writeToText(hwnd, IDC_EDIT_MAGIC, TEXT("%04X"), context.optionalHeader32->Magic);
+namespace {
+template <typename OptionalHeader>
+VOID readOptionalHeaderFields(HWND hwnd, const OptionalHeader& header) {
+  writeToText(hwnd, IDC_EDIT_MAGIC, TEXT("%04X"), header.Magic);
   writeToText(hwnd, IDC_EDIT_MAJ_LINK_VER, TEXT("%02X"),
-              context.optionalHeader32->MajorLinkerVersion);
+              header.MajorLinkerVersion);
   writeToText(hwnd, IDC_EDIT_MIN_LINK_VER, TEXT("%02X"),
-              context.optionalHeader32->MinorLinkerVersion);
+              header.MinorLinkerVersion);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_CODE, TEXT("%08X"),
-              context.optionalHeader32->SizeOfCode);
+              header.SizeOfCode);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_INIT_DATA, TEXT("%08X"),
-              context.optionalHeader32->SizeOfInitializedData);
+              header.SizeOfInitializedData);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_UNINIT_DATA, TEXT("%08X"),
-              context.optionalHeader32->SizeOfUninitializedData);
+              header.SizeOfUninitializedData);
 
   writeToText(hwnd, IDC_EDIT_ADDR_OF_ENTRY, TEXT("%08X"),
-              context.optionalHeader32->AddressOfEntryPoint);
+              header.AddressOfEntryPoint);
   writeToText(hwnd, IDC_EDIT_BASE_OF_CODE, TEXT("%08X"),
-              context.optionalHeader32->BaseOfCode);
-  writeToText(hwnd, IDC_EDIT_BASE_OF_DATA, TEXT("%08X"),
-              context.optionalHeader32->BaseOfData);
-  writeToText(hwnd, IDC_EDIT_IMAGE_BASE, TEXT("%08X"),
-              context.optionalHeader32->ImageBase);
+              header.BaseOfCode);
+  writeToText(hwnd, IDC_EDIT_IMAGE_BASE, header.ImageBase);
   writeToText(hwnd, IDC_EDIT_SECTION_ALIGNMENT, TEXT("%08X"),
-              context.optionalHeader32->SectionAlignment);
+              header.SectionAlignment);
   writeToText(hwnd, IDC_EDIT_FILE_ALIGNMENT, TEXT("%08X"),
-              context.optionalHeader32->FileAlignment);
+              header.FileAlignment);
   writeToText(hwnd, IDC_EDIT_MAJ_OS_VER, TEXT("%04X"),
-              context.optionalHeader32->MajorOperatingSystemVersion);
+              header.MajorOperatingSystemVersion);
   writeToText(hwnd, IDC_EDIT_MIN_OS_VER, TEXT("%04X"),
-              context.optionalHeader32->MinorOperatingSystemVersion);
+              header.MinorOperatingSystemVersion);
   writeToText(hwnd, IDC_EDIT_MAJ_IMAGE_VER, TEXT("%04X"),
-              context.optionalHeader32->MajorImageVersion);
+              header.MajorImageVersion);
   writeToText(hwnd, IDC_EDIT_MIN_IMAGE_VER, TEXT("%04X"),
-              context.optionalHeader32->MinorImageVersion);
+              header.MinorImageVersion);
   writeToText(hwnd, IDC_EDIT_MAJ_SUBSTM_VER, TEXT("%04X"),
-              context.optionalHeader32->MajorSubsystemVersion);
+              header.MajorSubsystemVersion);
   writeToText(hwnd, IDC_EDIT_MIN_SUBSTM_VER, TEXT("%04X"),
-              context.optionalHeader32->MinorSubsystemVersion);
+              header.MinorSubsystemVersion);
   writeToText(hwnd, IDC_EDIT_WIN32_VER_VAL, TEXT("%08X"),
-              context.optionalHeader32->Win32VersionValue);
+              header.Win32VersionValue);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_IMAGE, TEXT("%08X"),
-              context.optionalHeader32->SizeOfImage);
+              header.SizeOfImage);
   writeToText(hwnd, IDC_EDIT_SIZE_OF_HEADERS, TEXT("%08X"),
-              context.optionalHeader32->SizeOfHeaders);
+              header.SizeOfHeaders);
   writeToText(hwnd, IDC_EDIT_CHECKSUM, TEXT("%08X"),
-              context.optionalHeader32->CheckSum);
+              header.CheckSum);
   writeToText(hwnd, IDC_EDIT_SUB_STM, TEXT("%04X"),
-              context.optionalHeader32->Subsystem);
+              header.Subsystem);
   writeToText(hwnd, IDC_EDIT_DLL_CHARAC, TEXT("%04X"),
-              context.optionalHeader32->DllCharacteristics);
-  writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_REV, TEXT("%08X"),
-              context.optionalHeader32->SizeOfStackReserve);
-  writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_COMMIT, TEXT("%08X"),
-              context.optionalHeader32->SizeOfStackCommit);
-  writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_REV, TEXT("%08X"),
-              context.optionalHeader32->SizeOfHeapReserve);
-  writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_COMMIT, TEXT("%08X"),
-              context.optionalHeader32->SizeOfHeapCommit);
+              header.DllCharacteristics);
+  writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_REV, header.SizeOfStackReserve);
+  writeToText(hwnd, IDC_EDIT_SIZE_OF_STACK_COMMIT, header.SizeOfStackCommit);
+  writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_REV, header.SizeOfHeapReserve);
+  writeToText(hwnd, IDC_EDIT_SIZE_OF_HEAP_COMMIT, header.SizeOfHeapCommit);
   writeToText(hwnd, IDC_EDIT_LOADER_FLAGS, TEXT("%08X"),
-              context.optionalHeader32->LoaderFlags);
+              header.LoaderFlags);
   writeToText(hwnd, IDC_EDIT_NUM_OF_RVA_SIZES, TEXT("%08X"),
-              context.optionalHeader32->NumberOfRvaAndSizes);
+              header.NumberOfRvaAndSizes);
 }
 
-VOID readHeaderInfo(HWND hwnd, const PEContext& context) {
-  if (!context.optionalHeader32) return;
-  // set HeaderInfo
+template <typename OptionalHeader>
+VOID readHeaderInfoFields(HWND hwnd, const PEContext& context,
+                          const OptionalHeader& header) {
   writeToText(hwnd, IDC_EDIT_HEADER_ADDR_OF_ENTRY, TEXT("%08X"),
-              context.optionalHeader32->AddressOfEntryPoint);
-  writeToText(hwnd, IDC_EDIT_HEADER_IMAGE_BASE, TEXT("%08X"),
-              context.optionalHeader32->ImageBase);
+              header.AddressOfEntryPoint);
+  writeToText(hwnd, IDC_EDIT_HEADER_IMAGE_BASE, header.ImageBase);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE, TEXT("%08X"),
-              context.optionalHeader32->SizeOfImage);
+              header.SizeOfImage);
   writeToText(hwnd, IDC_EDIT_HEADER_BASE_OF_CODE, TEXT("%08X"),
-              context.optionalHeader32->BaseOfCode);
-  writeToText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, TEXT("%08X"),
-              context.optionalHeader32->BaseOfData);
+              header.BaseOfCode);
   writeToText(hwnd, IDC_EDIT_HEADER_SECTION_ALIGNMENT, TEXT("%08X"),
-              context.optionalHeader32->SectionAlignment);
+              header.SectionAlignment);
   writeToText(hwnd, IDC_EDIT_HEADER_FILE_ALIGNMENT, TEXT("%08X"),
-              context.optionalHeader32->FileAlignment);
+              header.FileAlignment);
   writeToText(hwnd, IDC_EDIT_HEADER_MAGIC, TEXT("%04X"),
-              context.optionalHeader32->Magic);
+              header.Magic);
   writeToText(hwnd, IDC_EDIT_HEADER_SUB_STM, TEXT("%04X"),
-              context.optionalHeader32->Subsystem);
+              header.Subsystem);
   writeToText(hwnd, IDC_EDIT_HEADER_NUMBER_OF_SECTIONS, TEXT("%04X"),
               context.fileHeader->NumberOfSections);
   writeToText(hwnd, IDC_EDIT_HEADER_TIMEDATESTAMP, TEXT("%08X"),
               context.fileHeader->TimeDateStamp);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_HEADERS, TEXT("%08X"),
-              context.optionalHeader32->SizeOfHeaders);
+              header.SizeOfHeaders);
   writeToText(hwnd, IDC_EDIT_HEADER_CHARACTERISTICS, TEXT("%04X"),
               context.fileHeader->Characteristics);
   writeToText(hwnd, IDC_EDIT_HEADER_CHECKSUM, TEXT("%08X"),
-              context.optionalHeader32->CheckSum);
+              header.CheckSum);
   writeToText(hwnd, IDC_EDIT_HEADER_SIZE_OF_OPT_HEADER, TEXT("%04X"),
               context.fileHeader->SizeOfOptionalHeader);
   writeToText(hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES, TEXT("%08X"),
-              context.optionalHeader32->NumberOfRvaAndSizes);
+              header.NumberOfRvaAndSizes);
+}
+
+}  // namespace
+
+VOID readOptionalHeader(HWND hwnd, const PEContext& context) {
+  if (context.format == PEFormat::PE32 && context.optionalHeader32) {
+    SetWindowText(hwnd, TEXT("[IMAGE_OPTIONAL_HEADER32]"));
+    SetDlgItemText(hwnd, IDC_GROUP_OPTIONAL_HEADER32, TEXT("Optional Header32 [HEX]"));
+    readOptionalHeaderFields(hwnd, *context.optionalHeader32);
+    TCHAR baseOfData[9] = {};
+    _stprintf_s(baseOfData, TEXT("%08X"), context.optionalHeader32->BaseOfData);
+    writeText(hwnd, IDC_EDIT_BASE_OF_DATA, baseOfData);
+  } else if (context.format == PEFormat::PE32Plus && context.optionalHeader64) {
+    SetWindowText(hwnd, TEXT("[IMAGE_OPTIONAL_HEADER64]"));
+    SetDlgItemText(hwnd, IDC_GROUP_OPTIONAL_HEADER32, TEXT("Optional Header64 [HEX]"));
+    readOptionalHeaderFields(hwnd, *context.optionalHeader64);
+    writeText(hwnd, IDC_EDIT_BASE_OF_DATA, NULL);
+  }
+}
+
+VOID readHeaderInfo(HWND hwnd, const PEContext& context) {
+  if (context.format == PEFormat::PE32 && context.optionalHeader32) {
+    readHeaderInfoFields(hwnd, context, *context.optionalHeader32);
+    TCHAR baseOfData[9] = {};
+    _stprintf_s(baseOfData, TEXT("%08X"), context.optionalHeader32->BaseOfData);
+    writeText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, baseOfData);
+  } else if (context.format == PEFormat::PE32Plus && context.optionalHeader64) {
+    readHeaderInfoFields(hwnd, context, *context.optionalHeader64);
+    writeText(hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, NULL);
+  }
 }
 
 VOID drawSections(HWND hListSection, int Row, SectionInfo& sectionInfo,
@@ -361,9 +381,24 @@ VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PECo
   }
 }
 
+VOID writeText(HWND hwnd, INT controlId, LPCTSTR text) {
+  SetDlgItemText(hwnd, controlId, text ? text : TEXT("N/A"));
+  EnableWindow(GetDlgItem(hwnd, controlId), text != NULL);
+}
+
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data) {
   TCHAR buffer[MAX_PATH] = {};
   _stprintf_s(buffer, format, data);
+  SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
+}
+
+VOID writeToText(HWND hwnd, INT TEXT_ID, DWORD data) {
+  writeToText(hwnd, TEXT_ID, TEXT("%08X"), data);
+}
+
+VOID writeToText(HWND hwnd, INT TEXT_ID, ULONGLONG data) {
+  TCHAR buffer[MAX_PATH] = {};
+  _stprintf_s(buffer, TEXT("%016I64X"), data);
   SetWindowText(GetDlgItem(hwnd, TEXT_ID), buffer);
 }
 

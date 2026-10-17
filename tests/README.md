@@ -24,6 +24,8 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 `pe-context-tests.cpp` 使用独立于 UI 的 `PEContext`，覆盖 PE32 / PE32+ 头部、64 位字段、上下文隔离、所有权、重载与失败清理、目录数量、非法 / 截断头部、RVA 越界、虚拟零填充和无终止符字符串。PE32+ 头部样本由 `fixtures/pe64.h` 生成。
 
-页面回归另检查显式上下文传递、PE32 序号导入及 `FirstThunk` 回退、无名导出的 `Base`、未知调试类型和非法目录 RVA。PE32+ 页面 / thunk、转发导出及更完整的目录错误提示继续按 `architecture.md` 推进。
+页面回归另检查显式上下文传递、PE32 序号导入及 `FirstThunk` 回退、无名导出的 `Base`、未知调试类型和非法目录 RVA。新增 PE32+ 可选头与汇总页面回归，检查高于 4 GB 的 `ImageBase` 与栈 / 堆大小、完整 64 位数值、仍为 32 位的公共字段，以及 PE32 / PE32+ 切换时 `BaseOfData` 的文本和启用状态；x64 中继续使用位于 4 GB 以上的文件缓冲区。
+
+PE32+ 页面测试直接初始化实际对话框并调用读取函数；正常文件选择入口仍拦截 PE32+，字段调整按钮及目录 thunk 的适配继续按 `architecture.md` 推进。`fixtures/pe64.h` 用于头部测试，目录内容仍继承 PE32 样本，不作为完整 PE32+ 目录样本。
 
 主程序与独立验证工程默认工具集均为 Visual Studio 2022 的 v143，SDK 为 10.0.22621.0。通过 Visual Studio 或上面的构建脚本可直接使用工程默认配置；脚本继续将主程序的工具集和 SDK 同步给验证工程。

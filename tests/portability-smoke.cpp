@@ -9,6 +9,7 @@
 #include "pe/readPE.h"
 #include "ui/windowProc.h"
 #include "fixtures/pe32.h"
+#include "fixtures/pe64.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -152,6 +153,82 @@ void CheckContextDirectoryReads() {
   readImportDirectory(imports.hwnd, dlls, context);
   Check(ListView_GetItemCount(dlls) == 0, "An invalid directory RVA was dereferenced");
 }
+
+void CheckHeaderPages(LPVOID buffer) {
+  pe64_fixture::Fill((BYTE*)buffer);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize),
+        "PE32+ page context setup failed");
+  Dialog optionalHeader(IDD_DIALOG_IMAGE_OPTIONAL_HEADER32, OptionalHeader32Proc);
+  Dialog summary(IDD_DIALOG_HEADER_INFO, HeaderInfoProc);
+  auto checkPE64 = [&]() {
+    CheckText(optionalHeader.hwnd, IDC_GROUP_OPTIONAL_HEADER32, L"Optional Header64 [HEX]");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_MAGIC, L"020B");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_MAJ_LINK_VER, L"0E");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"0000000140000000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_STACK_REV, L"0000000200000000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_STACK_COMMIT, L"0000000100001000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEAP_REV, L"0000000300000000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEAP_COMMIT, L"0000000100002000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_ADDR_OF_ENTRY, L"00001800");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_BASE_OF_CODE, L"00001000");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEADERS, L"00000200");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_CHECKSUM, L"ABCD1234");
+    CheckText(optionalHeader.hwnd, IDC_EDIT_BASE_OF_DATA, L"N/A");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_IMAGE_BASE, L"0000000140000000");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_MAGIC, L"020B");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_ADDR_OF_ENTRY, L"00001800");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_IMAGE, L"00002000");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_HEADERS, L"00000200");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_SUB_STM, L"0002");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_CHECKSUM, L"ABCD1234");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_OPT_HEADER, L"00F0");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_NUM_OF_RVA_SIZES, L"00000010");
+    CheckText(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, L"N/A");
+    Check(!IsWindowEnabled(GetDlgItem(optionalHeader.hwnd, IDC_EDIT_BASE_OF_DATA)) &&
+          !IsWindowEnabled(GetDlgItem(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA)),
+          "PE32+ BaseOfData controls must be disabled");
+  };
+  checkPE64();
+
+  writeToText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, ~0ULL);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"FFFFFFFFFFFFFFFF");
+  writeToText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, (ULONGLONG)1);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"0000000000000001");
+  writeToText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, (DWORD)MAXDWORD);
+  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"FFFFFFFF");
+
+  // Reuse both dialogs with a PE32 context while the active file remains PE32+.
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  pe32_fixture::Fill(image.data());
+  auto& header = ((PIMAGE_NT_HEADERS32)(image.data() + 0x80))->OptionalHeader;
+  header.BaseOfData = 0x1900;
+  header.SizeOfStackReserve = MAXDWORD;
+  header.SizeOfStackCommit = 0x1000;
+  header.SizeOfHeapReserve = 0x80000000;
+  header.SizeOfHeapCommit = 0x2000;
+  PEContext pe32;
+  Check(pe32.Initialize(image.data(), image.size()), "PE32 header page context setup failed");
+  readOptionalHeader(optionalHeader.hwnd, pe32);
+  readHeaderInfo(summary.hwnd, pe32);
+  CheckText(optionalHeader.hwnd, IDC_GROUP_OPTIONAL_HEADER32, L"Optional Header32 [HEX]");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_MAGIC, L"010B");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_IMAGE_BASE, L"00400000");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_BASE_OF_DATA, L"00001900");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_STACK_REV, L"FFFFFFFF");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_STACK_COMMIT, L"00001000");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEAP_REV, L"80000000");
+  CheckText(optionalHeader.hwnd, IDC_EDIT_SIZE_OF_HEAP_COMMIT, L"00002000");
+  CheckText(summary.hwnd, IDC_EDIT_HEADER_IMAGE_BASE, L"00400000");
+  CheckText(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA, L"00001900");
+  CheckText(summary.hwnd, IDC_EDIT_HEADER_SIZE_OF_OPT_HEADER, L"00E0");
+  Check(IsWindowEnabled(GetDlgItem(optionalHeader.hwnd, IDC_EDIT_BASE_OF_DATA)) &&
+        IsWindowEnabled(GetDlgItem(summary.hwnd, IDC_EDIT_HEADER_BASE_OF_DATA)),
+        "PE32 BaseOfData controls must be re-enabled");
+
+  readOptionalHeader(optionalHeader.hwnd, g_peContext);
+  readHeaderInfo(summary.hwnd, g_peContext);
+  checkPE64();
+}
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -196,7 +273,8 @@ int wmain(int argc, wchar_t** argv) {
           offset == pe32_fixture::kThunkRaw, "Section RVA conversion mismatch");
     CheckPages();
     CheckContextDirectoryReads();
-    std::printf("PASS: %s, PE32 reader, 10 dialogs, headers, sections, imports, exports, bound imports, debug, bitmap\n",
+    CheckHeaderPages(allocatedBuffer);
+    std::printf("PASS: %s, PE32/PE32+ header pages, 64-bit fields, PE32 directory pages, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

@@ -15,7 +15,7 @@ VOID readDosHeader(HWND hwnd, const PEContext& context);
 
 VOID readFileHeader(HWND hwnd, const PEContext& context);
 
-VOID readOptinalHeader32(HWND hwnd, const PEContext& context);
+VOID readOptionalHeader(HWND hwnd, const PEContext& context);
 
 VOID readHeaderInfo(HWND hwnd, const PEContext& context);
 
@@ -29,7 +29,14 @@ VOID readImportDirectory(HWND hwnd, HWND hListImportDLL, const PEContext& contex
 
 VOID readIntThunk(HWND hwnd, HWND hListImportDLL, HWND hListIntThunk, const PEContext& context);
 
+// NULL displays N/A and disables the control; other text enables it.
+VOID writeText(HWND hwnd, INT controlId, LPCTSTR text);
+
 VOID writeToText(HWND hwnd, INT TEXT_ID, CONST TCHAR* format, DWORD data);
+
+// Default hexadecimal widths for 32-bit and 64-bit PE fields.
+VOID writeToText(HWND hwnd, INT TEXT_ID, DWORD data);
+VOID writeToText(HWND hwnd, INT TEXT_ID, ULONGLONG data);
 
 VOID readExportDirectory(HWND hwnd, const PEContext& context);
 
