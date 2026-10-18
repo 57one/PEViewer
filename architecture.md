@@ -1,4 +1,4 @@
-# PEViewer 架构与 PE32 / PE32+ 支持计划
+﻿# PEViewer 架构与 PE32 / PE32+ 支持计划
 
 本文按当前工作区实现记录程序入口、数据流和类型约定，并列出支持 PE32、PE32+ 文件需要继续完成的工作。当前已完成查看器的 x86 / x64 指针与回调适配，使用统一 PEContext；正常文件入口已开放 PE32 / PE32+，支持头部、节表、已有目录页面和 32 / 64 位导入 thunk。
 
@@ -13,6 +13,8 @@
 | [messageCallback.cpp](src/ui/messageCallback.cpp)、[messageCallback.h](src/ui/messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
 | [PEContext.cpp](src/pe/PEContext.cpp)、[PEContext.h](src/pe/PEContext.h) | 文件所有权、长度、格式、头部与节表校验，以及有边界检查的 RVA / 字符串访问；独立于界面。 |
 | [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 显式接收 `const PEContext&`，读取字段和目录并将结果填入控件。 |
+| [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的 IAT 与重定位解析，返回原始字段、关联名称和异常说明。 |
+| [directoryDialogs.cpp](src/ui/directoryDialogs.cpp) | IAT 槽位列表、重定位块与条目列表，以及选择和关闭消息处理。 |
 | [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
 | [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
 | [global.cpp](src/common/global.cpp)、[global.h](src/common/global.h)、[structs.h](src/common/structs.h) | 字段说明、控件 ID 对照、颜色以及列表行的显示数据。 |
@@ -39,12 +41,15 @@ PEViewer/
 │  │  ├─ windowProc.cpp
 │  │  ├─ windowProc.h
 │  │  ├─ messageCallback.cpp
-│  │  └─ messageCallback.h
+│  │  ├─ messageCallback.h
+│  │  └─ directoryDialogs.cpp
 │  ├─ pe/
 │  │  ├─ PEContext.cpp
 │  │  ├─ PEContext.h
 │  │  ├─ readPE.cpp
-│  │  └─ readPE.h
+│  │  ├─ readPE.h
+│  │  ├─ directoryDetails.cpp
+│  │  └─ directoryDetails.h
 │  ├─ process/
 │  │  ├─ handleProcessAndModule.cpp
 │  │  └─ handleProcessAndModule.h
@@ -66,9 +71,10 @@ PEViewer/
 │  ├─ portability-smoke.vcxproj
 │  ├─ portability-smoke.cpp
 │  ├─ pe-context-tests.cpp
+│  ├─ directory-details-tests.cpp
 │  └─ fixtures/
 │     ├─ pe32.h                 # PE32 页面与解析样本
-│     └─ pe64.h                 # PE32+ 头部识别样本
+│     └─ pe64.h                 # PE32+ 页面与解析样本
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
@@ -115,7 +121,7 @@ PEViewer/
 
 当前 UI 在模态查看窗口结束后重置上下文。所有字段和目录读取函数接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已有目录访问增加边界检查，并修正 PE32 序号导入 / 回退、无名导出的序号，以及未知调试类型的处理；完整的解析结果模型与界面解耦仍按后续计划推进。
 
-[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。页面回归覆盖两种格式的 10 个页面、64 位字段输入 / 布局与导入 thunk；转发导出及更多真实文件用例继续推进。
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。页面回归覆盖两种格式的 12 个页面、64 位字段输入 / 布局与导入 thunk；转发导出及更多真实文件用例继续推进。
 
 ## 数据与页面
 
@@ -209,6 +215,9 @@ WinMain
 
 - [x] 根据文件格式使用 `IMAGE_THUNK_DATA32/64`，步长为 4 / 8；按 8 / 16 位十六进制显示数值，列表列宽自动调整。所选 DLL 的查找表地址直接从上下文读取。
 - [x] 按文件格式使用 32 / 64 位序号标志，校验保留位并保留低 16 位序号；名称导入验证 31 位 RVA，避免将绑定后的地址截断成名称 RVA。
+- [x] 目录页 IAT 的 `...` 按钮打开独立详情：按 4 / 8 字节列出所有槽位（含终止项 / 填充）的 RVA、文件偏移、磁盘原始值、DLL、函数名 / 序号，以及 INT 地址和值。绑定文件通过 INT 关联名称；缺少 INT 时仅对未绑定 IAT 回退，绑定地址不当作名称 RVA。
+- [x] Base Reloc Table 的 `...` 按钮打开重定位块 / 条目页面：显示 Page RVA、SizeOfBlock、类型、页内偏移、目标 RVA / 文件偏移和原值。支持 HIGHLOW / DIR64、ABSOLUTE 填充与 HIGHADJ 双字条目；未知类型保留数值，不猜测原值宽度。
+- [x] 新解析器检查目录边界、槽位 / 块截断、块长度与对齐、名称和 HIGHADJ 配对；页面显示目录错误及条目状态，无文件字节的重定位目标保留条目信息。每次最多显示 100000 个槽位 / 条目，达到上限会提示。
 - [ ] 两种格式已支持名称 / 序号导入及未绑定文件的 `FirstThunk` 回退，绑定 IAT 不代替缺失的查找表；截断条目、越界名称和缺失终止项有范围保护。后续为这些失败情况提供具体错误提示。
 - [ ] 导出表已校验数组与字符串范围，修正无名导出和 `Base + functionIndex`；继续识别转发导出并提供具体错误提示。数组保持 32 位 RVA、16 位名称序号索引。
 - [ ] 复核节表、绑定导入和调试目录的范围与错误处理。它们的大部分字段布局在 PE32 / PE32+ 间共用，不能因为目标为 64 位就把所有字段加宽。
@@ -261,10 +270,11 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 已完成的验证：
 
-- 本轮页面 / 导入适配通过 Debug / Release × Win32 / x64 四组构建及回归：两种磁盘格式、两种格式的 10 个页面、64 位输入与实际字体宽度、按钮边界、名称 / 序号导入、未绑定 IAT 回退和异常 thunk。x64 继续覆盖 4 GB 以上的文件缓冲区。
+- IAT / 重定位新增用例覆盖两种格式的槽位与 INT 对照、绑定和未绑定回退、多 DLL、HIGHLOW / DIR64、ABSOLUTE / HIGHADJ、异常目录和块切换。系统记事本交叉核对：PE32 的 IAT 为 361 槽、重定位为 39 块 / 4650 条；PE32+ 为 365 槽、5 块 / 366 条，与 `dumpbin /headers /imports /relocations` 的目录长度、块数和条目数一致。
+- 本轮页面 / 导入适配通过 Debug / Release × Win32 / x64 四组构建及回归：两种磁盘格式、两种格式的 12 个页面、64 位输入与实际字体宽度、按钮边界、名称 / 序号导入、未绑定 IAT 回退和异常 thunk。x64 继续覆盖 4 GB 以上的文件缓冲区。
 - 主程序和验证工程默认工具集已统一为 Visual Studio 2022 的 v143，SDK 保持 10.0.22621.0；`PEContext` 改造通过 Debug / Release × Win32 / x64 四组构建及回归。构建入口见 [tests/README.md](tests/README.md)。
 - x86、x64 的 Debug 和 Release 四组构建通过，`C4311/C4312/C4302` 指针转换相关警告为零；其他既有警告仍需按后续任务处理。
-- 四组配置均调用实际文件读取函数，使用合成 PE32 数据创建 10 个隐藏文件查看对话框，检查头部、节表、导入函数、导出、绑定导入和调试目录的列表及预期输出，并验证位图资源可加载。
+- 四组配置均调用实际文件读取函数，使用合成 PE32 数据创建 12 个隐藏文件查看对话框，检查头部、节表、导入函数、导出、绑定导入和调试目录的列表及预期输出，并验证位图资源可加载。
 - x64 验证中的缓冲区位于 4 GB 以上，头部 / 节表指针、RVA 转换、目录列表名称和条目数正确；修改后的源码中文注释、编码与差异空白检查通过。
 
 上述验证覆盖已完成的指针和回调适配。完整 PE32+ 支持以及真实文件、损坏输入的完整矩阵仍按前面的验收计划推进。

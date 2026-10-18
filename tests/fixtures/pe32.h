@@ -11,6 +11,10 @@ constexpr DWORD kSectionRaw = 0x200;
 constexpr DWORD kImportRva = 0x1200;
 constexpr DWORD kThunkRva = 0x1250;
 constexpr DWORD kThunkRaw = 0x450;
+constexpr DWORD kIatRva = 0x1260;
+constexpr DWORD kIatRaw = 0x460;
+constexpr DWORD kRelocRva = 0x1500;
+constexpr DWORD kRelocRaw = 0x700;
 constexpr DWORD kExportRva = 0x1100;
 constexpr DWORD kBoundImportRva = 0x1300;
 constexpr DWORD kDebugRva = 0x1400;
@@ -48,6 +52,8 @@ inline void Fill(BYTE* data) {
   optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT] = {kImportRva, 40};
   optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT] = {kBoundImportRva, 32};
   optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG] = {kDebugRva, sizeof(IMAGE_DEBUG_DIRECTORY)};
+  optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT] = {kIatRva, 8};
+  optional.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC] = {kRelocRva, 24};
   auto section = (PIMAGE_SECTION_HEADER)(data + 0x80 + sizeof(IMAGE_NT_HEADERS32));
   std::memcpy(section->Name, ".test", 6);
   section->VirtualAddress = kSectionRva;
@@ -91,5 +97,15 @@ inline void Fill(BYTE* data) {
   debug->SizeOfData = 16;
   debug->AddressOfRawData = 0x1450;
   debug->PointerToRawData = 0x650;
+
+  // Two relocation blocks: one real HIGHLOW target and one padding-only block.
+  auto reloc = (PIMAGE_BASE_RELOCATION)(data + kRelocRaw);
+  reloc->VirtualAddress = 0x1000;
+  reloc->SizeOfBlock = 12;
+  *(WORD*)(data + kRelocRaw + 8) = (IMAGE_REL_BASED_HIGHLOW << 12) | 0x800;
+  *(DWORD*)(data + 0xA00) = kImageBase + 0x1800;
+  reloc = (PIMAGE_BASE_RELOCATION)(data + kRelocRaw + 12);
+  reloc->VirtualAddress = 0;
+  reloc->SizeOfBlock = 12;
 }
 }  // namespace pe32_fixture

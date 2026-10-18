@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "pe/readPE.h"
+#include "pe/directoryDetails.h"
 #include "ui/windowProc.h"
 #include "fixtures/pe32.h"
 #include "fixtures/pe64.h"
@@ -14,6 +15,7 @@
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 void CheckPEContext(LPCTSTR filePath);
+void CheckDirectoryDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -122,9 +124,80 @@ void CheckPages() {
   CheckList(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY, 4, L"CODEVIEW(2)");
   CheckList(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY, 7, L"00000650");
 
+  Dialog iat(IDD_DIALOG_IAT, IatDirectoryProc);
+  int iatCount = wide ? 4 : 2;
+  CheckList(iat.hwnd, IDC_LIST_IAT, 1, wide ? L"000012A0" : L"00001260", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 2, wide ? L"000004A0" : L"00000460", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 3, wide ? L"0000000000001270" : L"00001270", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 4, L"test.dll", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 5, L"ImportedFunc", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 6, wide ? L"00001280" : L"00001250", 0, iatCount);
+  CheckList(iat.hwnd, IDC_LIST_IAT, 8, L"Terminator", iatCount - 1, iatCount);
+  if (wide) {
+    CheckList(iat.hwnd, IDC_LIST_IAT, 3, L"800000000000002A", 1, iatCount);
+    HWND iatList = GetDlgItem(iat.hwnd, IDC_LIST_IAT);
+    Check(ListView_GetColumnWidth(iatList, 3) >= ListView_GetStringWidth(iatList, L"800000000000002A"),
+          "The IAT raw value column clips 64-bit values");
+  }
+
+  Dialog relocs(IDD_DIALOG_RELOCATIONS, RelocationDirectoryProc);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_BLOCKS, 3, L"00001000", 0, 2);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_ENTRIES, 2, wide ? L"DIR64 (10)" : L"HIGHLOW (3)", 0, 2);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_ENTRIES, 4, L"00001800", 0, 2);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_ENTRIES, 6, wide ? L"0000000140001800" : L"00401800", 0, 2);
+  HWND blocks = GetDlgItem(relocs.hwnd, IDC_LIST_RELOC_BLOCKS);
+  ListView_SetItemState(blocks, 1, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_ENTRIES, 2, L"ABSOLUTE (0)", 0, 2);
+  CheckList(relocs.hwnd, IDC_LIST_RELOC_ENTRIES, 4, L"-", 0, 2);
+
   HBITMAP bitmap = LoadBitmap(GetModuleHandle(NULL), MAKEINTRESOURCE(IDB_BITMAP_PEVIEWER));
   Check(bitmap != NULL, "Bitmap resource is missing");
   DeleteObject(bitmap);
+}
+
+void CheckDirectoryErrorPages(void* buffer) {
+  pe32_fixture::Fill((BYTE*)buffer);
+  auto nt = (PIMAGE_NT_HEADERS32)((BYTE*)buffer + 0x80);
+  nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT].VirtualAddress = MAXDWORD;
+  nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size = 7;
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Invalid-directory context rejected");
+  Dialog iat(IDD_DIALOG_IAT, IatDirectoryProc);
+  Dialog relocs(IDD_DIALOG_RELOCATIONS, RelocationDirectoryProc);
+  Check(ListView_GetItemCount(GetDlgItem(iat.hwnd, IDC_LIST_IAT)) == 0,
+        "Invalid IAT rendered rows");
+  Check(ListView_GetItemCount(GetDlgItem(relocs.hwnd, IDC_LIST_RELOC_BLOCKS)) == 0,
+        "Invalid relocation directory rendered rows");
+  wchar_t status[512] = {};
+  GetDlgItemText(iat.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"outside") != NULL, "IAT error is not visible in the page");
+  GetDlgItemText(relocs.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"Truncated") != NULL, "Relocation error is not visible in the page");
+}
+
+void CheckRealDirectoryFile(const wchar_t* path) {
+  PEContext context;
+  Check(context.LoadFile(path), "Cannot load real PE file");
+  IatDetails iat = ReadIatDetails(context);
+  RelocationDetails relocs = ReadRelocationDetails(context);
+  if (context.Directory(IMAGE_DIRECTORY_ENTRY_IAT)) {
+    if (!iat.message.empty()) std::fwprintf(stderr, L"IAT: %ls\n", iat.message.c_str());
+    Check(iat.message.empty() && !iat.entries.empty(), "Real-file IAT parsing failed");
+  }
+  if (context.Directory(IMAGE_DIRECTORY_ENTRY_BASERELOC)) {
+    if (!relocs.message.empty()) std::fwprintf(stderr, L"Relocations: %ls\n", relocs.message.c_str());
+    Check(relocs.message.empty() && !relocs.blocks.empty(), "Real-file relocation parsing failed");
+  }
+  SIZE_T entries = 0;
+  for (const auto& block : relocs.blocks) entries += block.entries.size();
+  SIZE_T functions = 0, unresolved = 0;
+  for (const auto& slot : iat.entries) {
+    if (!slot.value) continue;
+    if (!slot.symbol.empty()) ++functions;
+    else ++unresolved;
+  }
+  std::wprintf(L"PASS: %ls (%ls), IAT slots=%zu (functions=%zu, unresolved=%zu), relocation blocks=%zu, entries=%zu\n", path,
+               context.format == PEFormat::PE32Plus ? L"PE32+" : L"PE32",
+               iat.entries.size(), functions, unresolved, relocs.blocks.size(), entries);
 }
 
 void CheckContextDirectoryReads() {
@@ -390,7 +463,7 @@ int wmain(int argc, wchar_t** argv) {
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
   LPVOID allocatedBuffer = NULL;
   try {
-    Check(argc == 2, "Usage: portability-smoke.exe <generated-fixture-path>");
+    Check(argc >= 2, "Usage: portability-smoke.exe <generated-fixture-path> [real PE files...]");
     INITCOMMONCONTROLSEX controls = {sizeof(controls), ICC_WIN95_CLASSES};
     Check(InitCommonControlsEx(&controls) != FALSE, "Common control initialization failed");
     std::vector<BYTE> fixture(pe32_fixture::kFileSize);
@@ -405,6 +478,7 @@ int wmain(int argc, wchar_t** argv) {
           std::memcmp(g_peContext.fileBuffer, fixture.data(), fixture.size()) == 0,
           "File bytes or length differ");
     CheckPEContext(argv[1]);
+    CheckDirectoryDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -431,7 +505,9 @@ int wmain(int argc, wchar_t** argv) {
     CheckPages();
     CheckImportVariants(false);
     CheckImportVariants(true);
-    std::printf("PASS: %s, PE32/PE32+ pages, 64-bit input/layout, name/ordinal thunks, malformed imports, bitmap\n",
+    CheckDirectoryErrorPages(allocatedBuffer);
+    for (int i = 2; i < argc; ++i) CheckRealDirectoryFile(argv[i]);
+    std::printf("PASS: %s, PE32/PE32+ pages, IAT/INT association, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

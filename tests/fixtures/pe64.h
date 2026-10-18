@@ -43,6 +43,7 @@ inline void Fill(BYTE* data) {
   nt->OptionalHeader.SizeOfHeapCommit = kHeapCommit;
   nt->OptionalHeader.NumberOfRvaAndSizes = IMAGE_NUMBEROF_DIRECTORY_ENTRIES;
   std::memcpy(nt->OptionalHeader.DataDirectory, directories, sizeof(directories));
+  nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IAT] = {kIatRva, 32};
   *IMAGE_FIRST_SECTION(nt) = section;
 
   // Use real 8-byte lookup/IAT entries: name, ordinal, name, terminator.
@@ -58,5 +59,7 @@ inline void Fill(BYTE* data) {
   auto secondName = (PIMAGE_IMPORT_BY_NAME)(data + 0x4C0);
   secondName->Hint = 0x5678;
   std::memcpy(secondName->Name, "SecondFunc", 11);
+  *(WORD*)(data + pe32_fixture::kRelocRaw + 8) = (IMAGE_REL_BASED_DIR64 << 12) | 0x800;
+  *(ULONGLONG*)(data + 0xA00) = kImageBase + 0x1800;
 }
 }  // namespace pe64_fixture

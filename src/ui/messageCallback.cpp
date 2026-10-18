@@ -697,6 +697,12 @@ void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam) {
 
 BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
   switch (LOWORD(wParam)) {
+    case IDC_BUTTON_DIRECTORY_IAT:
+      DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_IAT), hwnd, IatDirectoryProc);
+      return TRUE;
+    case IDC_BUTTON_DIRECTORY_BASE_RELOC:
+      DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_RELOCATIONS), hwnd, RelocationDirectoryProc);
+      return TRUE;
     case IDC_BUTTON_DIRECTORY_IMPORT: {
       DialogBox(GetModuleHandle(NULL),
                 MAKEINTRESOURCE(IDD_DIALOG_IMPORT_DIRECTORY), hwnd,

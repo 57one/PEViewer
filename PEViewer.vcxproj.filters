@@ -57,6 +57,12 @@
     <ClCompile Include="src\pe\readPE.cpp">
       <Filter>src\pe</Filter>
     </ClCompile>
+    <ClCompile Include="src\pe\directoryDetails.cpp">
+      <Filter>src\pe</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\directoryDialogs.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\utility.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
@@ -78,6 +84,9 @@
       <Filter>src\pe</Filter>
     </ClInclude>
     <ClInclude Include="src\pe\readPE.h">
+      <Filter>src\pe</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pe\directoryDetails.h">
       <Filter>src\pe</Filter>
     </ClInclude>
     <ClInclude Include="resources\resource.h">
@@ -120,6 +129,9 @@
       <Filter>tests</Filter>
     </None>
     <None Include="tests\pe-context-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\directory-details-tests.cpp">
       <Filter>tests</Filter>
     </None>
     <None Include="tests\fixtures\pe64.h">

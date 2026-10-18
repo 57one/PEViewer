@@ -46,6 +46,9 @@
   <ItemGroup>
     <ClCompile Include="portability-smoke.cpp" />
     <ClCompile Include="pe-context-tests.cpp" />
+    <ClCompile Include="directory-details-tests.cpp" />
+    <ClCompile Include="..\src\pe\directoryDetails.cpp" />
+    <ClCompile Include="..\src\ui\directoryDialogs.cpp" />
     <ClCompile Include="..\src\common\global.cpp" />
     <ClCompile Include="..\src\common\utility.cpp" />
     <ClCompile Include="..\src\process\handleProcessAndModule.cpp" />

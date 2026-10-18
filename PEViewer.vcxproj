@@ -157,6 +157,8 @@
     <ClCompile Include="src\app\PEViewer.cpp" />
     <ClCompile Include="src\pe\PEContext.cpp" />
     <ClCompile Include="src\pe\readPE.cpp" />
+    <ClCompile Include="src\pe\directoryDetails.cpp" />
+    <ClCompile Include="src\ui\directoryDialogs.cpp" />
     <ClCompile Include="src\common\utility.cpp" />
     <ClCompile Include="src\ui\windowProc.cpp" />
   </ItemGroup>
@@ -166,6 +168,7 @@
     <ClInclude Include="src\ui\messageCallback.h" />
     <ClInclude Include="src\pe\PEContext.h" />
     <ClInclude Include="src\pe\readPE.h" />
+    <ClInclude Include="src\pe\directoryDetails.h" />
     <ClInclude Include="resources\resource.h" />
     <ClInclude Include="src\common\structs.h" />
     <ClInclude Include="src\common\utility.h" />
@@ -184,6 +187,7 @@
     <None Include="tests\portability-smoke.vcxproj" />
     <None Include="tests\portability-smoke.cpp" />
     <None Include="tests\pe-context-tests.cpp" />
+    <None Include="tests\directory-details-tests.cpp" />
     <None Include="tests\fixtures\pe64.h" />
     <None Include="tests\fixtures\pe32.h" />
   </ItemGroup>
