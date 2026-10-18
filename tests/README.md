@@ -34,10 +34,14 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 IAT 与重定位解析验证位于 `directory-details-tests.cpp`，直接检查独立于 UI 的结果：32 / 64 位槽位和原值、INT 名称 / 序号关联、绑定 IAT、缺少 INT 的回退、多 DLL、终止项、非法 RVA / 名称、截断槽位、重定位块长度 / 对齐、HIGHLOW / DIR64、ABSOLUTE、HIGHADJ 配对和未知类型。页面回归现覆盖两种格式的 12 个页面，包括 IAT 完整 64 位列宽、重定位块切换与错误文本；x64 的两个新页面也使用 4 GB 以上缓冲区。
 
-验证程序可额外接收真实 PE 文件路径，检查 IAT / 重定位解析并打印数量（生成样本路径仍作为第一个参数）：
+验证程序可额外接收真实 PE 文件路径，检查导入、IAT、导出、绑定导入、调试及重定位解析并打印数量（生成样本路径仍作为第一个参数）：
 
 ```powershell
 .\bin\Debug\x64\tests\portability-smoke.exe .\obj\real-check.exe C:\Windows\System32\notepad.exe C:\Windows\SysWOW64\notepad.exe
 ```
 
 结构解释参考 [Microsoft PE 格式规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format)，尤其是 Import Address Table 与 Base Relocation Block / Types。显示的 IAT 与重定位原值均来自磁盘文件，不应用重定位或解析进程中的运行时函数地址。
+
+已实现目录的解析 / 显示现统一分离：`src/pe/directoryDetails.*` 返回结构化模型，`src/ui/directoryDialogs.*` 负责显示。`directory-details-tests.cpp` 直接验证导入、导出、绑定导入和调试结果，不创建窗口；名称 / 序号解码在导入页与 IAT 页共用，返回原始 Hint。验证覆盖 IAT Directory 缺失时仍能读取 INT，以及从 FirstThunk 回退后仍保留 Hint。
+
+新增模型用例覆盖导出数组边界、无名导出与序号溢出、绑定导入子记录 / 名称边界、调试记录截断和目录缺失。页面用例覆盖导入列表排序后仍按数值描述符 ID 选择对象、改动显示文字不影响读取、非法目录清空旧数据以及可见错误状态。导出转发识别和调试数据载荷解析留待独立功能迭代。

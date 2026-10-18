@@ -6,6 +6,7 @@
 
 #include "common/global.h"
 #include "pe/readPE.h"
+#include "directoryDialogs.h"
 #include "resource.h"
 #include "common/utility.h"
 

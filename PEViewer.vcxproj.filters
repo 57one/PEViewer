@@ -89,6 +89,9 @@
     <ClInclude Include="src\pe\directoryDetails.h">
       <Filter>src\pe</Filter>
     </ClInclude>
+    <ClInclude Include="src\ui\directoryDialogs.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
     <ClInclude Include="resources\resource.h">
       <Filter>resources</Filter>
     </ClInclude>

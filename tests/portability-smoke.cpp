@@ -179,6 +179,22 @@ void CheckRealDirectoryFile(const wchar_t* path) {
   Check(context.LoadFile(path), "Cannot load real PE file");
   IatDetails iat = ReadIatDetails(context);
   RelocationDetails relocs = ReadRelocationDetails(context);
+  const auto imports = ReadImportDetails(context);
+  const auto exports = ReadExportDetails(context);
+  const auto bound = ReadBoundImportDetails(context);
+  const auto debug = ReadDebugDetails(context);
+  SIZE_T importedFunctions = 0;
+  if (imports.present) {
+    Check(imports.message.empty() && imports.terminated, "Real-file import descriptors failed");
+    for (const auto& module : imports.modules) {
+      const auto thunks = ReadImportThunks(context, module.descriptor);
+      Check(thunks.message.empty() && thunks.terminated, "Real-file import function decoding failed");
+      importedFunctions += thunks.entries.size();
+    }
+  }
+  if (exports.present) Check(exports.hasHeader && exports.message.empty(), "Real-file export parsing failed");
+  if (bound.present) Check(bound.terminated && bound.message.empty(), "Real-file bound import parsing failed");
+  if (debug.present) Check(debug.message.empty(), "Real-file debug directory parsing failed");
   if (context.Directory(IMAGE_DIRECTORY_ENTRY_IAT)) {
     if (!iat.message.empty()) std::fwprintf(stderr, L"IAT: %ls\n", iat.message.c_str());
     Check(iat.message.empty() && !iat.entries.empty(), "Real-file IAT parsing failed");
@@ -192,12 +208,18 @@ void CheckRealDirectoryFile(const wchar_t* path) {
   SIZE_T functions = 0, unresolved = 0;
   for (const auto& slot : iat.entries) {
     if (!slot.value) continue;
-    if (!slot.symbol.empty()) ++functions;
+    if (slot.symbol.kind == ImportKind::Name || slot.symbol.kind == ImportKind::Ordinal) ++functions;
     else ++unresolved;
   }
   std::wprintf(L"PASS: %ls (%ls), IAT slots=%zu (functions=%zu, unresolved=%zu), relocation blocks=%zu, entries=%zu\n", path,
                context.format == PEFormat::PE32Plus ? L"PE32+" : L"PE32",
                iat.entries.size(), functions, unresolved, relocs.blocks.size(), entries);
+  std::wprintf(L"      import functions=%zu, exports=%zu, bound imports=%zu, debug records=%zu\n",
+               importedFunctions, exports.entries.size(), bound.entries.size(), debug.entries.size());
+}
+
+int CALLBACK ReverseDescriptorOrder(LPARAM left, LPARAM right, LPARAM) {
+  return left > right ? -1 : left < right ? 1 : 0;
 }
 
 void CheckContextDirectoryReads() {
@@ -214,9 +236,9 @@ void CheckContextDirectoryReads() {
   HWND dlls = GetDlgItem(imports.hwnd, IDC_LIST_IMPORT_DLL);
   HWND thunks = GetDlgItem(imports.hwnd, IDC_LIST_INT_THUNK);
   ListView_DeleteAllItems(dlls);
-  readImportDirectory(imports.hwnd, dlls, context);
+  showImportDirectory(imports.hwnd, dlls, context);
   ListView_SetItemState(dlls, 0, LVIS_SELECTED, LVIS_SELECTED);
-  readIntThunk(imports.hwnd, dlls, thunks, context);
+  showImportThunks(imports.hwnd, dlls, thunks, context);
   CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #42");
   CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 2, L"00000460");
 
@@ -226,7 +248,7 @@ void CheckContextDirectoryReads() {
   Dialog exports(IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc);
   HWND functions = GetDlgItem(exports.hwnd, IDC_LIST_EXPORT_FUNC);
   ListView_DeleteAllItems(functions);
-  readExportFunc(exports.hwnd, functions, context);
+  showExportDirectory(exports.hwnd, context);
   CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 0, L"0100");
   CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 2, L"00000A00");
   CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, L"-");
@@ -235,14 +257,50 @@ void CheckContextDirectoryReads() {
   Dialog debug(IDD_DIALOG_DEBUG_DIRECTORY, DebugDirectoryProc);
   HWND debugList = GetDlgItem(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY);
   ListView_DeleteAllItems(debugList);
-  readDebugDirectory(debug.hwnd, debugList, context);
+  showDebugDirectory(debug.hwnd, debugList, context);
   CheckList(debug.hwnd, IDC_LIST_DEBUG_DIRECTORY, 4, L"UNKNOWN(10)");
+
+  // A row's descriptor identity must survive UI sorting and changed display text.
+  auto directories = const_cast<IMAGE_DATA_DIRECTORY*>(context.dataDirectories);
+  directories[IMAGE_DIRECTORY_ENTRY_IMPORT].Size = 3 * sizeof(IMAGE_IMPORT_DESCRIPTOR);
+  descriptor[1] = {};
+  descriptor[1].OriginalFirstThunk = 0x1700;
+  descriptor[1].FirstThunk = 0x1740;
+  descriptor[1].Name = 0x1750;
+  std::memcpy(image.data() + 0x950, "second.dll", 11);
+  *(DWORD*)(image.data() + 0x900) = IMAGE_ORDINAL_FLAG32 | 7;
+  showImportDirectory(imports.hwnd, dlls, context);
+  ListView_SortItems(dlls, ReverseDescriptorOrder, 0);
+  ListView_SetItemState(dlls, 0, LVIS_SELECTED, LVIS_SELECTED);
+  showImportThunks(imports.hwnd, dlls, thunks, context);
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, L"Ordinal #7");
 
   auto nt = (PIMAGE_NT_HEADERS32)(image.data() + 0x80);
   nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = MAXDWORD;
   ListView_DeleteAllItems(dlls);
-  readImportDirectory(imports.hwnd, dlls, context);
+  showImportDirectory(imports.hwnd, dlls, context);
   Check(ListView_GetItemCount(dlls) == 0, "An invalid directory RVA was dereferenced");
+  wchar_t status[512] = {};
+  GetDlgItemText(imports.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"outside") != NULL, "Import parse failure is not visible");
+  directories[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress = MAXDWORD;
+  showExportDirectory(exports.hwnd, context);
+  Check(ListView_GetItemCount(functions) == 0, "Invalid export left stale rows");
+  CheckText(exports.hwnd, IDC_EDIT_EXPORT_DIRECTORY_BASE, L"");
+  GetDlgItemText(exports.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"Invalid") != NULL, "Export parse failure is not visible");
+  Dialog bound(IDD_DIALOG_BOUND_IMPORT_DIRECTORY, BoundImportDirectoryProc);
+  directories[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].VirtualAddress = MAXDWORD;
+  showBoundImportDirectory(bound.hwnd, GetDlgItem(bound.hwnd, IDC_LIST_BOUND_IMPORT_DIRECTORY), context);
+  Check(ListView_GetItemCount(GetDlgItem(bound.hwnd, IDC_LIST_BOUND_IMPORT_DIRECTORY)) == 0,
+        "Invalid bound import left stale rows");
+  GetDlgItemText(bound.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"outside") != NULL, "Bound import parse failure is not visible");
+  directories[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress = MAXDWORD;
+  showDebugDirectory(debug.hwnd, debugList, context);
+  Check(ListView_GetItemCount(debugList) == 0, "Invalid debug directory left stale rows");
+  GetDlgItemText(debug.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"outside") != NULL, "Debug parse failure is not visible");
 }
 
 void CheckWideControl(HWND dialog, int controlId) {
@@ -302,11 +360,11 @@ void CheckImportVariants(bool wide) {
   auto descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(image.data() + 0x400);
   auto render = [&]() {
     ListView_DeleteAllItems(dlls);
-    readImportDirectory(imports.hwnd, dlls, context);
+    showImportDirectory(imports.hwnd, dlls, context);
     ListView_SetItemState(dlls, 0, LVIS_SELECTED, LVIS_SELECTED);
     // Rendering must obtain the lookup RVA from the context, not display text.
     ListView_SetItemText(dlls, 0, 1, const_cast<wchar_t*>(L"FFFFFFFF"));
-    readIntThunk(imports.hwnd, dlls, thunks, context);
+    showImportThunks(imports.hwnd, dlls, thunks, context);
   };
   auto put = [&](DWORD raw, ULONGLONG value) {
     if (wide) std::memcpy(image.data() + raw, &value, sizeof(ULONGLONG));
@@ -314,6 +372,11 @@ void CheckImportVariants(bool wide) {
   };
   render();
   CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName, 0, wide ? 3 : 1);
+  auto directories = const_cast<IMAGE_DATA_DIRECTORY*>(context.dataDirectories);
+  directories[IMAGE_DIRECTORY_ENTRY_IAT] = {};
+  render();
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"1234", 0, wide ? 3 : 1);
+  if (wide) CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"5678", 2, 3);
   descriptor->OriginalFirstThunk = 0;
   descriptor->TimeDateStamp = 0xFFFFFFFF;
   render();
@@ -322,6 +385,7 @@ void CheckImportVariants(bool wide) {
   render();
   CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 0, pe32_fixture::kImportName, 0, wide ? 3 : 1);
   CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 2, wide ? L"000004A0" : L"00000460", 0, wide ? 3 : 1);
+  CheckList(imports.hwnd, IDC_LIST_INT_THUNK, 4, L"1234", 0, wide ? 3 : 1);
   DWORD iatRaw = wide ? pe64_fixture::kIatRaw : 0x460;
   DWORD stride = wide ? 8 : 4;
   ULONGLONG flag = wide ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32;

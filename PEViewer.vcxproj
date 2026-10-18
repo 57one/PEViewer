@@ -169,6 +169,7 @@
     <ClInclude Include="src\pe\PEContext.h" />
     <ClInclude Include="src\pe\readPE.h" />
     <ClInclude Include="src\pe\directoryDetails.h" />
+    <ClInclude Include="src\ui\directoryDialogs.h" />
     <ClInclude Include="resources\resource.h" />
     <ClInclude Include="src\common\structs.h" />
     <ClInclude Include="src\common\utility.h" />

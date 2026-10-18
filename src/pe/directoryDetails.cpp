@@ -1,6 +1,7 @@
 #include "directoryDetails.h"
 
 #include <cstring>
+#include <map>
 #include <utility>
 
 namespace {
@@ -22,26 +23,45 @@ void Note(std::wstring& text, const wchar_t* message) {
   text += message;
 }
 
-void DecodeImport(IatEntry& entry, const PEContext& context, bool wide) {
+ImportSymbol DecodeImport(ULONGLONG value, const PEContext& context) {
+  ImportSymbol symbol;
+  symbol.kind = ImportKind::Invalid;
+  bool wide = context.format == PEFormat::PE32Plus;
   ULONGLONG flag = wide ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32;
-  ULONGLONG value = entry.lookupValue;
   if (!value) {
-    entry.note = entry.value ? L"INT terminator but IAT is nonzero" : L"Terminator";
+    symbol.kind = ImportKind::Terminator;
   } else if (value & flag) {
     if (value & ~(flag | 0xFFFFULL)) {
-      Note(entry.note, L"Invalid ordinal reserved bits");
+      symbol.message = L"Invalid ordinal reserved bits";
     } else {
-      entry.symbol = "Ordinal #" + std::to_string((WORD)value);
+      symbol.kind = ImportKind::Ordinal;
+      symbol.ordinal = (WORD)value;
     }
   } else if (value > 0x7FFFFFFFULL) {
-    Note(entry.note, L"Invalid name RVA / bound address");
+    symbol.message = L"Invalid name RVA / bound address";
   } else {
     const BYTE* hint = context.ReadRva((DWORD)value, sizeof(WORD));
     const char* name = hint ? context.ReadString((DWORD)value + sizeof(WORD)) : NULL;
-    if (name) entry.symbol = name;
-    else Note(entry.note, L"Invalid or unterminated import name");
+    if (name) {
+      symbol.kind = ImportKind::Name;
+      symbol.hint = (WORD)ReadValue<2>(hint);
+      symbol.name = name;
+    } else {
+      symbol.message = L"Invalid or unterminated import name";
+    }
   }
-  if (!entry.value && value) Note(entry.note, L"IAT terminator before INT");
+  return symbol;
+}
+
+bool ReadLookupSlot(const PEContext& context, ULONGLONG rva, ImportThunk& entry) {
+  bool wide = context.format == PEFormat::PE32Plus;
+  SIZE_T width = wide ? 8 : 4;
+  if (rva > MAXDWORD || !context.RvaToFileOffset((DWORD)rva, width, entry.fileOffset)) return false;
+  entry.rva = (DWORD)rva;
+  const BYTE* data = context.fileBuffer + entry.fileOffset;
+  entry.value = wide ? ReadValue<8>(data) : ReadValue<4>(data);
+  entry.symbol = DecodeImport(entry.value, context);
+  return true;
 }
 
 const wchar_t* RelocationName(WORD type) {
@@ -56,6 +76,84 @@ const wchar_t* RelocationName(WORD type) {
   }
 }
 }  // namespace
+
+ImportDetails ReadImportDetails(const PEContext& context) {
+  ImportDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_IMPORT);
+  if (!directory) {
+    result.message = L"No import directory.";
+    return result;
+  }
+  result.present = true;
+  const BYTE* data = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!data) {
+    result.message = L"Import descriptors are outside the file-backed RVA range.";
+    return result;
+  }
+  SIZE_T count = directory->Size / sizeof(IMAGE_IMPORT_DESCRIPTOR);
+  for (SIZE_T i = 0; i < count; ++i) {
+    if (i >= kMaxEntries) {
+      Note(result.message, L"Import descriptor display limited to 100000 entries");
+      break;
+    }
+    ImportModule module;
+    module.descriptorIndex = (DWORD)i;
+    auto& descriptor = module.descriptor;
+    std::memcpy(&descriptor, data + i * sizeof(descriptor), sizeof(descriptor));
+    if (!descriptor.OriginalFirstThunk && !descriptor.FirstThunk && !descriptor.Name &&
+        !descriptor.TimeDateStamp && !descriptor.ForwarderChain) {
+      result.terminated = true;
+      break;
+    }
+    const char* name = descriptor.Name ? context.ReadString(descriptor.Name) : NULL;
+    if (name) module.name = name;
+    else {
+      module.message = L"Invalid or unterminated DLL name";
+      Note(result.message, module.message.c_str());
+    }
+    result.modules.push_back(std::move(module));
+  }
+  if (!result.terminated) Note(result.message, L"Import descriptor terminator not found");
+  return result;
+}
+
+ImportThunkDetails ReadImportThunks(const PEContext& context,
+                                   const IMAGE_IMPORT_DESCRIPTOR& descriptor) {
+  ImportThunkDetails result;
+  if (!context.IsValid()) {
+    result.message = L"Invalid PE context.";
+    return result;
+  }
+  if (!descriptor.OriginalFirstThunk && descriptor.TimeDateStamp) {
+    result.message = L"Bound IAT; INT missing, name unavailable";
+    return result;
+  }
+  result.fallback = !descriptor.OriginalFirstThunk;
+  DWORD start = result.fallback ? descriptor.FirstThunk : descriptor.OriginalFirstThunk;
+  if (!start) {
+    result.message = L"No import lookup table.";
+    return result;
+  }
+  SIZE_T width = context.format == PEFormat::PE32Plus ? 8 : 4;
+  for (SIZE_T i = 0; i < kMaxEntries; ++i) {
+    ImportThunk entry;
+    if (!ReadLookupSlot(context, (ULONGLONG)start + i * width, entry)) {
+      result.message = L"Import lookup slot is outside the file-backed RVA range; terminator not found.";
+      return result;
+    }
+    if (entry.symbol.kind == ImportKind::Terminator) {
+      result.terminated = true;
+      return result;
+    }
+    if (entry.symbol.kind == ImportKind::Invalid) {
+      result.message = entry.symbol.message;
+      return result;
+    }
+    result.entries.push_back(std::move(entry));
+  }
+  result.message = L"Import function display limited to 100000 entries; terminator not found.";
+  return result;
+}
 
 IatDetails ReadIatDetails(const PEContext& context) {
   IatDetails result;
@@ -87,35 +185,22 @@ IatDetails ReadIatDetails(const PEContext& context) {
     result.entries.push_back(std::move(entry));
   }
 
-  const auto imports = context.Directory(IMAGE_DIRECTORY_ENTRY_IMPORT);
-  if (!imports) return result;
-  const BYTE* data = context.ReadRva(imports->VirtualAddress, imports->Size);
-  if (!data) {
-    Note(result.message, L"Import descriptors are invalid; DLL/name association unavailable");
-    return result;
-  }
-  bool terminated = false;
-  SIZE_T descriptors = imports->Size / sizeof(IMAGE_IMPORT_DESCRIPTOR);
+  const ImportDetails imports = ReadImportDetails(context);
+  if (!imports.present) return result;
+  if (!imports.message.empty()) Note(result.message, imports.message.c_str());
   SIZE_T work = 0;
-  for (SIZE_T i = 0; i < descriptors; ++i) {
+  for (const auto& module : imports.modules) {
     if (++work > kMaxEntries) {
       Note(result.message, L"Import association limit reached");
       break;
     }
-    IMAGE_IMPORT_DESCRIPTOR descriptor = {};
-    std::memcpy(&descriptor, data + i * sizeof(descriptor), sizeof(descriptor));
-    if (!descriptor.OriginalFirstThunk && !descriptor.FirstThunk && !descriptor.Name &&
-        !descriptor.TimeDateStamp && !descriptor.ForwarderChain) {
-      terminated = true;
-      break;
-    }
+    const auto& descriptor = module.descriptor;
     if (descriptor.FirstThunk < directory->VirtualAddress ||
         (descriptor.FirstThunk - directory->VirtualAddress) % width ||
         (descriptor.FirstThunk - directory->VirtualAddress) / width >= count) {
       Note(result.message, L"An import FirstThunk lies outside the IAT slots");
       continue;
     }
-    const char* dll = context.ReadString(descriptor.Name);
     bool fallback = !descriptor.OriginalFirstThunk && !descriptor.TimeDateStamp;
     bool boundWithoutInt = !descriptor.OriginalFirstThunk && descriptor.TimeDateStamp;
     SIZE_T first = (descriptor.FirstThunk - directory->VirtualAddress) / width;
@@ -126,28 +211,34 @@ IatDetails ReadIatDetails(const PEContext& context) {
         break;
       }
       IatEntry& entry = result.entries[slot];
-      if (!entry.dll.empty()) {
+      if (entry.associated) {
         Note(result.message, L"Overlapping import IAT ranges");
         break;
       }
-      entry.dll = dll ? dll : "<invalid DLL name>";
+      entry.associated = true;
+      entry.dll = module.name;
       entry.note.clear();
       if (boundWithoutInt) {
         entry.note = entry.value ? L"Bound IAT; INT missing, name unavailable" : L"Terminator";
       } else {
         ULONGLONG lookup = (ULONGLONG)(fallback ? descriptor.FirstThunk :
                                       descriptor.OriginalFirstThunk) + (slot - first) * width;
-        const BYTE* bytes = lookup <= MAXDWORD ? context.ReadRva((DWORD)lookup, width) : NULL;
-        if (bytes) {
+        ImportThunk thunk;
+        if (ReadLookupSlot(context, lookup, thunk)) {
           entry.hasLookup = true;
-          entry.lookupRva = (DWORD)lookup;
-          entry.lookupValue = wide ? ReadValue<8>(bytes) : ReadValue<4>(bytes);
-          DecodeImport(entry, context, wide);
+          entry.lookupRva = thunk.rva;
+          entry.lookupValue = thunk.value;
+          entry.symbol = std::move(thunk.symbol);
+          entry.note = entry.symbol.message;
+          if (entry.symbol.kind == ImportKind::Terminator)
+            entry.note = entry.value ? L"INT terminator but IAT is nonzero" : L"Terminator";
+          if (!entry.value && thunk.value) Note(entry.note, L"IAT terminator before INT");
           if (fallback) Note(entry.note, L"FirstThunk fallback (INT missing)");
         } else {
           entry.note = L"INT slot is outside the file-backed RVA range";
         }
       }
+      if (!module.message.empty()) Note(entry.note, module.message.c_str());
       if (!entry.value) {
         foundNull = true;
         break;
@@ -155,7 +246,176 @@ IatDetails ReadIatDetails(const PEContext& context) {
     }
     if (!foundNull) Note(result.message, L"An imported DLL has no IAT terminator within the directory");
   }
-  if (!terminated) Note(result.message, L"Import descriptor terminator not found");
+  return result;
+}
+
+ExportDetails ReadExportDetails(const PEContext& context) {
+  ExportDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_EXPORT);
+  if (!directory) {
+    result.message = L"No export directory.";
+    return result;
+  }
+  result.present = true;
+  const BYTE* data = directory->Size >= sizeof(result.header) ?
+      context.ReadRva(directory->VirtualAddress, sizeof(result.header)) : NULL;
+  if (!data) {
+    result.message = L"Invalid or truncated export directory header.";
+    return result;
+  }
+  std::memcpy(&result.header, data, sizeof(result.header));
+  result.hasHeader = true;
+  const auto& header = result.header;
+  if (header.NumberOfFunctions > kMaxEntries || header.NumberOfNames > kMaxEntries ||
+      header.NumberOfFunctions > context.fileSize / sizeof(DWORD) ||
+      header.NumberOfNames > context.fileSize / sizeof(DWORD)) {
+    result.message = L"Export arrays exceed the file size or the 100000-entry limit.";
+    return result;
+  }
+  if (!header.NumberOfFunctions) {
+    if (header.NumberOfNames) result.message = L"Export names exist without a function array.";
+    return result;
+  }
+  const BYTE* functions = context.ReadRva(header.AddressOfFunctions,
+      (SIZE_T)header.NumberOfFunctions * sizeof(DWORD));
+  if (!functions) {
+    result.message = L"Export function array is outside the file-backed RVA range.";
+    return result;
+  }
+  std::map<DWORD, DWORD> namesByFunction;
+  if (header.NumberOfNames) {
+    const BYTE* names = context.ReadRva(header.AddressOfNames,
+        (SIZE_T)header.NumberOfNames * sizeof(DWORD));
+    const BYTE* ordinals = context.ReadRva(header.AddressOfNameOrdinals,
+        (SIZE_T)header.NumberOfNames * sizeof(WORD));
+    if (!names || !ordinals) {
+      result.message = L"Export name/ordinal arrays are outside the file-backed RVA range.";
+      return result;
+    }
+    for (DWORD i = 0; i < header.NumberOfNames; ++i) {
+      WORD index = (WORD)ReadValue<2>(ordinals + i * sizeof(WORD));
+      if (index >= header.NumberOfFunctions) {
+        result.message = L"Export name ordinal index exceeds the function array.";
+        return result;
+      }
+      namesByFunction.insert({index, (DWORD)ReadValue<4>(names + i * sizeof(DWORD))});
+    }
+  }
+  for (DWORD i = 0; i < header.NumberOfFunctions; ++i) {
+    DWORD rva = (DWORD)ReadValue<4>(functions + i * sizeof(DWORD));
+    if (!rva) continue;
+    if (i > MAXDWORD - header.Base) {
+      result.message = L"Export ordinal overflow.";
+      break;
+    }
+    ExportEntry entry;
+    entry.rva = rva;
+    entry.ordinal = header.Base + i;
+    auto name = namesByFunction.find(i);
+    if (name != namesByFunction.end()) {
+      const char* text = context.ReadString(name->second);
+      if (!text) {
+        result.message = L"Invalid or unterminated export name.";
+        break;
+      }
+      entry.name = text;
+    }
+    entry.hasFileOffset = context.RvaToFileOffset(rva, 1, entry.fileOffset) != FALSE;
+    result.entries.push_back(std::move(entry));
+  }
+  return result;
+}
+
+BoundImportDetails ReadBoundImportDetails(const PEContext& context) {
+  BoundImportDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
+  if (!directory) {
+    result.message = L"No bound import directory.";
+    return result;
+  }
+  result.present = true;
+  const BYTE* data = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!data) {
+    result.message = L"Bound import directory is outside the file-backed RVA range.";
+    return result;
+  }
+  auto readName = [&](WORD offset, std::string& name) {
+    if (!offset || offset >= directory->Size ||
+        !std::memchr(data + offset, 0, directory->Size - offset)) return false;
+    name = (const char*)(data + offset);
+    return true;
+  };
+  SIZE_T pos = 0, work = 0;
+  while (directory->Size - pos >= sizeof(IMAGE_BOUND_IMPORT_DESCRIPTOR)) {
+    if (++work > kMaxEntries) {
+      Note(result.message, L"Bound import display limited to 100000 records");
+      break;
+    }
+    BoundImportEntry entry;
+    auto& descriptor = entry.descriptor;
+    std::memcpy(&descriptor, data + pos, sizeof(descriptor));
+    if (!descriptor.TimeDateStamp && !descriptor.OffsetModuleName && !descriptor.NumberOfModuleForwarderRefs) {
+      result.terminated = true;
+      break;
+    }
+    if (!readName(descriptor.OffsetModuleName, entry.name)) {
+      entry.message = L"Invalid or unterminated bound import name";
+      Note(result.message, entry.message.c_str());
+    }
+    SIZE_T step = sizeof(descriptor) + (SIZE_T)descriptor.NumberOfModuleForwarderRefs *
+                                      sizeof(IMAGE_BOUND_FORWARDER_REF);
+    if (step > directory->Size - pos) {
+      Note(result.message, L"Truncated bound import forwarder records");
+      result.entries.push_back(std::move(entry));
+      break;
+    }
+    for (WORD i = 0; i < descriptor.NumberOfModuleForwarderRefs; ++i) {
+      if (++work > kMaxEntries) {
+        Note(result.message, L"Bound import display limited to 100000 records");
+        break;
+      }
+      BoundForwarder forwarder;
+      std::memcpy(&forwarder.descriptor, data + pos + sizeof(descriptor) +
+                  (SIZE_T)i * sizeof(forwarder.descriptor), sizeof(forwarder.descriptor));
+      if (!readName(forwarder.descriptor.OffsetModuleName, forwarder.name)) {
+        forwarder.message = L"Invalid or unterminated bound forwarder name";
+        Note(result.message, forwarder.message.c_str());
+      }
+      entry.forwarders.push_back(std::move(forwarder));
+    }
+    result.entries.push_back(std::move(entry));
+    if (work > kMaxEntries) break;
+    pos += step;
+  }
+  if (!result.terminated) Note(result.message, L"Bound import descriptor terminator not found");
+  return result;
+}
+
+DebugDetails ReadDebugDetails(const PEContext& context) {
+  DebugDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_DEBUG);
+  if (!directory) {
+    result.message = L"No debug directory.";
+    return result;
+  }
+  result.present = true;
+  const BYTE* data = context.ReadRva(directory->VirtualAddress, directory->Size);
+  if (!data) {
+    result.message = L"Debug directory is outside the file-backed RVA range.";
+    return result;
+  }
+  SIZE_T count = directory->Size / sizeof(IMAGE_DEBUG_DIRECTORY);
+  if (directory->Size % sizeof(IMAGE_DEBUG_DIRECTORY))
+    Note(result.message, L"Truncated debug directory record");
+  if (count > kMaxEntries) {
+    count = kMaxEntries;
+    Note(result.message, L"Debug display limited to 100000 records");
+  }
+  for (SIZE_T i = 0; i < count; ++i) {
+    IMAGE_DEBUG_DIRECTORY entry = {};
+    std::memcpy(&entry, data + i * sizeof(entry), sizeof(entry));
+    result.entries.push_back(entry);
+  }
   return result;
 }
 

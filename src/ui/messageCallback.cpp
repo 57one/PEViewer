@@ -638,7 +638,7 @@ void onDirectory(HWND hwnd) {
 
 void onDirectoryInit(HWND hwnd, LPARAM lParam) {
   // set text about Directory
-  readDirectory(hwnd, g_peContext);
+  showDirectory(hwnd, g_peContext);
 }
 
 void onSectionEdit(HWND hwnd, LPARAM lParam) {
@@ -780,7 +780,7 @@ VOID InitImportDirectory(HWND hwnd) {
   lv.iSubItem = 5;
   ListView_InsertColumn(hListImportDLL, 5, &lv);
 
-  readImportDirectory(hwnd, hListImportDLL, g_peContext);
+  showImportDirectory(hwnd, hListImportDLL, g_peContext);
 }
 
 VOID InitImportFunction(HWND hwnd) {
@@ -826,8 +826,6 @@ VOID InitImportFunction(HWND hwnd) {
   lv.iSubItem = 4;
   ListView_InsertColumn(hListIntThunk, 4, &lv);
 
-  // Int import name table
-  //readIntThunk(hwnd, hListIntThunk, (PIMAGE_IMPORT_DESCRIPTOR)0);
 }
 
 void onImportDirectoryInit(HWND hwnd) {
@@ -871,12 +869,12 @@ VOID InitExportFunction(HWND hwnd) {
   // ListView_InsertColumn(hListExportFunc, 1, &lv);
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
-  readExportFunc(hwnd, hListExportFunc, g_peContext);
+
 }
 
 void onExportDirectoryInit(HWND hwnd) { 
     InitExportFunction(hwnd); 
-    readExportDirectory(hwnd, g_peContext);
+    showExportDirectory(hwnd, g_peContext);
 }
 
 VOID InitBoundImportDirectory(HWND hwnd) {
@@ -917,7 +915,7 @@ VOID InitBoundImportDirectory(HWND hwnd) {
   // ListView_InsertColumn(hBoundImport, 1, &lv);
   SendMessage(hBoundImport, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
-  readBoundImportDirectory(hwnd, hBoundImport, g_peContext);
+  showBoundImportDirectory(hwnd, hBoundImport, g_peContext);
 }
 
 void onBoundImportDirectoryInit(HWND hwnd) { InitBoundImportDirectory(hwnd); }
@@ -980,7 +978,7 @@ VOID InitDebugDirectory(HWND hwnd) {
   lv.iSubItem = 7;
   SendMessage(hDebug, LVM_INSERTCOLUMN, 7, (LPARAM)&lv);
 
-  readDebugDirectory(hwnd, hDebug, g_peContext);
+  showDebugDirectory(hwnd, hDebug, g_peContext);
 }
 
 void onDebugDirectoryInit(HWND hwnd) { InitDebugDirectory(hwnd); }

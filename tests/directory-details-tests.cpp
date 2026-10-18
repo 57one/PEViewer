@@ -37,13 +37,13 @@ void CheckFormat(bool wide) {
   const auto& first = table.entries[0];
   Check(first.rva == iatRva && first.fileOffset == iatRaw && first.value == 0x1270,
         "IAT slot address, file offset or raw value mismatch");
-  Check(first.dll == "test.dll" && first.symbol == "ImportedFunc" && first.hasLookup &&
+  Check(first.dll == "test.dll" && first.symbol.name == "ImportedFunc" && first.hasLookup &&
         first.lookupRva == intRva && first.lookupValue == 0x1270, "INT association mismatch");
   Check(table.entries.back().value == 0 && table.entries.back().note == L"Terminator",
         "IAT terminator was omitted");
   if (wide) {
-    Check(table.entries[1].symbol == "Ordinal #42" &&
-          table.entries[1].rva == iatRva + 8 && table.entries[2].symbol == "SecondFunc",
+    Check((table.entries[1].symbol.kind == ImportKind::Ordinal && table.entries[1].symbol.ordinal == 42) &&
+          table.entries[1].rva == iatRva + 8 && table.entries[2].symbol.name == "SecondFunc",
           "PE32+ IAT uses incorrect stride or ordinal flag");
   }
 
@@ -52,18 +52,18 @@ void CheckFormat(bool wide) {
   Store(image.data() + iatRaw, address, width);
   descriptor->TimeDateStamp = 0x12345678;
   table = ReadIatDetails(context);
-  Check(table.entries[0].value == address && table.entries[0].symbol == "ImportedFunc" &&
+  Check(table.entries[0].value == address && table.entries[0].symbol.name == "ImportedFunc" &&
         table.entries[0].lookupValue == 0x1270, "Bound IAT address was treated as a name RVA");
   descriptor->OriginalFirstThunk = 0;
   table = ReadIatDetails(context);
-  Check(!table.entries[0].hasLookup && table.entries[0].symbol.empty() &&
+  Check(!table.entries[0].hasLookup && table.entries[0].symbol.name.empty() &&
         table.entries[0].dll == "test.dll" && !table.entries[0].note.empty(),
         "Bound IAT without INT invented a function name");
 
   reset();
   descriptor->OriginalFirstThunk = 0;
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol == "ImportedFunc" && table.entries[0].lookupRva == iatRva,
+  Check(table.entries[0].symbol.name == "ImportedFunc" && table.entries[0].lookupRva == iatRva,
         "Unbound FirstThunk fallback failed");
   reset();
   directories[IMAGE_DIRECTORY_ENTRY_IMPORT] = {};
@@ -82,26 +82,26 @@ void CheckFormat(bool wide) {
   reset();
   descriptor->OriginalFirstThunk = 0x1FFF;
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol.empty() && !table.entries[0].hasLookup &&
+  Check(table.entries[0].symbol.name.empty() && !table.entries[0].hasLookup &&
         !table.entries[0].note.empty(), "Truncated INT slot was read");
   reset();
   Store(image.data() + intRaw, wide ? 0x0000000100001270ULL : 0x70001270ULL, width);
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol.empty() && !table.entries[0].note.empty(),
+  Check(table.entries[0].symbol.kind == ImportKind::Invalid && !table.entries[0].note.empty(),
         "Invalid/bound lookup value was narrowed to a valid name RVA");
   Store(image.data() + intRaw, wide ? 0x800000000001002AULL : 0x8001002AULL, width);
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol.empty() && !table.entries[0].note.empty(),
+  Check(table.entries[0].symbol.kind == ImportKind::Invalid && !table.entries[0].note.empty(),
         "Reserved ordinal bits were accepted");
   Store(image.data() + intRaw, 0x1FFF, width);
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol.empty() && !table.entries[0].note.empty(),
+  Check(table.entries[0].symbol.kind == ImportKind::Invalid && !table.entries[0].note.empty(),
         "Invalid import-by-name record was accepted");
   reset();
   Store(image.data() + intRaw, 0x1900, width);
   std::memset(image.data() + 0xB02, 'X', image.size() - 0xB02);
   table = ReadIatDetails(context);
-  Check(table.entries[0].symbol.empty() && !table.entries[0].note.empty(),
+  Check(table.entries[0].symbol.kind == ImportKind::Invalid && !table.entries[0].note.empty(),
         "Unterminated import name was accepted");
 
   // Two DLLs and two terminators in the same IAT range.
@@ -124,7 +124,7 @@ void CheckFormat(bool wide) {
   table = ReadIatDetails(context);
   Check(table.message.empty() && table.entries.size() == 4 &&
         table.entries[0].dll == "test.dll" && table.entries[2].dll == "other.dll" &&
-        table.entries[2].symbol == "Ordinal #65535", "Multi-DLL IAT mapping failed");
+        (table.entries[2].symbol.kind == ImportKind::Ordinal && table.entries[2].symbol.ordinal == 65535), "Multi-DLL IAT mapping failed");
   directories[IMAGE_DIRECTORY_ENTRY_IAT].Size = (DWORD)(width * 3);
   Check(!ReadIatDetails(context).message.empty(), "Missing IAT terminator was not reported");
 
@@ -181,9 +181,135 @@ void CheckFormat(bool wide) {
   Check(!relocs.blocks[0].entries[0].hasValue && relocs.blocks[0].entries[0].type == 6,
         "Unknown relocation type was decoded as a pointer");
 }
+void CheckSeparatedDirectories(bool wide) {
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  PEContext context;
+  auto reset = [&]() {
+    if (wide) pe64_fixture::Fill(image.data()); else pe32_fixture::Fill(image.data());
+    Check(context.Initialize(image.data(), image.size()), "Separated-directory fixture rejected");
+  };
+  reset();
+  auto directories = const_cast<IMAGE_DATA_DIRECTORY*>(context.dataDirectories);
+  auto descriptor = (PIMAGE_IMPORT_DESCRIPTOR)(image.data() + 0x400);
+  auto imports = ReadImportDetails(context);
+  Check(imports.present && imports.terminated && imports.message.empty() && imports.modules.size() == 1 &&
+        imports.modules[0].name == "test.dll", "Import descriptor model mismatch");
+  auto thunks = ReadImportThunks(context, imports.modules[0].descriptor);
+  Check(thunks.message.empty() && thunks.terminated && thunks.entries.size() == (wide ? 3 : 1) &&
+        thunks.entries[0].symbol.kind == ImportKind::Name && thunks.entries[0].symbol.hint == 0x1234 &&
+        thunks.entries[0].symbol.name == "ImportedFunc", "Import model lost its name or Hint");
+  auto iat = ReadIatDetails(context);
+  Check(iat.entries[0].symbol.hint == thunks.entries[0].symbol.hint &&
+        iat.entries[0].symbol.name == thunks.entries[0].symbol.name,
+        "IAT and import page use different symbol decoding");
+  if (wide) Check(thunks.entries[1].symbol.kind == ImportKind::Ordinal &&
+                  thunks.entries[1].symbol.ordinal == 42 && thunks.entries[2].symbol.hint == 0x5678,
+                  "64-bit import model lost ordinal or second Hint");
+  directories[IMAGE_DIRECTORY_ENTRY_IAT] = {};
+  imports = ReadImportDetails(context);
+  thunks = ReadImportThunks(context, imports.modules[0].descriptor);
+  Check(thunks.terminated && thunks.entries[0].symbol.hint == 0x1234 &&
+        thunks.entries.size() == (wide ? 3 : 1), "Import parsing depends on IAT directory");
+  descriptor->OriginalFirstThunk = 0;
+  thunks = ReadImportThunks(context, *descriptor);
+  Check(thunks.fallback && thunks.terminated && thunks.entries[0].symbol.hint == 0x1234,
+        "FirstThunk fallback lost Hint without IAT directory");
+  descriptor->TimeDateStamp = MAXDWORD;
+  thunks = ReadImportThunks(context, *descriptor);
+  Check(thunks.entries.empty() && !thunks.message.empty(), "Bound IAT was used as missing INT");
+  reset();
+  directories[IMAGE_DIRECTORY_ENTRY_IMPORT].Size = sizeof(IMAGE_IMPORT_DESCRIPTOR);
+  imports = ReadImportDetails(context);
+  Check(!imports.terminated && !imports.message.empty() && imports.modules.size() == 1,
+        "Missing descriptor terminator was not reported");
+  descriptor->Name = MAXDWORD;
+  imports = ReadImportDetails(context);
+  Check(imports.modules.size() == 1 && imports.modules[0].descriptorIndex == 0 &&
+        !imports.modules[0].message.empty(), "Invalid DLL name discarded descriptor identity");
+  directories[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = MAXDWORD;
+  imports = ReadImportDetails(context);
+  Check(imports.present && imports.modules.empty() && !imports.message.empty(), "Invalid import range accepted");
+
+  reset();
+  auto exports = ReadExportDetails(context);
+  Check(exports.present && exports.hasHeader && exports.message.empty() && exports.entries.size() == 1 &&
+        exports.entries[0].ordinal == 1 && exports.entries[0].name == "ExportedFunc" &&
+        exports.entries[0].fileOffset == 0xA00, "Export model mismatch");
+  auto exportHeader = (PIMAGE_EXPORT_DIRECTORY)(image.data() + 0x300);
+  exportHeader->Base = 0x100;
+  exportHeader->NumberOfNames = 0;
+  exports = ReadExportDetails(context);
+  Check(exports.entries[0].ordinal == 0x100 && exports.entries[0].name.empty(), "Unnamed export lost Base");
+  reset();
+  *(WORD*)(image.data() + 0x348) = 1;
+  exports = ReadExportDetails(context);
+  Check(exports.entries.empty() && !exports.message.empty(), "Out-of-range export ordinal accepted");
+  reset();
+  exportHeader->AddressOfFunctions = MAXDWORD;
+  Check(!ReadExportDetails(context).message.empty(), "Invalid export array accepted");
+  reset();
+  exportHeader->NumberOfFunctions = 2;
+  exportHeader->NumberOfNames = 0;
+  exportHeader->Base = MAXDWORD;
+  *(DWORD*)(image.data() + 0x344) = 0x1804;
+  exports = ReadExportDetails(context);
+  Check(exports.entries.size() == 1 && !exports.message.empty(), "Export ordinal overflow was not reported");
+  reset();
+  directories[IMAGE_DIRECTORY_ENTRY_EXPORT].Size = sizeof(IMAGE_EXPORT_DIRECTORY) - 1;
+  Check(!ReadExportDetails(context).hasHeader, "Truncated export header accepted");
+
+  reset();
+  auto bound = ReadBoundImportDetails(context);
+  Check(bound.present && bound.terminated && bound.message.empty() && bound.entries.size() == 1 &&
+        bound.entries[0].name == "bound.dll", "Bound import model mismatch");
+  directories[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT].Size = 0x60;
+  std::memset(image.data() + 0x500, 0, 0x60);
+  auto parent = (PIMAGE_BOUND_IMPORT_DESCRIPTOR)(image.data() + 0x500);
+  parent->TimeDateStamp = 0x11223344;
+  parent->OffsetModuleName = 0x20;
+  parent->NumberOfModuleForwarderRefs = 1;
+  auto forwarder = (PIMAGE_BOUND_FORWARDER_REF)(image.data() + 0x508);
+  forwarder->TimeDateStamp = 0x55667788;
+  forwarder->OffsetModuleName = 0x30;
+  std::memcpy(image.data() + 0x520, "parent.dll", 11);
+  std::memcpy(image.data() + 0x530, "child.dll", 10);
+  bound = ReadBoundImportDetails(context);
+  Check(bound.terminated && bound.message.empty() && bound.entries.size() == 1 &&
+        bound.entries[0].forwarders.size() == 1 && bound.entries[0].forwarders[0].name == "child.dll" &&
+        bound.entries[0].forwarders[0].descriptor.TimeDateStamp == 0x55667788,
+        "Bound forwarder record was skipped or treated as a main descriptor");
+  std::memset(image.data() + 0x530, 'X', 0x30);
+  bound = ReadBoundImportDetails(context);
+  Check(!bound.message.empty() && !bound.entries[0].forwarders[0].message.empty(),
+        "Unterminated bound forwarder name accepted");
+  parent->NumberOfModuleForwarderRefs = 0xFFFF;
+  Check(!ReadBoundImportDetails(context).message.empty(), "Truncated bound forwarder array accepted");
+
+  reset();
+  auto debug = ReadDebugDetails(context);
+  Check(debug.present && debug.message.empty() && debug.entries.size() == 1 &&
+        debug.entries[0].Type == IMAGE_DEBUG_TYPE_CODEVIEW && debug.entries[0].PointerToRawData == 0x650,
+        "Debug model mismatch");
+  ((PIMAGE_DEBUG_DIRECTORY)(image.data() + 0x600))->Type = IMAGE_DEBUG_TYPE_REPRO;
+  Check(ReadDebugDetails(context).entries[0].Type == IMAGE_DEBUG_TYPE_REPRO, "Raw debug type was reformatted in PE layer");
+  directories[IMAGE_DIRECTORY_ENTRY_DEBUG].Size += 1;
+  debug = ReadDebugDetails(context);
+  Check(debug.entries.size() == 1 && !debug.message.empty(), "Truncated debug record was not reported");
+  directories[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress = MAXDWORD;
+  Check(ReadDebugDetails(context).entries.empty(), "Invalid debug range accepted");
+  directories[IMAGE_DIRECTORY_ENTRY_IMPORT] = {};
+  directories[IMAGE_DIRECTORY_ENTRY_EXPORT] = {};
+  directories[IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT] = {};
+  directories[IMAGE_DIRECTORY_ENTRY_DEBUG] = {};
+  Check(!ReadImportDetails(context).present && !ReadExportDetails(context).present &&
+        !ReadBoundImportDetails(context).present && !ReadDebugDetails(context).present,
+        "Missing directory was treated as malformed present data");
+}
 }  // namespace
 
 void CheckDirectoryDetails() {
   CheckFormat(false);
   CheckFormat(true);
+  CheckSeparatedDirectories(false);
+  CheckSeparatedDirectories(true);
 }

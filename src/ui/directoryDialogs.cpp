@@ -21,6 +21,12 @@ std::wstring Widen(const std::string& text) {
   return result;
 }
 
+std::wstring SymbolText(const ImportSymbol& symbol) {
+  if (symbol.kind == ImportKind::Name) return Widen(symbol.name);
+  if (symbol.kind == ImportKind::Ordinal) return L"Ordinal #" + std::to_wstring(symbol.ordinal);
+  return L"-";
+}
+
 void Columns(HWND list, const wchar_t* const* names, const int* widths, int count) {
   ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
   for (int i = 0; i < count; ++i) {
@@ -74,7 +80,7 @@ void InitIat(HWND hwnd) {
     Cell(list, row, 2, Hex(entry.fileOffset));
     Cell(list, row, 3, Hex(entry.value, wide ? 16 : 8));
     Cell(list, row, 4, Widen(entry.dll));
-    Cell(list, row, 5, Widen(entry.symbol));
+    Cell(list, row, 5, SymbolText(entry.symbol));
     Cell(list, row, 6, entry.hasLookup ? Hex(entry.lookupRva) : L"-");
     Cell(list, row, 7, entry.hasLookup ? Hex(entry.lookupValue, wide ? 16 : 8) : L"-");
     Cell(list, row, 8, entry.note.empty() ? L"OK" : entry.note);
@@ -145,6 +151,149 @@ void InitRelocations(HWND hwnd) {
                                                     LVIS_SELECTED | LVIS_FOCUSED);
 }
 }  // namespace
+
+void showDirectory(HWND hwnd, const PEContext& context) {
+  if (!context.IsValid()) return;
+  for (DWORD i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; ++i) {
+    const auto entry = i < context.directoryCount ? context.dataDirectories + i : NULL;
+    SetDlgItemText(hwnd, directoryRVAEditID[i], Hex(entry ? entry->VirtualAddress : 0).c_str());
+    SetDlgItemText(hwnd, directorySizeEditID[i], Hex(entry ? entry->Size : 0).c_str());
+    BOOL present = context.Directory(i) != NULL;
+    EnableWindow(GetDlgItem(hwnd, directoryMoreInfoButtonID[i]), present);
+    EnableWindow(GetDlgItem(hwnd, directoryHexButtonID[i]), present);
+  }
+}
+
+void showImportDirectory(HWND hwnd, HWND list, const PEContext& context) {
+  ListView_DeleteAllItems(list);
+  ListView_DeleteAllItems(GetDlgItem(hwnd, IDC_LIST_INT_THUNK));
+  const ImportDetails details = ReadImportDetails(context);
+  for (SIZE_T i = 0; i < details.modules.size(); ++i) {
+    const auto& module = details.modules[i];
+    const auto& descriptor = module.descriptor;
+    int row = (int)i;
+    Cell(list, row, 0, Widen(module.name));
+    Cell(list, row, 1, Hex(descriptor.OriginalFirstThunk));
+    Cell(list, row, 2, Hex(descriptor.TimeDateStamp));
+    Cell(list, row, 3, Hex(descriptor.ForwarderChain));
+    Cell(list, row, 4, Hex(descriptor.Name));
+    Cell(list, row, 5, Hex(descriptor.FirstThunk));
+    LVITEM item = {};
+    item.mask = LVIF_PARAM;
+    item.iItem = row;
+    item.lParam = module.descriptorIndex;
+    ListView_SetItem(list, &item);
+  }
+  std::wstring status = std::to_wstring(details.modules.size()) + L" imported DLLs. " + details.message;
+  SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
+}
+
+void showImportThunks(HWND hwnd, HWND dllList, HWND list, const PEContext& context) {
+  ListView_DeleteAllItems(list);
+  int selected = ListView_GetNextItem(dllList, -1, LVNI_SELECTED);
+  if (selected < 0) {
+    SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, L"Select an imported DLL.");
+    return;
+  }
+  LVITEM item = {};
+  item.mask = LVIF_PARAM;
+  item.iItem = selected;
+  if (!ListView_GetItem(dllList, &item)) return;
+  const ImportDetails imports = ReadImportDetails(context);
+  const ImportModule* module = NULL;
+  for (const auto& candidate : imports.modules)
+    if ((LPARAM)candidate.descriptorIndex == item.lParam) { module = &candidate; break; }
+  if (!module) {
+    SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS,
+                   imports.message.empty() ? L"Selected import descriptor is unavailable." : imports.message.c_str());
+    return;
+  }
+  const auto details = ReadImportThunks(context, module->descriptor);
+  bool wide = context.format == PEFormat::PE32Plus;
+  for (SIZE_T i = 0; i < details.entries.size(); ++i) {
+    const auto& entry = details.entries[i];
+    int row = (int)i;
+    Cell(list, row, 0, SymbolText(entry.symbol));
+    Cell(list, row, 1, Hex(entry.rva, 10));
+    Cell(list, row, 2, Hex(entry.fileOffset));
+    Cell(list, row, 3, Hex(entry.value, wide ? 16 : 8));
+    Cell(list, row, 4, entry.symbol.kind == ImportKind::Name ? Hex(entry.symbol.hint, 4) : L"-");
+  }
+  Fit(list, 5);
+  std::wstring status = std::to_wstring(details.entries.size()) + L" imports. ";
+  if (!imports.message.empty()) status += imports.message + L" ";
+  status += details.message;
+  if (details.fallback) status += L" FirstThunk fallback (INT missing).";
+  SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
+}
+
+void showExportDirectory(HWND hwnd, const PEContext& context) {
+  const ExportDetails details = ReadExportDetails(context);
+  const auto& header = details.header;
+  const struct { int id; DWORD value; int width; } fields[] = {
+    {IDC_EDIT_EXPORT_DIRECTORY_CHARAC, header.Characteristics, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_TIMEDATESTAMP, header.TimeDateStamp, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_MAJ_VER, header.MajorVersion, 4},
+    {IDC_EDIT_EXPORT_DIRECTORY_MIN_VER, header.MinorVersion, 4},
+    {IDC_EDIT_EXPORT_DIRECTORY_NAME, header.Name, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_BASE, header.Base, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_NUM_OF_FUNCS, header.NumberOfFunctions, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_NUM_OF_NAMES, header.NumberOfNames, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_ADDR_OF_FUNCS, header.AddressOfFunctions, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_ADDR_OF_NAMES, header.AddressOfNames, 8},
+    {IDC_EDIT_EXPORT_DIRECTORY_ADDR_OF_NAME_ORDS, header.AddressOfNameOrdinals, 8}
+  };
+  for (const auto& field : fields)
+    SetDlgItemText(hwnd, field.id, details.hasHeader ? Hex(field.value, field.width).c_str() : L"");
+  HWND list = GetDlgItem(hwnd, IDC_LIST_EXPORT_FUNC);
+  ListView_DeleteAllItems(list);
+  for (SIZE_T i = 0; i < details.entries.size(); ++i) {
+    const auto& entry = details.entries[i];
+    int row = (int)i;
+    Cell(list, row, 0, Hex(entry.ordinal, 4));
+    Cell(list, row, 1, Hex(entry.rva));
+    Cell(list, row, 2, entry.hasFileOffset ? Hex(entry.fileOffset) : L"-");
+    Cell(list, row, 3, Widen(entry.name));
+  }
+  std::wstring status = std::to_wstring(details.entries.size()) + L" exports. " + details.message;
+  SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
+}
+
+void showBoundImportDirectory(HWND hwnd, HWND list, const PEContext& context) {
+  const BoundImportDetails details = ReadBoundImportDetails(context);
+  ListView_DeleteAllItems(list);
+  for (SIZE_T i = 0; i < details.entries.size(); ++i) {
+    const auto& entry = details.entries[i];
+    int row = (int)i;
+    Cell(list, row, 0, Widen(entry.name));
+    Cell(list, row, 1, Hex(entry.descriptor.TimeDateStamp) + L" H");
+    Cell(list, row, 2, Hex(entry.descriptor.OffsetModuleName, 4) + L" H");
+    Cell(list, row, 3, Hex(entry.descriptor.NumberOfModuleForwarderRefs, 4) + L" H");
+  }
+  std::wstring status = std::to_wstring(details.entries.size()) + L" bound imports. " + details.message;
+  SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
+}
+
+void showDebugDirectory(HWND hwnd, HWND list, const PEContext& context) {
+  const DebugDetails details = ReadDebugDetails(context);
+  ListView_DeleteAllItems(list);
+  for (SIZE_T i = 0; i < details.entries.size(); ++i) {
+    const auto& entry = details.entries[i];
+    int row = (int)i;
+    LPCTSTR type = entry.Type < 7 ? szDebugInfoType[entry.Type] :
+                   entry.Type == IMAGE_DEBUG_TYPE_BORLAND ? TEXT("BORLAND") : TEXT("UNKNOWN");
+    Cell(list, row, 0, Hex(entry.Characteristics));
+    Cell(list, row, 1, Hex(entry.TimeDateStamp));
+    Cell(list, row, 2, Hex(entry.MajorVersion, 4));
+    Cell(list, row, 3, Hex(entry.MinorVersion, 4));
+    Cell(list, row, 4, std::wstring(type) + L"(" + Hex(entry.Type, 1) + L")");
+    Cell(list, row, 5, Hex(entry.SizeOfData));
+    Cell(list, row, 6, Hex(entry.AddressOfRawData));
+    Cell(list, row, 7, Hex(entry.PointerToRawData));
+  }
+  std::wstring status = std::to_wstring(details.entries.size()) + L" debug records. " + details.message;
+  SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
+}
 
 INT_PTR CALLBACK IatDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
