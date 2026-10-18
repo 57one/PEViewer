@@ -25,6 +25,7 @@
 #define IDD_DIALOG_DEBUG_DIRECTORY      161
 #define IDD_DIALOG_IAT                  162
 #define IDD_DIALOG_RELOCATIONS          163
+#define IDD_DIALOG_RESOURCES            164
 #define IDC_BUTTON_PE_EDITOR            1001
 #define IDC_LIST_PROCESS                1008
 #define IDC_BUTTON_PROFILE              1009
@@ -468,15 +469,17 @@
 #define IDC_LIST_RELOC_BLOCKS           1362
 #define IDC_LIST_RELOC_ENTRIES          1363
 #define IDC_STATIC_DIRECTORY_STATUS     1364
+#define IDC_TREE_RESOURCES              1365
+#define IDC_LIST_RESOURCE_DETAILS       1366
 #define IDC_CHECK_UNKNOWN               -1
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        164
+#define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1365
+#define _APS_NEXT_CONTROL_VALUE         1367
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

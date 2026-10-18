@@ -63,6 +63,12 @@
     <ClCompile Include="src\ui\directoryDialogs.cpp">
       <Filter>src\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\pe\resourceDetails.cpp">
+      <Filter>src\pe</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\resourceDialog.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\utility.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
@@ -136,6 +142,12 @@
     </None>
     <None Include="tests\directory-details-tests.cpp">
       <Filter>tests</Filter>
+    </None>
+    <None Include="tests\resource-details-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\resources.h">
+      <Filter>tests\fixtures</Filter>
     </None>
     <None Include="tests\fixtures\pe64.h">
       <Filter>tests\fixtures</Filter>

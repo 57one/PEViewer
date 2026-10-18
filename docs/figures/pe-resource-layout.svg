@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1320" viewBox="0 0 1800 1320" data-generator="fireworks-tech-graph" data-quality-profile="showcase">
+<style>text{font-family:"Microsoft YaHei","SimHei",Arial,sans-serif;fill:#111827}.mono{font-family:Consolas,"Microsoft YaHei",monospace}</style>
+<defs>
+<marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
+<marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0,10 3.5,0 7" fill="#9333ea"/></marker>
+<marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0,10 3.5,0 7" fill="#16a34a"/></marker>
+</defs>
+<rect width="1800" height="1320" fill="#ffffff" data-graph-role="background"/>
+<text x="48" y="65" font-size="34" font-weight="600" style="fill:#111827" class="" data-graph-role="label">PE 资源目录：从类型、名称到实际数据</text>
+<text x="48" y="103" font-size="20" font-weight="400" style="fill:#6b7280" class="" data-graph-role="label">磁盘文件中的结构关系｜按 RVA 标注，数字均为示意｜每一级只展开 1 个 Entry</text>
+<path id="entry-root" d="M 380,264 L 380,340" fill="none" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)" data-graph-role="edge" data-source="locator" data-target="types"/>
+<path id="type-name" d="M 408,644 L 444,644 L 444,360 L 480,360" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)" data-graph-role="edge" data-source="types" data-target="names"/>
+<path id="name-language" d="M 840,644 L 876,644 L 876,360 L 912,360" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)" data-graph-role="edge" data-source="names" data-target="languages"/>
+<path id="language-record" d="M 1272,644 L 1308,644 L 1308,360 L 1344,360" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)" data-graph-role="edge" data-source="languages" data-target="record"/>
+<path id="name-string" d="M 810,700 L 810,792" fill="none" stroke="#9333ea" stroke-width="2.5" marker-end="url(#arrow-purple)" data-graph-role="edge" data-source="names" data-target="string"/>
+<path id="record-bytes" d="M 1674,700 L 1674,792" fill="none" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)" data-graph-role="edge" data-source="record" data-target="bytes"/>
+<rect x="48" y="136" width="360" height="128" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" data-graph-role="node" id="locator" data-node-id="locator"/>
+<text x="64" y="166" font-size="21" font-weight="600" style="fill:#16a34a" class="" data-graph-role="decoration">DataDirectory[2]：Resource</text>
+<text x="64" y="207" font-size="17" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">VirtualAddress = 0x3000 (RVA)</text>
+<text x="64" y="241" font-size="17" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Size           = 0x2400</text>
+<text x="480" y="171" font-size="23" font-weight="600" style="fill:#111827" class="" data-graph-role="label">查找路径：资源类型 → 名称 / ID → 语言 → 数据描述符 → 原始字节</text>
+<text x="480" y="214" font-size="20" font-weight="400" style="fill:#6b7280" class="" data-graph-role="label">本例：RT_RCDATA (#10) → “配置” → 0x0409 → 一段 0x200 字节的数据</text>
+<text x="480" y="253" font-size="20" font-weight="400" style="fill:#6b7280" class="" data-graph-role="label">资源根 RVA = 0x3000；后面蓝色 / 紫色箭头的偏移都以这个根为起点。</text>
+<text x="48" y="311" font-size="22" font-weight="600" style="fill:#2563eb" class="" data-graph-role="label">第 1 级：类型（根目录）</text>
+<rect x="48" y="340" width="360" height="360" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" data-graph-role="node" id="types" data-node-id="types"/>
+<rect x="49" y="341" width="358" height="43" rx="8" fill="#eff6ff" stroke="#eff6ff" stroke-width="1.5" data-graph-role="decoration"/>
+<text x="64" y="368" font-size="17" font-weight="600" style="fill:#2563eb" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY</text>
+<text x="64" y="410" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Characteristics = 0</text>
+<text x="64" y="442" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">TimeDateStamp   = 0</text>
+<text x="64" y="474" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Version         = 0 / 0</text>
+<text x="64" y="506" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfNamedEntries = 0</text>
+<text x="64" y="538" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfIdEntries    = 1</text>
+<line x1="48" y1="554" x2="408" y2="554" stroke="#d1d5db" data-graph-role="decoration"/>
+<text x="64" y="582" font-size="16" font-weight="600" style="fill:#6b7280" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY_ENTRY</text>
+<text x="64" y="618" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Id = 10  (RT_RCDATA)</text>
+<text x="64" y="650" font-size="18" font-weight="400" style="fill:#2563eb" class="mono" data-graph-role="decoration">OffsetToData = 0x80000040</text>
+<text x="64" y="683" font-size="15" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">16 B 目录头 + 8 B × Entry 数量</text>
+<text x="48" y="744" font-size="19" font-weight="400" style="fill:#2563eb" class="" data-graph-role="label">根 + 0x00 = RVA 0x3000</text>
+<text x="480" y="311" font-size="22" font-weight="600" style="fill:#2563eb" class="" data-graph-role="label">第 2 级：名称 / ID</text>
+<rect x="480" y="340" width="360" height="360" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" data-graph-role="node" id="names" data-node-id="names"/>
+<rect x="481" y="341" width="358" height="43" rx="8" fill="#eff6ff" stroke="#eff6ff" stroke-width="1.5" data-graph-role="decoration"/>
+<text x="496" y="368" font-size="17" font-weight="600" style="fill:#2563eb" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY</text>
+<text x="496" y="410" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Characteristics = 0</text>
+<text x="496" y="442" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">TimeDateStamp   = 0</text>
+<text x="496" y="474" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Version         = 0 / 0</text>
+<text x="496" y="506" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfNamedEntries = 1</text>
+<text x="496" y="538" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfIdEntries    = 0</text>
+<line x1="480" y1="554" x2="840" y2="554" stroke="#d1d5db" data-graph-role="decoration"/>
+<text x="496" y="582" font-size="16" font-weight="600" style="fill:#6b7280" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY_ENTRY</text>
+<text x="496" y="618" font-size="18" font-weight="400" style="fill:#9333ea" class="mono" data-graph-role="decoration">Name = 0x80000120</text>
+<text x="496" y="650" font-size="18" font-weight="400" style="fill:#2563eb" class="mono" data-graph-role="decoration">OffsetToData = 0x80000080</text>
+<text x="496" y="683" font-size="15" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">16 B 目录头 + 8 B × Entry 数量</text>
+<text x="480" y="744" font-size="19" font-weight="400" style="fill:#2563eb" class="" data-graph-role="label">根 + 0x40 = RVA 0x3040</text>
+<text x="912" y="311" font-size="22" font-weight="600" style="fill:#2563eb" class="" data-graph-role="label">第 3 级：语言</text>
+<rect x="912" y="340" width="360" height="360" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" data-graph-role="node" id="languages" data-node-id="languages"/>
+<rect x="913" y="341" width="358" height="43" rx="8" fill="#eff6ff" stroke="#eff6ff" stroke-width="1.5" data-graph-role="decoration"/>
+<text x="928" y="368" font-size="17" font-weight="600" style="fill:#2563eb" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY</text>
+<text x="928" y="410" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Characteristics = 0</text>
+<text x="928" y="442" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">TimeDateStamp   = 0</text>
+<text x="928" y="474" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Version         = 0 / 0</text>
+<text x="928" y="506" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfNamedEntries = 0</text>
+<text x="928" y="538" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NumberOfIdEntries    = 1</text>
+<line x1="912" y1="554" x2="1272" y2="554" stroke="#d1d5db" data-graph-role="decoration"/>
+<text x="928" y="582" font-size="16" font-weight="600" style="fill:#6b7280" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DIRECTORY_ENTRY</text>
+<text x="928" y="618" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Id = 0x0409  (英语 / 美国)</text>
+<text x="928" y="650" font-size="18" font-weight="400" style="fill:#2563eb" class="mono" data-graph-role="decoration">OffsetToData = 0x000000C0</text>
+<text x="928" y="683" font-size="15" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">16 B 目录头 + 8 B × Entry 数量</text>
+<text x="912" y="744" font-size="19" font-weight="400" style="fill:#2563eb" class="" data-graph-role="label">根 + 0x80 = RVA 0x3080</text>
+<text x="1344" y="311" font-size="22" font-weight="600" style="fill:#2563eb" class="" data-graph-role="label">资源数据描述符（叶子）</text>
+<rect x="1344" y="340" width="360" height="360" rx="8" fill="#ffffff" stroke="#d1d5db" stroke-width="1.5" data-graph-role="node" id="record" data-node-id="record"/>
+<rect x="1345" y="341" width="358" height="43" rx="8" fill="#eff6ff" stroke="#eff6ff" stroke-width="1.5" data-graph-role="decoration"/>
+<text x="1360" y="368" font-size="17" font-weight="600" style="fill:#2563eb" class="mono" data-graph-role="decoration">IMAGE_RESOURCE_DATA_ENTRY</text>
+<text x="1360" y="410" font-size="19" font-weight="600" style="fill:#16a34a" class="mono" data-graph-role="decoration">OffsetToData = 0x5000</text>
+<text x="1360" y="458" font-size="19" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Size         = 0x0200</text>
+<text x="1360" y="506" font-size="19" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">CodePage     = 1200</text>
+<text x="1360" y="554" font-size="19" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Reserved     = 0</text>
+<text x="1360" y="616" font-size="19" font-weight="400" style="fill:#16a34a" class="" data-graph-role="decoration">固定 16 字节；这里的地址是 RVA</text>
+<text x="1360" y="653" font-size="17" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">不带“指向子目录”的最高位标志</text>
+<text x="1344" y="744" font-size="19" font-weight="400" style="fill:#2563eb" class="" data-graph-role="label">根 + 0xC0 = RVA 0x30C0</text>
+<rect x="480" y="792" width="360" height="160" rx="8" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.5" data-graph-role="node" id="string" data-node-id="string"/>
+<text x="496" y="822" font-size="21" font-weight="600" style="fill:#9333ea" class="" data-graph-role="decoration">名称字符串：根 + 0x120</text>
+<text x="496" y="860" font-size="19" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">Length = 2  (WORD)</text>
+<text x="496" y="896" font-size="18" font-weight="400" style="fill:#111827" class="mono" data-graph-role="decoration">NameString = L&quot;配置&quot;  (UTF-16)</text>
+<text x="496" y="931" font-size="16" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">长度按 UTF-16 代码单元计；不要求末尾 0</text>
+<rect x="1344" y="792" width="360" height="160" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" data-graph-role="node" id="bytes" data-node-id="bytes"/>
+<text x="1360" y="822" font-size="22" font-weight="600" style="fill:#16a34a" class="" data-graph-role="decoration">实际资源数据</text>
+<text x="1360" y="860" font-size="20" font-weight="600" style="fill:#16a34a" class="mono" data-graph-role="decoration">RVA = 0x5000</text>
+<text x="1360" y="896" font-size="19" font-weight="400" style="fill:#111827" class="" data-graph-role="decoration">读取 Size = 0x200 字节</text>
+<text x="1360" y="931" font-size="16" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">磁盘位置：将该 RVA 按所属节转换为 FOA</text>
+<rect x="48" y="998" width="1656" height="196" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5" data-graph-role="decoration"/>
+<text x="72" y="1034" font-size="23" font-weight="600" style="fill:#111827" class="" data-graph-role="decoration">最高位决定 Entry 中字段的解释；两处 OffsetToData 要区分所属结构体。</text>
+<text x="72" y="1075" font-size="20" font-weight="400" style="fill:#9333ea" class="" data-graph-role="decoration">Entry.Name：最高位 1 → 低 31 位是名称偏移；最高位 0 → 数字 ID（例如 101）。</text>
+<text x="72" y="1116" font-size="20" font-weight="400" style="fill:#2563eb" class="" data-graph-role="decoration">Entry.OffsetToData：最高位 1 → 子目录偏移；最高位 0 → IMAGE_RESOURCE_DATA_ENTRY 偏移。</text>
+<text x="72" y="1157" font-size="20" font-weight="600" style="fill:#16a34a" class="" data-graph-role="decoration">DataEntry.OffsetToData：32 位 RVA，直接定位数据；不要再加上资源根 RVA。</text>
+<path d="M 48,1234 L 88,1234" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)" data-graph-role="legend"/>
+<text x="102" y="1241" font-size="19" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">目录 / 数据描述符偏移：相对资源根</text>
+<path d="M 635,1234 L 675,1234" fill="none" stroke="#9333ea" stroke-width="2.5" marker-end="url(#arrow-purple)" data-graph-role="legend"/>
+<text x="689" y="1241" font-size="19" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">名称偏移：相对资源根</text>
+<path d="M 1115,1234 L 1155,1234" fill="none" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)" data-graph-role="legend"/>
+<text x="1169" y="1241" font-size="19" font-weight="400" style="fill:#6b7280" class="" data-graph-role="decoration">RVA：相对映像基址</text>
+<text x="48" y="1290" font-size="19" font-weight="400" style="fill:#6b7280" class="" data-graph-role="label">PE32 与 PE32+ 共用上述资源结构布局；资源字段不会因为文件是 64 位而整体加宽。</text>
+</svg>

@@ -71,6 +71,8 @@ void CheckPEContext(LPCTSTR filePath) {
         "Range checks overflowed");
   Check(pe32.ReadString(0x1240) && std::strcmp(pe32.ReadString(0x1240), "test.dll") == 0,
         "Bounded RVA string lookup failed");
+  Check(pe32.ReadString(0x1240, 9) && !pe32.ReadString(0x1240, 8) &&
+        !pe32.ReadString(0x1240, 0), "Explicit string limit did not include the null byte");
   Check(pe32.Directory(IMAGE_DIRECTORY_ENTRY_IMPORT) &&
         !pe32.Directory(IMAGE_DIRECTORY_ENTRY_RESOURCE) && !pe32.Directory(16),
         "Directory lookup did not respect valid entries");

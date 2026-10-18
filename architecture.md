@@ -14,11 +14,14 @@
 | [PEContext.cpp](src/pe/PEContext.cpp)、[PEContext.h](src/pe/PEContext.h) | 文件所有权、长度、格式、头部与节表校验，以及有边界检查的 RVA / 字符串访问；独立于界面。 |
 | [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 现阶段保留头部、汇总和节表的读取 / 显示适配；目录解析和填表逻辑已迁出。 |
 | [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、IAT、导出、绑定导入、调试和重定位解析，返回数值字段、名称、条目集合和异常说明。 |
+| [resourceDetails.cpp](src/pe/resourceDetails.cpp) | 资源目录解析，模型声明复用 `directoryDetails.h`；返回带父索引的树节点、目录头、资源数据描述符和范围 / 循环错误。 |
 | [directoryDialogs.cpp](src/ui/directoryDialogs.cpp)、[directoryDialogs.h](src/ui/directoryDialogs.h) | 数据目录总览及详情的结果显示、十六进制格式化、列表填充和状态提示；IAT / 重定位页面还在此处理初始化、选择和关闭。旧页面的列初始化和消息分派继续由 messageCallback / windowProc 组织。 |
+| [resourceDialog.cpp](src/ui/resourceDialog.cpp) | 资源树、节点详情和状态显示；树项使用数值模型索引，窗口拥有解析结果，切换选择不从显示文字反推地址。 |
 | [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
 | [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
 | [global.cpp](src/common/global.cpp)、[global.h](src/common/global.h)、[structs.h](src/common/structs.h) | 字段说明、控件 ID 对照、颜色以及列表行的显示数据。 |
 | [resource.rc](resources/resource.rc)、[resource.h](resources/resource.h) | 对话框布局、控件 ID 和中文资源。 |
+| [pe-directories.md](docs/pe-directories.md)、[figures](docs/figures/) | PE 数据目录说明、资源目录结构图及 PNG / SVG 图片。 |
 | [PEViewer.sln](PEViewer.sln)、[PEViewer.vcxproj](PEViewer.vcxproj) | Visual Studio 的 Debug / Release、Win32 / x64 构建配置。 |
 
 ## 目录与构建布局
@@ -34,6 +37,11 @@ PEViewer/
 ├─ PEViewer.vcxproj.filters
 ├─ architecture.md
 ├─ .gitignore
+├─ docs/
+│  ├─ pe-directories.md          # 数据目录入口与资源结构说明
+│  └─ figures/
+│     ├─ pe-resource-layout.png
+│     └─ pe-resource-layout.svg
 ├─ src/
 │  ├─ app/
 │  │  └─ PEViewer.cpp
@@ -43,14 +51,16 @@ PEViewer/
 │  │  ├─ messageCallback.cpp
 │  │  ├─ messageCallback.h
 │  │  ├─ directoryDialogs.cpp
-│  │  └─ directoryDialogs.h
+│  │  ├─ directoryDialogs.h
+│  │  └─ resourceDialog.cpp
 │  ├─ pe/
 │  │  ├─ PEContext.cpp
 │  │  ├─ PEContext.h
 │  │  ├─ readPE.cpp
 │  │  ├─ readPE.h
 │  │  ├─ directoryDetails.cpp
-│  │  └─ directoryDetails.h
+│  │  ├─ directoryDetails.h
+│  │  └─ resourceDetails.cpp
 │  ├─ process/
 │  │  ├─ handleProcessAndModule.cpp
 │  │  └─ handleProcessAndModule.h
@@ -73,9 +83,11 @@ PEViewer/
 │  ├─ portability-smoke.cpp
 │  ├─ pe-context-tests.cpp
 │  ├─ directory-details-tests.cpp
+│  ├─ resource-details-tests.cpp
 │  └─ fixtures/
 │     ├─ pe32.h                 # PE32 页面与解析样本
-│     └─ pe64.h                 # PE32+ 页面与解析样本
+│     ├─ pe64.h                 # PE32+ 页面与解析样本
+│     └─ resources.h            # 双格式资源树与多语言样本
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
@@ -109,6 +121,7 @@ PEViewer/
 | `process` | 进程 / 模块查询、权限和句柄管理；返回查询结果，列表绘制移入 `ui`。 |
 | `common` | 模块间共用且职责明确的基础类型和辅助函数。 |
 | `resources` | 界面布局、资源 ID 和图片。 |
+| `docs` | PE 文件格式学习说明和结构示意图；功能进度与实现计划集中记录在本文。 |
 | `scripts` / `tests` | 可复用构建、验证入口、样本生成和预期结果。 |
 
 - [x] 已建立统一 `PEContext`，集中管理文件所有权、长度、格式和头部 / 目录信息；UI 持有当前文档上下文，读取函数显式接收上下文，原分散全局解析指针已移除。
@@ -123,7 +136,7 @@ PEViewer/
 
 当前 UI 在模态查看窗口结束后重置上下文。字段和目录接口显式接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已实现目录统一返回结构化结果，不接收 `HWND`、资源 ID 或 ListView；界面适配使用调用者传入的上下文。头部 / 节表显示适配继续按后续计划迁移。
 
-[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。页面回归覆盖两种格式的 12 个页面、64 位字段输入 / 布局与导入 thunk；转发导出及更多真实文件用例继续推进。
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。当前页面回归覆盖两种格式的 13 个页面、64 位字段输入 / 布局、导入 thunk、名称 / 序号转发导出和资源树；更多真实文件用例继续推进。
 
 ## 数据与页面
 
@@ -145,7 +158,7 @@ WinMain
 
 `PEContext::LoadFile()` 将文件读入其拥有的缓冲区，记录实际字节长度并校验头部。缓冲区保留磁盘文件布局，节的数据仍位于 `PointerToRawData` 指定的位置；RVA 需要转换为文件偏移。
 
-`PEContext` 按 `Magic` 选择 `optionalHeader32` / `optionalHeader64`，记录目录数量和稳定的节表起点。`RvaToFileOffset()` 分开返回成功状态与偏移，`ReadRva()` / `ReadString()` 检查文件和节的原始数据边界。文件选择入口支持两种格式；头部页面使用相应字段宽度，导入查找表使用显式 32 / 64 位 thunk。
+`PEContext` 按 `Magic` 选择 `optionalHeader32` / `optionalHeader64`，记录目录数量和稳定的节表起点。`RvaToFileOffset()` 分开返回成功状态与偏移，`ReadRva()` / `ReadString()` 检查文件和节的原始数据边界；`ReadString(rva, maxBytes)` 还可限制包含结尾 NULL 的最大读取范围，用于约束转发字符串不得越过导出数据目录。文件选择入口支持两种格式；头部页面使用相应字段宽度，导入查找表使用显式 32 / 64 位 thunk。
 
 界面包含编辑按钮和字段调整逻辑，但尚未形成完整的文件保存 / 写回流程。以下计划先以正确读取和显示为验收范围。
 
@@ -183,7 +196,7 @@ WinMain
 - `scripts/build.ps1` 支持 `x86`、`x64`、`Win32` 平台参数；`-All` 批量构建四组配置，`-Test` 编译并运行独立验证程序。VS 和脚本使用工程中的统一输出路径。
 - 中文源码与资源已使用 UTF-8 BOM；`resource.rc` 使用代码页 65001。修改时需要保留编码，避免再次把中文注释保存为 `U+FFFD` 替换字符。
 
-以上覆盖双平台指针、调用签名和解析上下文基础。PE32+ 的头部页面、宽字段输入、正常入口和 64 位 thunk 已接入；转发导出、目录错误提示等扩展继续按后续计划推进。
+以上覆盖双平台指针、调用签名和解析上下文基础。PE32+ 的头部页面、宽字段输入、正常入口、64 位 thunk、转发导出及已有目录错误提示已接入；其他数据目录和调试载荷继续按后续计划推进。
 
 ## 后续工作：PE32 / PE32+ 文件读取
 
@@ -224,17 +237,38 @@ WinMain
 - [x] 新解析器检查目录边界、槽位 / 块截断、块长度与对齐、名称和 HIGHADJ 配对；页面显示目录错误及条目状态，无文件字节的重定位目标保留条目信息。每次最多显示 100000 个槽位 / 条目，达到上限会提示。
 - [x] 导入、导出、绑定导入和调试页面增加状态文本，显示缺失目录、非法范围、截断记录、无终止项、序号越界等解析说明；重新显示时清空旧列表，导出头部失败时清空旧字段。
 - [x] `ReadExportDetails()` 一次返回目录头和导出条目，检查函数 / 名称 / 序号数组、字符串及 `Base + index` 溢出，保留无名导出。数组仍是 32 位 RVA、16 位名称序号索引。
-- [ ] 导出表继续增加转发导出的识别和展示，本轮分离保持原有函数 RVA 显示语义。
+- [x] `ReadExportDetails()` 遍历 EAT 时，用 Export DataDirectory 的 `[VirtualAddress, VirtualAddress + Size)` 区分普通导出与转发导出，校验 32 位 RVA 范围溢出；PE32 / PE32+ 的 EAT 项均保持 4 字节。`ExportEntry` 保留原始 RVA / 文件偏移，增加 `isForwarder`、原始转发目标和条目错误信息。转发字符串必须非空、在目录及文件支持的 RVA 范围内以 NULL 结束；异常条目保留并显示错误，不影响后续条目。
+- [x] 导出页面保留序号、RVA、文件偏移和名称，增加 Type、Forwarder target、Status 列，区分 `Export` / `Forwarder`，显示 `DLL.name` 或 `DLL.#ordinal` 原始目标。扩大资源模板中的窗口、列表和状态区域，列宽随内容调整；不加载目标 DLL 或递归解析转发链。
 - [x] `ReadBoundImportDetails()` 返回主描述符及 forwarder refs 子记录，检查相对目录起点的名称偏移和子记录边界；页面保持主记录列表。`ReadDebugDetails()` 返回原始调试目录记录，检查目录范围及非完整记录长度，类型名称由 UI 格式化。
+- [x] Resource 的详情按钮打开资源树，按类型、名称 / ID、语言展示，支持数字 ID、带长度的 UTF-16 名称及多语言叶子。`ReadResourceDetails()` 在 `resourceDetails.cpp` 中独立解析，目录 / 名称偏移相对于 Resource DataDirectory 起点；`IMAGE_RESOURCE_DATA_ENTRY.OffsetToData` 单独按 RVA 转换，可指向资源目录元数据范围之外的文件数据。
+- [x] 资源页选中根 / 子目录时显示目录字段，选中叶子时显示数据 RVA、文件偏移、大小、CodePage 和状态。树项用数值索引关联 `ResourceNode`，窗口拥有 `ResourceDetails`；重载和关闭释放旧模型，异常重载清空旧树和详情。布局在 `resource.rc` 中定义，数值格式化及标准资源类型名称在 `ui/resourceDialog.cpp` 中处理。
+- [x] 资源解析检查目录范围和 RVA 溢出、完整表头 / 条目 / 数据描述符、名称长度 / 对齐、文件支持的完整数据范围及循环引用；保留异常节点和有效兄弟分支。深度最多 32 层、节点最多 100000 个、名称累计最多 1048576 个 UTF-16 代码单元，达到上限提供状态提示；空目录与零长度资源可读取。
+- [ ] 资源内容继续增加图标、版本信息等预览及原始数据导出。
 - [ ] 调试数据载荷（例如 CodeView / PDB）及绑定导入子记录的独立详情展示继续扩展；节表的显示适配与错误状态仍需后续整理。
 - [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；TLS、Load Config 等结构具有需要区分的 32 / 64 位形式。
 
-阶段验收：两种查看器均能显示两种文件格式的节表、导入 DLL / 函数、导出函数、绑定导入和调试目录，并正确处理不存在的目录。
+阶段验收：两种查看器均能显示两种文件格式的节表、导入 DLL / 函数、导出函数、绑定导入、调试目录和资源树，并正确处理不存在的目录。
+
+### 其他数据目录的实现顺序
+
+当前已有详情的 7 个目录是：导入、导出、IAT、重定位、绑定导入、调试和资源。资源目录的第一版结构与字段查看已完成，接下来优先补齐其余尚未实现的目录，下一项是 TLS。目录入口与资源结构说明见 [PE 数据目录文档](docs/pe-directories.md)。
+
+| 顺序 | 目录 | 当前状态 | 第一版实现范围 |
+| --- | --- | --- | --- |
+| 1 | Resource 资源目录 | 已完成 | “类型 → 名称 / ID → 语言”树；显示叶子数据的 RVA、文件偏移、大小和 CodePage。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-rsrc-section) |
+| 2 | TLS 目录 | 下一项 | 区分 PE32 / PE32+ 字段宽度，显示 TLS 字段及回调地址列表，正确处理其中的 VA。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-directory) |
+| 3 | Delay Import 延迟导入 | 待实现 | DLL、函数名称 / 序号及查找表；复用已有 thunk 解码，按描述符属性区分 RVA / VA。 |
+| 4 | Exception 异常目录 | 待实现 | 先支持 x64 的函数起止 RVA、展开信息 RVA；根据 Machine 选择结构，不把所有 PE32+ 都当作 x64。 |
+| 5 | Load Config 加载配置 | 待实现 | 根据结构的 Size 和 PE32 / PE32+ 格式读取字段，兼容较短版本，不越过有效长度。 |
+| 6 | Security / Certificate 证书目录 | 待实现 | 显示证书条目、长度、版本和类型；按 8 字节对齐遍历，目录地址使用文件偏移。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-attribute-certificate-table-image-only) |
+| 7 | CLR Runtime Header | 待实现 | 先显示 CLR 头部及元数据入口，检查头部长度和元数据范围。 |
+
+每个新增目录继续采用“解析结果模型 → UI 显示”的接口，并补充 PE32 / PE32+、缺失目录与损坏输入的适用用例。Architecture 和 Reserved 属于保留入口，Global Ptr 属于特殊入口，不按普通目录表逐项扩展。资源内容预览、调试载荷和绑定导入子记录详情仍保留为已有页面的后续增强。
 
 ### 4. 建立可重复的验收用例
 
 - [x] PE32 / PE32+ 页面样本、上下文回归与预期值位于 `tests`；PE32+ 样本包含独立的 8 字节查找表 / IAT，以及名称、序号、名称三个导入项。生成产物放入 `obj` / `bin`。
-- [ ] 四种“查看器位数 × 文件格式”组合都验证头部、首选基址、节表、目录定位、名称 / 序号导入、无名 / 转发导出和字段宽度。
+- [x] 四种“查看器位数 × 文件格式”组合都验证头部、首选基址、节表、目录定位、名称 / 序号导入、无名 / 转发导出和字段宽度。
 - [x] x64 测试将两种格式的文件缓冲区放在 4 GB 以上；x86 测试加载首选基址和栈 / 堆字段高于 4 GB 的 PE32+ 磁盘文件，分别检测指针与文件字段截断。
 - [ ] 增加缺失目录、异常长度、截断 thunk、无终止符字符串等失败用例，确认错误路径不崩溃、不遗留悬空指针。
 - [ ] 以 `dumpbin /headers /imports /exports` 等工具交叉核对真实 EXE / DLL，并验证 Debug / Release 两种构建。
@@ -276,6 +310,8 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 已完成的验证：
 
+- Resource 资源树通过 Debug / Release × Win32 / x64 四组主程序构建和模型 / 页面回归，覆盖 Unicode / 数字名称、多语言、目录相对偏移与数据 RVA、异常范围、循环 / 共享子树和遍历限制；页面检查选择切换、独立上下文重载及旧状态清理。x64 页面使用 4 GB 以上缓冲区。Win32 / x64 验证程序均交叉读取两种格式的 notepad.exe（各 31 条资源 / 69 个节点）和 kernel32.dll（各 2 条资源 / 6 个节点），通过独立副本的 Windows 资源 API 映射核对条目大小和原始字节。
+- 转发导出通过 Debug / Release × Win32 / x64 四组主程序构建及模型 / 页面回归，覆盖名称 / 序号目标、无名导出、空 EAT 槽、目录边界、字符串终止及 RVA 溢出。Win32 和 x64 验证程序交叉读取系统两种格式的 kernel32.dll：PE32 为 208 个转发、PE32+ 为 211 个转发，与 `dumpbin /exports` 一致；两种格式的 ntdll.dll 均为 0 个转发。
 - 目录分离新增直接调用解析模型的双格式用例：缺少 IAT Directory 的导入 / Hint、共享名称与序号解码、导出数组 / 序号溢出、绑定导入 forwarder refs、调试记录截断和缺失目录。页面回归验证显式上下文、导入行排序后的描述符身份、错误状态及旧列表 / 头部字段清理。
 - 本轮目录分离通过 Debug / Release × Win32 / x64 四组主程序构建和验证程序回归。Debug/x64 的默认程序正在运行，使用独立的 `bin/Debug/x64/directory-separation-check` / `obj/Debug/x64/directory-separation-check` 完成构建与验证。Win32 和 x64 验证程序均交叉读取系统两种格式的 `notepad.exe`、`kernel32.dll`，检查已实现目录；kernel32 的 PE32 / PE32+ 导出分别为 1670 / 1698 项。
 - IAT / 重定位新增用例覆盖两种格式的槽位与 INT 对照、绑定和未绑定回退、多 DLL、HIGHLOW / DIR64、ABSOLUTE / HIGHADJ、异常目录和块切换。系统记事本交叉核对：PE32 的 IAT 为 361 槽、重定位为 39 块 / 4650 条；PE32+ 为 365 槽、5 块 / 366 条，与 `dumpbin /headers /imports /relocations` 的目录长度、块数和条目数一致。

@@ -16,6 +16,7 @@ constexpr DWORD kIatRaw = 0x460;
 constexpr DWORD kRelocRva = 0x1500;
 constexpr DWORD kRelocRaw = 0x700;
 constexpr DWORD kExportRva = 0x1100;
+constexpr DWORD kForwardedExportSize = 0x100;
 constexpr DWORD kBoundImportRva = 0x1300;
 constexpr DWORD kDebugRva = 0x1400;
 constexpr WORD kImportHint = 0x1234;
@@ -107,5 +108,25 @@ inline void Fill(BYTE* data) {
   reloc = (PIMAGE_BASE_RELOCATION)(data + kRelocRaw + 12);
   reloc->VirtualAddress = 0;
   reloc->SizeOfBlock = 12;
+}
+// Apply after either format's Fill(): normal export, two forwarders and an empty EAT slot.
+inline void FillForwardedExports(BYTE* data) {
+  auto exports = (PIMAGE_EXPORT_DIRECTORY)(data + 0x300);
+  exports->NumberOfFunctions = 4;
+  exports->NumberOfNames = 3;
+  exports->AddressOfNames = 0x1150;
+  exports->AddressOfNameOrdinals = 0x115C;
+  const DWORD functions[] = {0x1800, 0x1190, 0x11B0, 0};
+  const DWORD names[] = {0x1170, 0x1180, 0x11D0};
+  const WORD ordinals[] = {0, 1, 2};
+  std::memcpy(data + 0x340, functions, sizeof(functions));
+  std::memcpy(data + 0x350, names, sizeof(names));
+  std::memcpy(data + 0x35C, ordinals, sizeof(ordinals));
+  std::memcpy(data + 0x380, "ForwardedName", sizeof("ForwardedName"));
+  std::memcpy(data + 0x390, "MYDLL.expfunc", sizeof("MYDLL.expfunc"));
+  std::memcpy(data + 0x3B0, "MYDLL.#27", sizeof("MYDLL.#27"));
+  std::memcpy(data + 0x3D0, "ForwardedOrdinal", sizeof("ForwardedOrdinal"));
+  exports->Name = 0x11F0;
+  std::memcpy(data + 0x3F0, "test.dll", sizeof("test.dll"));
 }
 }  // namespace pe32_fixture

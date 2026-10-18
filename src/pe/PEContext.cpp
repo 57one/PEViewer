@@ -189,11 +189,12 @@ const BYTE* PEContext::ReadRva(DWORD rva, SIZE_T size) const {
   return RvaToFileOffset(rva, size, offset) ? fileBuffer + offset : NULL;
 }
 
-const char* PEContext::ReadString(DWORD rva) const {
+const char* PEContext::ReadString(DWORD rva, SIZE_T maxBytes) const {
   SIZE_T offset = 0;
   SIZE_T available = 0;
-  if (!RvaRange(rva, offset, available) ||
-      !std::memchr(fileBuffer + offset, 0, available)) return NULL;
+  if (!RvaRange(rva, offset, available)) return NULL;
+  if (available > maxBytes) available = maxBytes;
+  if (!std::memchr(fileBuffer + offset, 0, available)) return NULL;
   return (const char*)(fileBuffer + offset);
 }
 

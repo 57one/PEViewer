@@ -11,11 +11,13 @@
 #include "ui/windowProc.h"
 #include "fixtures/pe32.h"
 #include "fixtures/pe64.h"
+#include "fixtures/resources.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 void CheckPEContext(LPCTSTR filePath);
 void CheckDirectoryDetails();
+void CheckResourceDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -94,6 +96,9 @@ void CheckPages() {
   CheckText(directories.hwnd, IDC_EDIT_IMPORT_TABLE_RVA, L"00001200");
   Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_RESOURCE)),
         "Missing resource directory should be disabled");
+  Dialog resources(IDD_DIALOG_RESOURCES, ResourceDirectoryProc);
+  Check(TreeView_GetCount(GetDlgItem(resources.hwnd, IDC_TREE_RESOURCES)) == 0,
+        "Missing resource directory rendered a tree");
 
   Dialog imports(IDD_DIALOG_IMPORT_DIRECTORY, ImportDirectoryProc);
   CheckList(imports.hwnd, IDC_LIST_IMPORT_DLL, 0, pe32_fixture::kImportDll);
@@ -118,6 +123,8 @@ void CheckPages() {
   }
   Dialog exports(IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc);
   CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, pe32_fixture::kExportName);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 4, L"Export");
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 5, L"-");
   Dialog boundImports(IDD_DIALOG_BOUND_IMPORT_DIRECTORY, BoundImportDirectoryProc);
   CheckList(boundImports.hwnd, IDC_LIST_BOUND_IMPORT_DIRECTORY, 0, pe32_fixture::kBoundDll);
   Dialog debug(IDD_DIALOG_DEBUG_DIRECTORY, DebugDirectoryProc);
@@ -174,7 +181,7 @@ void CheckDirectoryErrorPages(void* buffer) {
   Check(std::wcsstr(status, L"Truncated") != NULL, "Relocation error is not visible in the page");
 }
 
-void CheckRealDirectoryFile(const wchar_t* path) {
+void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferencePath) {
   PEContext context;
   Check(context.LoadFile(path), "Cannot load real PE file");
   IatDetails iat = ReadIatDetails(context);
@@ -183,6 +190,43 @@ void CheckRealDirectoryFile(const wchar_t* path) {
   const auto exports = ReadExportDetails(context);
   const auto bound = ReadBoundImportDetails(context);
   const auto debug = ReadDebugDetails(context);
+  const auto resources = ReadResourceDetails(context);
+  if (resources.present) {
+    if (!resources.message.empty()) std::fwprintf(stderr, L"Resources: %ls\n", resources.message.c_str());
+    Check(resources.hasRoot && resources.message.empty(), "Real-file resource parsing failed");
+    // Use a private copy so system MUI satellites and already-loaded modules cannot replace disk resources.
+    FILE* reference = NULL;
+    Check(_wfopen_s(&reference, resourceReferencePath, L"wb") == 0, "Cannot create resource reference copy");
+    SIZE_T written = std::fwrite(context.fileBuffer, 1, context.fileSize, reference);
+    int closed = std::fclose(reference);
+    Check(written == context.fileSize && closed == 0, "Cannot write resource reference copy");
+    HMODULE module = LoadLibraryEx(resourceReferencePath, NULL, LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
+    Check(module != NULL, "Cannot map real-file resources for API comparison");
+    try {
+      for (const auto& leaf : resources.nodes) {
+        if (!leaf.hasData || leaf.depth != 2 || leaf.named || leaf.id > MAXWORD) continue;
+        const auto& name = resources.nodes[leaf.parent];
+        const auto& type = resources.nodes[name.parent];
+        if ((!name.named && name.id > MAXWORD) || (!type.named && type.id > MAXWORD)) continue;
+        LPCWSTR typeName = type.named ? type.name.c_str() : MAKEINTRESOURCE(type.id);
+        LPCWSTR resourceName = name.named ? name.name.c_str() : MAKEINTRESOURCE(name.id);
+        HRSRC resource = FindResourceEx(module, typeName, resourceName, (WORD)leaf.id);
+        if (!resource || SizeofResource(module, resource) != leaf.data.Size)
+          std::fwprintf(stderr, L"Resource API mismatch: %ls type=%ls name=%ls language=%04X disk=%lu API=%lu\n",
+              path, type.named ? type.name.c_str() : std::to_wstring(type.id).c_str(),
+              name.named ? name.name.c_str() : std::to_wstring(name.id).c_str(), leaf.id,
+              leaf.data.Size, resource ? SizeofResource(module, resource) : 0);
+        Check(resource && SizeofResource(module, resource) == leaf.data.Size,
+              "Resource size differs from Windows resource APIs");
+        if (leaf.data.Size) {
+          const void* bytes = LockResource(LoadResource(module, resource));
+          Check(bytes && std::memcmp(bytes, context.ReadRva(leaf.data.OffsetToData, leaf.data.Size),
+                                    leaf.data.Size) == 0, "Resource payload differs from Windows resource APIs");
+        }
+      }
+    } catch (...) { FreeLibrary(module); throw; }
+    FreeLibrary(module);
+  }
   SIZE_T importedFunctions = 0;
   if (imports.present) {
     Check(imports.message.empty() && imports.terminated, "Real-file import descriptors failed");
@@ -192,7 +236,18 @@ void CheckRealDirectoryFile(const wchar_t* path) {
       importedFunctions += thunks.entries.size();
     }
   }
-  if (exports.present) Check(exports.hasHeader && exports.message.empty(), "Real-file export parsing failed");
+  if (exports.present) {
+    if (!exports.message.empty()) std::fwprintf(stderr, L"Exports: %ls\n", exports.message.c_str());
+    Check(exports.hasHeader && exports.message.empty(), "Real-file export parsing failed");
+  }
+  SIZE_T forwarders = 0;
+  for (const auto& entry : exports.entries) {
+    if (entry.isForwarder) {
+      Check(!entry.forwarder.empty() && entry.message.empty() && entry.hasFileOffset,
+            "Real-file forwarder target was not decoded");
+      ++forwarders;
+    } else Check(entry.forwarder.empty(), "Ordinary export acquired a forwarder target");
+  }
   if (bound.present) Check(bound.terminated && bound.message.empty(), "Real-file bound import parsing failed");
   if (debug.present) Check(debug.message.empty(), "Real-file debug directory parsing failed");
   if (context.Directory(IMAGE_DIRECTORY_ENTRY_IAT)) {
@@ -214,8 +269,128 @@ void CheckRealDirectoryFile(const wchar_t* path) {
   std::wprintf(L"PASS: %ls (%ls), IAT slots=%zu (functions=%zu, unresolved=%zu), relocation blocks=%zu, entries=%zu\n", path,
                context.format == PEFormat::PE32Plus ? L"PE32+" : L"PE32",
                iat.entries.size(), functions, unresolved, relocs.blocks.size(), entries);
-  std::wprintf(L"      import functions=%zu, exports=%zu, bound imports=%zu, debug records=%zu\n",
-               importedFunctions, exports.entries.size(), bound.entries.size(), debug.entries.size());
+  std::wprintf(L"      import functions=%zu, exports=%zu (forwarders=%zu), bound imports=%zu, debug records=%zu\n",
+               importedFunctions, exports.entries.size(), forwarders, bound.entries.size(), debug.entries.size());
+  std::wprintf(L"      resource entries=%zu, resource nodes=%zu\n", resources.resourceCount, resources.nodes.size());
+}
+
+void CheckResourcePage(void* buffer, bool wide) {
+  auto data = (BYTE*)buffer;
+  resource_fixture::Fill(data, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Resource page context rejected");
+  Dialog directories(IDD_DIALOG_DIRECTORY, DirectoryProc);
+  Check(IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_RESOURCE)) != FALSE,
+        "Present resource directory is disabled");
+  Dialog dialog(IDD_DIALOG_RESOURCES, ResourceDirectoryProc);
+  HWND tree = GetDlgItem(dialog.hwnd, IDC_TREE_RESOURCES);
+  HWND list = GetDlgItem(dialog.hwnd, IDC_LIST_RESOURCE_DETAILS);
+  auto field = [&](const wchar_t* name, const wchar_t* value) {
+    wchar_t actual[512] = {};
+    for (int row = 0; row < ListView_GetItemCount(list); ++row) {
+      ListView_GetItemText(list, row, 0, actual, _countof(actual));
+      if (std::wcscmp(actual, name)) continue;
+      ListView_GetItemText(list, row, 1, actual, _countof(actual));
+      Check(std::wcscmp(actual, value) == 0, "Resource details field mismatch");
+      return;
+    }
+    throw std::runtime_error("Resource details field missing");
+  };
+  auto text = [&](HTREEITEM item, const wchar_t* expected) {
+    wchar_t actual[512] = {};
+    TVITEM query = {};
+    query.mask = TVIF_TEXT;
+    query.hItem = item;
+    query.pszText = actual;
+    query.cchTextMax = _countof(actual);
+    Check(item && TreeView_GetItem(tree, &query), "Resource tree item missing");
+    Check(std::wcscmp(actual, expected) == 0, "Resource tree label mismatch");
+  };
+  wchar_t title[80] = {};
+  GetWindowText(dialog.hwnd, title, _countof(title));
+  Check(std::wcsstr(title, wide ? L"PE32+" : L"PE32") != NULL, "Resource page format title mismatch");
+  Check(TreeView_GetCount(tree) == 8, "Resource page tree node count mismatch");
+  HTREEITEM root = TreeView_GetRoot(tree);
+  HTREEITEM type = TreeView_GetChild(tree, root);
+  HTREEITEM name = TreeView_GetChild(tree, type);
+  HTREEITEM leaf = TreeView_GetChild(tree, name);
+  text(type, L"Type: \"\u81EA\u5B9A\u4E49\u7C7B\u578B\"");
+  text(name, L"Name: \"\u914D\u7F6E\"");
+  text(leaf, L"Language: #1033 (0x0409)");
+  text(TreeView_GetNextSibling(tree, type), L"Type: RCDATA (#10)");
+  field(L"Directory RVA (hex)", L"00001900");
+  TreeView_SelectItem(tree, leaf);
+  field(L"Data RVA (hex)", L"00001D00");
+  field(L"File offset (hex)", L"00000F00");
+  field(L"Size (hex)", L"00000004");
+  field(L"CodePage", L"1200");
+  TreeView_SelectItem(tree, TreeView_GetNextSibling(tree, leaf));
+  field(L"CodePage", L"65001");
+  resource_fixture::Name(data + resource_fixture::kRaw, 0x1A0, L"A\0B", 3);
+  showResourceDirectory(dialog.hwnd, g_peContext);
+  type = TreeView_GetChild(tree, TreeView_GetRoot(tree));
+  text(TreeView_GetChild(tree, type), L"Name: \"A\\u0000B\"");
+
+  // Reload using an explicit context, while the active document still has valid resources.
+  std::vector<BYTE> invalid(pe32_fixture::kFileSize);
+  resource_fixture::Fill(invalid.data(), wide);
+  PEContext context;
+  Check(context.Initialize(invalid.data(), invalid.size()), "Resource reload context rejected");
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(context.Directory(IMAGE_DIRECTORY_ENTRY_RESOURCE));
+  resource_fixture::Entry(invalid.data() + resource_fixture::kRaw, 0x10, 0x80000180, 0x80000000);
+  showResourceDirectory(dialog.hwnd, context);
+  Check(TreeView_GetCount(tree) == 5, "Cyclic resource tree lost valid siblings or retained old nodes");
+  wchar_t status[512] = {};
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"Cyclic") != NULL, "Resource cycle error is not visible");
+  directory->VirtualAddress = 0x3000;
+  showResourceDirectory(dialog.hwnd, context);
+  Check(TreeView_GetCount(tree) == 0 && ListView_GetItemCount(list) == 0,
+        "Invalid resource reload left stale tree or details");
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"outside") != NULL, "Resource range error is not visible");
+  *directory = {};
+  showResourceDirectory(dialog.hwnd, context);
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"No resource directory") != NULL, "Missing resource status is not visible");
+}
+
+void CheckExportForwarderPage(void* buffer, bool wide) {
+  auto data = (BYTE*)buffer;
+  if (wide) pe64_fixture::Fill(data); else pe32_fixture::Fill(data);
+  pe32_fixture::FillForwardedExports(data);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Forwarder page context rejected");
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(g_peContext.Directory(IMAGE_DIRECTORY_ENTRY_EXPORT));
+  directory->Size = pe32_fixture::kForwardedExportSize;
+  Dialog exports(IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 4, L"Export", 0, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 1, L"00001190", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 2, L"00000390", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, L"ForwardedName", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 4, L"Forwarder", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 5, L"MYDLL.expfunc", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 5, L"MYDLL.#27", 2, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 6, L"OK", 1, 3);
+  HWND list = GetDlgItem(exports.hwnd, IDC_LIST_EXPORT_FUNC);
+  Check(ListView_GetColumnWidth(list, 5) >= ListView_GetStringWidth(list, L"MYDLL.expfunc"),
+        "Forwarder target column clips its content");
+  wchar_t status[512] = {};
+  GetDlgItemText(exports.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"2 forwarders") != NULL, "Forwarder count is not visible");
+  // Retain the row and the distinction when the target lacks a null inside the directory.
+  directory->Size = 0x1190 - directory->VirtualAddress + (DWORD)std::strlen("MYDLL.expfunc");
+  showExportDirectory(exports.hwnd, g_peContext);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 4, L"Forwarder", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 5, L"-", 1, 3);
+  wchar_t note[256] = {};
+  ListView_GetItemText(list, 1, 6, note, _countof(note));
+  Check(std::wcsstr(note, L"forwarder") != NULL, "Invalid forwarder row has no visible status");
+  GetDlgItemText(exports.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"unterminated") != NULL, "Invalid forwarder is not reported in page status");
+  directory->Size = pe32_fixture::kForwardedExportSize;
+  ((PIMAGE_EXPORT_DIRECTORY)(data + 0x300))->NumberOfNames = 0;
+  showExportDirectory(exports.hwnd, g_peContext);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 3, L"-", 1, 3);
+  CheckList(exports.hwnd, IDC_LIST_EXPORT_FUNC, 5, L"MYDLL.expfunc", 1, 3);
 }
 
 int CALLBACK ReverseDescriptorOrder(LPARAM left, LPARAM right, LPARAM) {
@@ -543,6 +718,7 @@ int wmain(int argc, wchar_t** argv) {
           "File bytes or length differ");
     CheckPEContext(argv[1]);
     CheckDirectoryDetails();
+    CheckResourceDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -569,9 +745,16 @@ int wmain(int argc, wchar_t** argv) {
     CheckPages();
     CheckImportVariants(false);
     CheckImportVariants(true);
+    CheckExportForwarderPage(allocatedBuffer, false);
+    CheckExportForwarderPage(allocatedBuffer, true);
+    CheckResourcePage(allocatedBuffer, false);
+    CheckResourcePage(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);
-    for (int i = 2; i < argc; ++i) CheckRealDirectoryFile(argv[i]);
-    std::printf("PASS: %s, PE32/PE32+ pages, IAT/INT association, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
+    for (int i = 2; i < argc; ++i) {
+      std::wstring reference = std::wstring(argv[1]) + L".resources-" + std::to_wstring(i) + L".dll";
+      CheckRealDirectoryFile(argv[i], reference.c_str());
+    }
+    std::printf("PASS: %s, PE32/PE32+ pages, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

@@ -700,6 +700,9 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
     case IDC_BUTTON_DIRECTORY_IAT:
       DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_IAT), hwnd, IatDirectoryProc);
       return TRUE;
+    case IDC_BUTTON_DIRECTORY_RESOURCE:
+      DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_RESOURCES), hwnd, ResourceDirectoryProc);
+      return TRUE;
     case IDC_BUTTON_DIRECTORY_BASE_RELOC:
       DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_RELOCATIONS), hwnd, RelocationDirectoryProc);
       return TRUE;
@@ -852,24 +855,35 @@ VOID InitExportFunction(HWND hwnd) {
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 0, (LPARAM)&lv);
   //第二列
   lv.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-  lv.pszText = const_cast<wchar_t*>(TEXT("Func RVA"));
+  lv.pszText = const_cast<wchar_t*>(TEXT("RVA"));
   lv.cx = 80;
   lv.iSubItem = 1;
   // ListView_InsertColumn(hListExportFunc, 0, &lv);
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 1, (LPARAM)&lv);
   //第三列
-  lv.pszText = const_cast<wchar_t*>(TEXT("Func RAW(FOA)"));
+  lv.pszText = const_cast<wchar_t*>(TEXT("RAW(FOA)"));
   lv.cx = 100;
   lv.iSubItem = 2;
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 2, (LPARAM)&lv);
   //第四列
-  lv.pszText = const_cast<wchar_t*>(TEXT("Func Name"));
+  lv.pszText = const_cast<wchar_t*>(TEXT("Name"));
   lv.cx = 150;
   lv.iSubItem = 3;
   // ListView_InsertColumn(hListExportFunc, 1, &lv);
   SendMessage(hListExportFunc, LVM_INSERTCOLUMN, 3, (LPARAM)&lv);
 
-
+  lv.pszText = const_cast<wchar_t*>(TEXT("Type"));
+  lv.cx = 90;
+  lv.iSubItem = 4;
+  ListView_InsertColumn(hListExportFunc, 4, &lv);
+  lv.pszText = const_cast<wchar_t*>(TEXT("Forwarder target"));
+  lv.cx = 180;
+  lv.iSubItem = 5;
+  ListView_InsertColumn(hListExportFunc, 5, &lv);
+  lv.pszText = const_cast<wchar_t*>(TEXT("Status"));
+  lv.cx = 160;
+  lv.iSubItem = 6;
+  ListView_InsertColumn(hListExportFunc, 6, &lv);
 }
 
 void onExportDirectoryInit(HWND hwnd) { 

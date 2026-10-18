@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-// Microsoft PE format: import address table and base relocation block/types.
+// Microsoft PE format: export/import tables, debug data and base relocations.
 // https://learn.microsoft.com/en-us/windows/win32/debug/pe-format
 // Disk-file values only; these parsers do not resolve addresses in a process.
 enum class ImportKind { Unavailable, Terminator, Name, Ordinal, Invalid };
@@ -67,9 +67,12 @@ struct IatDetails {
 struct ExportEntry {
   DWORD ordinal = 0;
   DWORD rva = 0;
+  bool isForwarder = false;
   bool hasFileOffset = false;
   SIZE_T fileOffset = 0;
   std::string name;
+  std::string forwarder;
+  std::wstring message;
 };
 
 struct ExportDetails {
@@ -103,6 +106,38 @@ struct BoundImportDetails {
 struct DebugDetails {
   bool present = false;
   std::vector<IMAGE_DEBUG_DIRECTORY> entries;
+  std::wstring message;
+};
+
+struct ResourceNode {
+  SIZE_T parent = (SIZE_T)-1;
+  DWORD depth = 0;
+  DWORD entryOffset = 0;
+  bool named = false;
+  bool hasName = false;
+  DWORD id = 0;
+  std::wstring name;
+  bool isDirectory = false;
+  DWORD targetOffset = 0;
+  bool hasDirectory = false;
+  IMAGE_RESOURCE_DIRECTORY directory = {};
+  bool hasData = false;
+  IMAGE_RESOURCE_DATA_ENTRY data = {};
+  bool hasFileOffset = false;
+  SIZE_T fileOffset = 0;
+  bool dataValid = false;
+  std::wstring message;
+};
+
+struct ResourceDetails {
+  bool present = false;
+  bool hasRoot = false;
+  DWORD rva = 0;
+  DWORD size = 0;
+  IMAGE_RESOURCE_DIRECTORY root = {};
+  // Preorder nodes; parent is an earlier index, or SIZE_T(-1) for root children.
+  std::vector<ResourceNode> nodes;
+  SIZE_T resourceCount = 0;
   std::wstring message;
 };
 
@@ -143,4 +178,5 @@ ImportThunkDetails ReadImportThunks(const PEContext& context,
 ExportDetails ReadExportDetails(const PEContext& context);
 BoundImportDetails ReadBoundImportDetails(const PEContext& context);
 DebugDetails ReadDebugDetails(const PEContext& context);
+ResourceDetails ReadResourceDetails(const PEContext& context);
 RelocationDetails ReadRelocationDetails(const PEContext& context);

@@ -10,3 +10,4 @@ void showImportThunks(HWND hwnd, HWND dllList, HWND list, const PEContext& conte
 void showExportDirectory(HWND hwnd, const PEContext& context);
 void showBoundImportDirectory(HWND hwnd, HWND list, const PEContext& context);
 void showDebugDirectory(HWND hwnd, HWND list, const PEContext& context);
+void showResourceDirectory(HWND hwnd, const PEContext& context);

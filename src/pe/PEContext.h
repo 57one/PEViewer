@@ -35,7 +35,8 @@ struct PEContext {
   BOOL ContainsPointer(const void* pointer, SIZE_T size) const;
   BOOL RvaToFileOffset(DWORD rva, SIZE_T size, SIZE_T& offset) const;
   const BYTE* ReadRva(DWORD rva, SIZE_T size) const;
-  const char* ReadString(DWORD rva) const;
+  // maxBytes includes the terminating null byte; the file-backed range also applies.
+  const char* ReadString(DWORD rva, SIZE_T maxBytes = (SIZE_T)-1) const;
   const IMAGE_DATA_DIRECTORY* Directory(DWORD index) const;
 
  private:

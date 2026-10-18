@@ -247,6 +247,7 @@ void showExportDirectory(HWND hwnd, const PEContext& context) {
     SetDlgItemText(hwnd, field.id, details.hasHeader ? Hex(field.value, field.width).c_str() : L"");
   HWND list = GetDlgItem(hwnd, IDC_LIST_EXPORT_FUNC);
   ListView_DeleteAllItems(list);
+  SIZE_T forwarders = 0;
   for (SIZE_T i = 0; i < details.entries.size(); ++i) {
     const auto& entry = details.entries[i];
     int row = (int)i;
@@ -254,8 +255,14 @@ void showExportDirectory(HWND hwnd, const PEContext& context) {
     Cell(list, row, 1, Hex(entry.rva));
     Cell(list, row, 2, entry.hasFileOffset ? Hex(entry.fileOffset) : L"-");
     Cell(list, row, 3, Widen(entry.name));
+    Cell(list, row, 4, entry.isForwarder ? L"Forwarder" : L"Export");
+    Cell(list, row, 5, Widen(entry.forwarder));
+    Cell(list, row, 6, entry.message.empty() ? L"OK" : entry.message);
+    if (entry.isForwarder) ++forwarders;
   }
-  std::wstring status = std::to_wstring(details.entries.size()) + L" exports. " + details.message;
+  Fit(list, 7);
+  std::wstring status = std::to_wstring(details.entries.size()) + L" exports (" +
+      std::to_wstring(forwarders) + L" forwarders). " + details.message;
   SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
 }
 

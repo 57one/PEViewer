@@ -265,6 +265,10 @@ ExportDetails ReadExportDetails(const PEContext& context) {
   }
   std::memcpy(&result.header, data, sizeof(result.header));
   result.hasHeader = true;
+  if ((ULONGLONG)directory->VirtualAddress + directory->Size > (ULONGLONG)MAXDWORD + 1) {
+    result.message = L"Export directory RVA range overflows 32 bits.";
+    return result;
+  }
   const auto& header = result.header;
   if (header.NumberOfFunctions > kMaxEntries || header.NumberOfNames > kMaxEntries ||
       header.NumberOfFunctions > context.fileSize / sizeof(DWORD) ||
@@ -321,6 +325,20 @@ ExportDetails ReadExportDetails(const PEContext& context) {
       entry.name = text;
     }
     entry.hasFileOffset = context.RvaToFileOffset(rva, 1, entry.fileOffset) != FALSE;
+    // EAT entries inside the export data-directory range point to forwarder strings.
+    // Subtraction avoids wrapping the upper bound in 32-bit RVA arithmetic.
+    entry.isForwarder = rva >= directory->VirtualAddress &&
+                        rva - directory->VirtualAddress < directory->Size;
+    if (entry.isForwarder) {
+      SIZE_T remaining = directory->Size - (rva - directory->VirtualAddress);
+      const char* target = context.ReadString(rva, remaining);
+      if (target && *target) {
+        entry.forwarder = target;
+      } else {
+        entry.message = L"Invalid or unterminated export forwarder within directory/file range";
+        Note(result.message, entry.message.c_str());
+      }
+    }
     result.entries.push_back(std::move(entry));
   }
   return result;

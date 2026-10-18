@@ -305,6 +305,82 @@ void CheckSeparatedDirectories(bool wide) {
         !ReadBoundImportDetails(context).present && !ReadDebugDetails(context).present,
         "Missing directory was treated as malformed present data");
 }
+void CheckExportForwarders(bool wide) {
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  PEContext context;
+  auto reset = [&]() {
+    if (wide) pe64_fixture::Fill(image.data()); else pe32_fixture::Fill(image.data());
+    pe32_fixture::FillForwardedExports(image.data());
+    Check(context.Initialize(image.data(), image.size()), "Forwarded-export fixture rejected");
+    auto directories = const_cast<IMAGE_DATA_DIRECTORY*>(context.dataDirectories);
+    directories[IMAGE_DIRECTORY_ENTRY_EXPORT].Size = pe32_fixture::kForwardedExportSize;
+  };
+  reset();
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(context.Directory(IMAGE_DIRECTORY_ENTRY_EXPORT));
+  auto header = (PIMAGE_EXPORT_DIRECTORY)(image.data() + 0x300);
+  auto functions = (DWORD*)(image.data() + 0x340);
+  auto exports = ReadExportDetails(context);
+  Check(exports.message.empty() && exports.entries.size() == 3,
+        "Mixed export/forwarder list or empty EAT slot handling failed");
+  Check(!exports.entries[0].isForwarder && exports.entries[0].rva == 0x1800 &&
+        exports.entries[0].forwarder.empty(), "Ordinary export was decoded as a forwarder");
+  Check(exports.entries[1].isForwarder && exports.entries[1].rva == 0x1190 &&
+        exports.entries[1].ordinal == 2 && exports.entries[1].fileOffset == 0x390 &&
+        exports.entries[1].name == "ForwardedName" && exports.entries[1].forwarder == "MYDLL.expfunc",
+        "Named forwarder lost its raw address, identity or target");
+  Check(exports.entries[2].isForwarder && exports.entries[2].forwarder == "MYDLL.#27",
+        "Ordinal forwarder was not preserved");
+
+  header->NumberOfNames = 0;
+  header->Base = 0x100;
+  exports = ReadExportDetails(context);
+  Check(exports.entries[1].name.empty() && exports.entries[1].ordinal == 0x101 &&
+        exports.entries[1].forwarder == "MYDLL.expfunc", "Unnamed forwarder lost its ordinal or target");
+
+  // The range comes from DataDirectory, rather than the EAT or the containing section.
+  reset();
+  functions[0] = 0x1200;
+  Check(!ReadExportDetails(context).entries[0].isForwarder, "Export range upper bound is not exclusive");
+  functions[0] = 0x10FF;
+  Check(!ReadExportDetails(context).entries[0].isForwarder, "RVA below the export range became a forwarder");
+  functions[0] = directory->VirtualAddress;
+  std::memcpy(&header->Characteristics, "M.X", sizeof("M.X"));
+  exports = ReadExportDetails(context);
+  Check(exports.entries[0].isForwarder && exports.entries[0].forwarder == "M.X",
+        "Export range lower bound is not inclusive");
+
+  reset();
+  functions[0] = 0x11FC;
+  std::memcpy(image.data() + 0x3FC, "M.X", sizeof("M.X"));
+  exports = ReadExportDetails(context);
+  Check(exports.message.empty() && exports.entries[0].forwarder == "M.X",
+        "Forwarder ending at the directory boundary was rejected");
+  std::memset(image.data() + 0x3FC, 'X', 4);
+  image[0x400] = 0;  // A null outside the export directory must not terminate the string.
+  exports = ReadExportDetails(context);
+  Check(exports.entries.size() == 3 && exports.entries[0].isForwarder &&
+        exports.entries[0].forwarder.empty() && !exports.entries[0].message.empty() &&
+        !exports.message.empty() && exports.entries[2].forwarder == "MYDLL.#27",
+        "Unterminated forwarder escaped its directory or discarded subsequent exports");
+  image[0x3FC] = 0;
+  Check(!ReadExportDetails(context).entries[0].message.empty(), "Empty forwarder target was accepted");
+
+  reset();
+  directory->Size = 0x1000;
+  functions[0] = 0x1FFF;
+  image.back() = 'X';
+  exports = ReadExportDetails(context);
+  Check(exports.entries[0].isForwarder && exports.entries[0].hasFileOffset &&
+        !exports.entries[0].message.empty(), "Forwarder crossed the file-backed range");
+  functions[0] = 0x2000;
+  exports = ReadExportDetails(context);
+  Check(exports.entries[0].isForwarder && !exports.entries[0].hasFileOffset &&
+        !exports.entries[0].message.empty(), "Unmapped forwarder target was read");
+  directory->Size = MAXDWORD;
+  exports = ReadExportDetails(context);
+  Check(exports.hasHeader && exports.entries.empty() && !exports.message.empty(),
+        "Export directory RVA range overflow was not reported");
+}
 }  // namespace
 
 void CheckDirectoryDetails() {
@@ -312,4 +388,6 @@ void CheckDirectoryDetails() {
   CheckFormat(true);
   CheckSeparatedDirectories(false);
   CheckSeparatedDirectories(true);
+  CheckExportForwarders(false);
+  CheckExportForwarders(true);
 }
