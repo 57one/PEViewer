@@ -75,6 +75,124 @@ const wchar_t* RelocationName(WORD type) {
     default: return NULL;
   }
 }
+
+// Disk VAs use the preferred ImageBase, never the address of our file buffer.
+// https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-directory
+template <typename Header>
+void CopyTlsHeader(const Header& header, TlsDetails& result) {
+  result.rawDataStart.va = header.StartAddressOfRawData;
+  result.rawDataEnd.va = header.EndAddressOfRawData;
+  result.index.va = header.AddressOfIndex;
+  result.callbackArray.va = header.AddressOfCallBacks;
+  result.sizeOfZeroFill = header.SizeOfZeroFill;
+  result.characteristics = header.Characteristics;
+}
+
+bool ResolveTlsAddress(const PEContext& context, TlsAddress& address,
+                       SIZE_T bytes = 1, bool allowEnd = false) {
+  bool wide = context.format == PEFormat::PE32Plus;
+  ULONGLONG imageBase = wide ? context.optionalHeader64->ImageBase : context.optionalHeader32->ImageBase;
+  DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  ULONGLONG maxVa = wide ? ~0ULL : MAXDWORD;
+  if (address.va > maxVa || (bytes && bytes - 1 > maxVa - address.va)) {
+    address.message = L"VA range overflows address width";
+    return false;
+  }
+  if (address.va < imageBase) {
+    address.message = L"VA is below ImageBase";
+    return false;
+  }
+  ULONGLONG relative = address.va - imageBase;
+  if (relative > MAXDWORD) {
+    address.message = L"VA does not fit a 32-bit RVA";
+    return false;
+  }
+  address.rva = (DWORD)relative;
+  address.hasRva = true;
+  if (relative > imageSize || (!allowEnd && relative == imageSize) || bytes > imageSize - relative) {
+    address.message = L"VA range is outside SizeOfImage";
+    return false;
+  }
+  address.hasFileOffset = context.RvaToFileOffset(address.rva, bytes ? bytes : 1,
+                                                address.fileOffset) != FALSE;
+  if (!address.hasFileOffset && !allowEnd) address.message = L"No file-backed bytes";
+  return true;
+}
+
+void ReadTlsTemplate(const PEContext& context, TlsDetails& result) {
+  auto& start = result.rawDataStart;
+  auto& end = result.rawDataEnd;
+  if (!start.va && !end.va) {
+    start.message = end.message = L"No initialization template";
+    result.rawDataValid = true;
+    return;
+  }
+  bool startValid = ResolveTlsAddress(context, start, start.va == end.va ? 0 : 1, start.va == end.va);
+  bool endValid = ResolveTlsAddress(context, end, 0, true);
+  if (!startValid) Note(result.message, (L"TLS template start: " + start.message).c_str());
+  if (!endValid) Note(result.message, (L"TLS template end: " + end.message).c_str());
+  if (end.va < start.va) {
+    Note(result.message, L"TLS template end precedes start");
+    return;
+  }
+  result.rawDataSize = end.va - start.va;
+  if (!startValid || !endValid) return;
+  SIZE_T offset = 0;
+  result.rawDataValid = !result.rawDataSize ||
+      context.RvaToFileOffset(start.rva, (SIZE_T)result.rawDataSize, offset) != FALSE;
+  if (!result.rawDataValid) Note(result.message, L"TLS initialization template is outside the file-backed RVA range");
+}
+
+void ReadTlsCallbacks(const PEContext& context, TlsDetails& result) {
+  bool wide = context.format == PEFormat::PE32Plus;
+  SIZE_T width = wide ? 8 : 4;
+  DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  auto& array = result.callbackArray;
+  if (!array.va) {
+    array.message = L"No callback array";
+    result.terminated = true;
+    return;
+  }
+  if (!ResolveTlsAddress(context, array, width)) {
+    Note(result.message, (L"TLS callback array: " + array.message).c_str());
+    return;
+  }
+  for (SIZE_T i = 0; i <= kMaxEntries; ++i) {
+    ULONGLONG slot = (ULONGLONG)array.rva + i * width;
+    ULONGLONG maxVa = width == 8 ? ~0ULL : MAXDWORD;
+    SIZE_T offset = 0;
+    if (i * width > maxVa - array.va || width - 1 > maxVa - array.va - i * width) {
+      Note(result.message, L"TLS callback slot VA range overflows address width");
+      return;
+    }
+    if (slot >= imageSize || width > imageSize - slot || slot > MAXDWORD ||
+        !context.RvaToFileOffset((DWORD)slot, width, offset)) {
+      Note(result.message, L"Truncated or unterminated TLS callback array (outside file/image range)");
+      return;
+    }
+    const BYTE* data = context.fileBuffer + offset;
+    ULONGLONG value = wide ? ReadValue<8>(data) : ReadValue<4>(data);
+    if (!value) {
+      result.terminated = true;
+      return;
+    }
+    if (i == kMaxEntries) {
+      Note(result.message, L"TLS callback display limited to 100000 entries; terminator not reached");
+      return;
+    }
+    TlsCallback callback;
+    callback.slotRva = (DWORD)slot;
+    callback.slotFileOffset = offset;
+    callback.target.va = value;
+    if (!ResolveTlsAddress(context, callback.target) || !callback.target.hasFileOffset) {
+      // Keep invalid entries and continue: later callbacks can still be inspected.
+      if (result.message.find(L"Invalid TLS callback target") == std::wstring::npos)
+        Note(result.message, L"Invalid TLS callback target; see entry status");
+    }
+    result.callbacks.push_back(std::move(callback));
+  }
+}
+
 }  // namespace
 
 ImportDetails ReadImportDetails(const PEContext& context) {
@@ -433,6 +551,52 @@ DebugDetails ReadDebugDetails(const PEContext& context) {
     IMAGE_DEBUG_DIRECTORY entry = {};
     std::memcpy(&entry, data + i * sizeof(entry), sizeof(entry));
     result.entries.push_back(entry);
+  }
+  return result;
+}
+
+TlsDetails ReadTlsDetails(const PEContext& context) {
+  TlsDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_TLS);
+  if (!directory) {
+    result.message = L"No TLS directory.";
+    return result;
+  }
+  result.present = true;
+  result.rva = directory->VirtualAddress;
+  result.size = directory->Size;
+  bool wide = context.format == PEFormat::PE32Plus;
+  SIZE_T headerSize = wide ? sizeof(IMAGE_TLS_DIRECTORY64) : sizeof(IMAGE_TLS_DIRECTORY32);
+  if ((ULONGLONG)result.rva + result.size > (ULONGLONG)MAXDWORD + 1) {
+    result.message = L"TLS directory RVA range overflows 32 bits.";
+  } else if (result.size < headerSize) {
+    result.message = L"Truncated TLS directory header.";
+  } else if (const BYTE* bytes = context.ReadRva(result.rva, result.size)) {
+    if (wide) {
+      IMAGE_TLS_DIRECTORY64 header = {};
+      std::memcpy(&header, bytes, sizeof(header));
+      CopyTlsHeader(header, result);
+      result.imageBase = context.optionalHeader64->ImageBase;
+    } else {
+      IMAGE_TLS_DIRECTORY32 header = {};
+      std::memcpy(&header, bytes, sizeof(header));
+      CopyTlsHeader(header, result);
+      result.imageBase = context.optionalHeader32->ImageBase;
+    }
+    result.hasHeader = true;
+    ReadTlsTemplate(context, result);
+    if (!result.index.va) {
+      result.index.message = L"TLS index address is zero";
+      Note(result.message, result.index.message.c_str());
+    } else if (ResolveTlsAddress(context, result.index, sizeof(DWORD))) {
+      // The loader writes a DWORD index, even in PE32+. It can be in zero-fill data.
+      if (!result.index.hasFileOffset) result.index.message = L"No file-backed bytes (loader writes index)";
+    } else {
+      Note(result.message, (L"TLS index: " + result.index.message).c_str());
+    }
+    ReadTlsCallbacks(context, result);
+  } else {
+    result.message = L"TLS directory is outside the file-backed RVA range.";
   }
   return result;
 }

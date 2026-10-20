@@ -12,12 +12,14 @@
 #include "fixtures/pe32.h"
 #include "fixtures/pe64.h"
 #include "fixtures/resources.h"
+#include "fixtures/tls.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 void CheckPEContext(LPCTSTR filePath);
 void CheckDirectoryDetails();
 void CheckResourceDetails();
+void CheckTlsDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -190,6 +192,15 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
   const auto exports = ReadExportDetails(context);
   const auto bound = ReadBoundImportDetails(context);
   const auto debug = ReadDebugDetails(context);
+  const auto tls = ReadTlsDetails(context);
+  if (tls.present) {
+    if (!tls.message.empty()) std::fwprintf(stderr, L"TLS: %ls\n", tls.message.c_str());
+    Check(tls.hasHeader && tls.terminated && tls.rawDataValid && tls.message.empty(),
+          "Real-file TLS directory parsing failed");
+    for (const auto& callback : tls.callbacks)
+      Check(callback.target.hasFileOffset && callback.target.message.empty(),
+            "Real-file TLS callback VA conversion failed");
+  }
   const auto resources = ReadResourceDetails(context);
   if (resources.present) {
     if (!resources.message.empty()) std::fwprintf(stderr, L"Resources: %ls\n", resources.message.c_str());
@@ -272,6 +283,70 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
   std::wprintf(L"      import functions=%zu, exports=%zu (forwarders=%zu), bound imports=%zu, debug records=%zu\n",
                importedFunctions, exports.entries.size(), forwarders, bound.entries.size(), debug.entries.size());
   std::wprintf(L"      resource entries=%zu, resource nodes=%zu\n", resources.resourceCount, resources.nodes.size());
+  std::wprintf(L"      TLS present=%u, callbacks=%zu\n", tls.present ? 1 : 0, tls.callbacks.size());
+  if (tls.hasHeader) {
+    std::wprintf(L"      TLS start=%016I64X end=%016I64X index=%016I64X array=%016I64X zero=%08lX characteristics=%08lX\n",
+        tls.rawDataStart.va, tls.rawDataEnd.va, tls.index.va, tls.callbackArray.va,
+        tls.sizeOfZeroFill, tls.characteristics);
+    for (const auto& callback : tls.callbacks)
+      std::wprintf(L"      TLS callback=%016I64X RVA=%08lX file=%zX\n", callback.target.va,
+                    callback.target.rva, callback.target.fileOffset);
+  }
+}
+
+void CheckTlsPage(void* buffer, bool wide) {
+  auto data = (BYTE*)buffer;
+  tls_fixture::Fill(data, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "TLS page context rejected");
+  Dialog directories(IDD_DIALOG_DIRECTORY, DirectoryProc);
+  Check(IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_TLS)) != FALSE,
+        "Present TLS directory button is disabled");
+  Dialog dialog(IDD_DIALOG_TLS, TlsDirectoryProc);
+  HWND fields = GetDlgItem(dialog.hwnd, IDC_LIST_TLS_FIELDS);
+  HWND callbacks = GetDlgItem(dialog.hwnd, IDC_LIST_TLS_CALLBACKS);
+  wchar_t title[80] = {};
+  GetWindowText(dialog.hwnd, title, _countof(title));
+  Check(std::wcscmp(title, wide ? L"TLS Directory - PE32+" : L"TLS Directory - PE32") == 0,
+        "TLS page format title mismatch");
+  CheckList(dialog.hwnd, IDC_LIST_TLS_FIELDS, 1, wide ? L"0000000140001A00" : L"00401A00", 0, 8);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_FIELDS, 2, L"00001A00", 0, 8);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_FIELDS, 3, L"00000C00", 0, 8);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_FIELDS, 1, L"00000020", 4, 8);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_FIELDS, 1, L"00500000", 5, 8);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 3, wide ? L"0000000140001800" : L"00401800", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 1, wide ? L"00001988" : L"00001984", 1, 2);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 4, L"00001810", 1, 2);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 5, L"00000A10", 1, 2);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 6, L"OK", 1, 2);
+  Check(ListView_GetColumnWidth(callbacks, 3) >= ListView_GetStringWidth(callbacks, wide ? L"0000000140001800" : L"00401800"),
+        "TLS callback VA column clips full 64-bit values");
+  CheckText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, L"2 callbacks. Callback list complete. OK");
+
+  ULONGLONG base = wide ? pe64_fixture::kImageBase : pe32_fixture::kImageBase;
+  tls_fixture::WriteValue(data + tls_fixture::kCallbacksRaw, base - 1, wide);
+  showTlsDirectory(dialog.hwnd, g_peContext);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 6, L"VA is below ImageBase", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 6, L"OK", 1, 2);
+
+  // Reload using another context; the active file must not determine the displayed format.
+  std::vector<BYTE> image(pe32_fixture::kFileSize);
+  tls_fixture::Fill(image.data(), !wide);
+  PEContext other;
+  Check(other.Initialize(image.data(), image.size()), "Alternate TLS context rejected");
+  showTlsDirectory(dialog.hwnd, other);
+  CheckList(dialog.hwnd, IDC_LIST_TLS_CALLBACKS, 3, wide ? L"00401800" : L"0000000140001800", 0, 2);
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(other.Directory(IMAGE_DIRECTORY_ENTRY_TLS));
+  directory->Size = 1;
+  showTlsDirectory(dialog.hwnd, other);
+  Check(ListView_GetItemCount(fields) == 0 && ListView_GetItemCount(callbacks) == 0,
+        "Truncated TLS header left stale fields or rows");
+  CheckText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, L"Truncated TLS directory header.");
+  *directory = {};
+  showTlsDirectory(dialog.hwnd, other);
+  CheckText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, L"No TLS directory.");
+  showDirectory(directories.hwnd, other);
+  Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_TLS)),
+        "Missing TLS directory button remains enabled");
 }
 
 void CheckResourcePage(void* buffer, bool wide) {
@@ -719,6 +794,7 @@ int wmain(int argc, wchar_t** argv) {
     CheckPEContext(argv[1]);
     CheckDirectoryDetails();
     CheckResourceDetails();
+    CheckTlsDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -749,12 +825,14 @@ int wmain(int argc, wchar_t** argv) {
     CheckExportForwarderPage(allocatedBuffer, true);
     CheckResourcePage(allocatedBuffer, false);
     CheckResourcePage(allocatedBuffer, true);
+    CheckTlsPage(allocatedBuffer, false);
+    CheckTlsPage(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);
     for (int i = 2; i < argc; ++i) {
       std::wstring reference = std::wstring(argv[1]) + L".resources-" + std::to_wstring(i) + L".dll";
       CheckRealDirectoryFile(argv[i], reference.c_str());
     }
-    std::printf("PASS: %s, PE32/PE32+ pages, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
+    std::printf("PASS: %s, PE32/PE32+ pages, TLS fields/callbacks, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

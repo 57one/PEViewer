@@ -69,6 +69,9 @@
     <ClCompile Include="src\ui\resourceDialog.cpp">
       <Filter>src\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\tlsDialog.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\utility.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
@@ -145,6 +148,12 @@
     </None>
     <None Include="tests\resource-details-tests.cpp">
       <Filter>tests</Filter>
+    </None>
+    <None Include="tests\tls-details-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\tls.h">
+      <Filter>tests\fixtures</Filter>
     </None>
     <None Include="tests\fixtures\resources.h">
       <Filter>tests\fixtures</Filter>

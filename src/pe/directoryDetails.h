@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-// Microsoft PE format: export/import tables, debug data and base relocations.
+// Structured disk-file directory results: imports/exports, resources, TLS, etc.
 // https://learn.microsoft.com/en-us/windows/win32/debug/pe-format
 // Disk-file values only; these parsers do not resolve addresses in a process.
 enum class ImportKind { Unavailable, Terminator, Name, Ordinal, Invalid };
@@ -109,6 +109,40 @@ struct DebugDetails {
   std::wstring message;
 };
 
+struct TlsAddress {
+  ULONGLONG va = 0;
+  DWORD rva = 0;
+  SIZE_T fileOffset = 0;
+  bool hasRva = false;
+  bool hasFileOffset = false;
+  std::wstring message;
+};
+
+struct TlsCallback {
+  DWORD slotRva = 0;
+  SIZE_T slotFileOffset = 0;
+  TlsAddress target;
+};
+
+struct TlsDetails {
+  bool present = false;
+  bool hasHeader = false;
+  bool terminated = false;
+  DWORD rva = 0;
+  DWORD size = 0;
+  ULONGLONG imageBase = 0;
+  TlsAddress rawDataStart;
+  TlsAddress rawDataEnd;  // Exclusive end of the initialization template.
+  TlsAddress index;
+  TlsAddress callbackArray;
+  ULONGLONG rawDataSize = 0;
+  bool rawDataValid = false;
+  DWORD sizeOfZeroFill = 0;
+  DWORD characteristics = 0;
+  std::vector<TlsCallback> callbacks;
+  std::wstring message;
+};
+
 struct ResourceNode {
   SIZE_T parent = (SIZE_T)-1;
   DWORD depth = 0;
@@ -178,5 +212,6 @@ ImportThunkDetails ReadImportThunks(const PEContext& context,
 ExportDetails ReadExportDetails(const PEContext& context);
 BoundImportDetails ReadBoundImportDetails(const PEContext& context);
 DebugDetails ReadDebugDetails(const PEContext& context);
+TlsDetails ReadTlsDetails(const PEContext& context);
 ResourceDetails ReadResourceDetails(const PEContext& context);
 RelocationDetails ReadRelocationDetails(const PEContext& context);

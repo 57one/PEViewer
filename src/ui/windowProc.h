@@ -73,3 +73,4 @@ INT_PTR CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
 INT_PTR CALLBACK IatDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK RelocationDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK ResourceDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK TlsDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);

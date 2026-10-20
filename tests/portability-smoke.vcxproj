@@ -48,10 +48,12 @@
     <ClCompile Include="pe-context-tests.cpp" />
     <ClCompile Include="directory-details-tests.cpp" />
     <ClCompile Include="resource-details-tests.cpp" />
+    <ClCompile Include="tls-details-tests.cpp" />
     <ClCompile Include="..\src\pe\directoryDetails.cpp" />
     <ClCompile Include="..\src\pe\resourceDetails.cpp" />
     <ClCompile Include="..\src\ui\directoryDialogs.cpp" />
     <ClCompile Include="..\src\ui\resourceDialog.cpp" />
+    <ClCompile Include="..\src\ui\tlsDialog.cpp" />
     <ClCompile Include="..\src\common\global.cpp" />
     <ClCompile Include="..\src\common\utility.cpp" />
     <ClCompile Include="..\src\process\handleProcessAndModule.cpp" />
@@ -62,6 +64,7 @@
     <ClInclude Include="fixtures\pe32.h" />
     <ClInclude Include="fixtures\pe64.h" />
     <ClInclude Include="fixtures\resources.h" />
+    <ClInclude Include="fixtures\tls.h" />
     <ClInclude Include="..\src\pe\PEContext.h" />
     <ClInclude Include="..\src\ui\directoryDialogs.h" />
     <ResourceCompile Include="..\resources\resource.rc" />

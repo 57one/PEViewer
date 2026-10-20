@@ -26,19 +26,21 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 页面回归另检查显式上下文传递、PE32 序号导入及 `FirstThunk` 回退、无名导出的 `Base`、未知调试类型和非法目录 RVA。新增 PE32+ 可选头与汇总页面回归，检查高于 4 GB 的 `ImageBase` 与栈 / 堆大小、完整 64 位数值、仍为 32 位的公共字段，以及 PE32 / PE32+ 切换时 `BaseOfData` 的文本和启用状态；x64 中继续使用位于 4 GB 以上的文件缓冲区。
 
-正常文件选择入口已开放 PE32+。两种格式都创建实际的 13 个页面，检查格式标题、位图和已实现的数据目录。`fixtures/pe64.h` 包含真正的 8 字节导入查找表与 IAT，按名称、序号、名称排列，防止错误的 4 字节步长提前结束遍历。额外覆盖两种格式的 `FirstThunk` 回退、完整序号标志、保留位、绑定地址、越界 / 截断条目、缺失终止项及无终止符名称。
+正常文件选择入口已开放 PE32+。两种格式都创建实际的 14 种页面，检查格式标题、位图和已实现的数据目录。`fixtures/pe64.h` 包含真正的 8 字节导入查找表与 IAT，按名称、序号、名称排列，防止错误的 4 字节步长提前结束遍历。额外覆盖两种格式的 `FirstThunk` 回退、完整序号标志、保留位、绑定地址、越界 / 截断条目、缺失终止项及无终止符名称。
 
 头部编辑回归检查六个宽数值控件能完整容纳 16 位十六进制数，按文件格式设置输入长度限制。失去焦点后以 32 / 64 位范围解析，接受可选的 `0x` 前缀和首尾空白，规范化显示；非法字符、符号和溢出输入恢复为文件原值。字段编辑仍是界面预览，不写回文件。按钮回归检查 PE32+ 的 SizeOfImage / SizeOfHeaders 调整、零对齐和加法溢出；导入数值列自动适应完整的 64 位值。
 
 主程序与独立验证工程默认工具集均为 Visual Studio 2022 的 v143，SDK 为 10.0.22621.0。通过 Visual Studio 或上面的构建脚本可直接使用工程默认配置；脚本继续将主程序的工具集和 SDK 同步给验证工程。
 
-IAT 与重定位解析验证位于 `directory-details-tests.cpp`，直接检查独立于 UI 的结果：32 / 64 位槽位和原值、INT 名称 / 序号关联、绑定 IAT、缺少 INT 的回退、多 DLL、终止项、非法 RVA / 名称、截断槽位、重定位块长度 / 对齐、HIGHLOW / DIR64、ABSOLUTE、HIGHADJ 配对和未知类型。页面回归现覆盖两种格式的 13 个页面，包括 IAT 完整 64 位列宽、重定位块切换与错误文本；x64 的两个新页面也使用 4 GB 以上缓冲区。
+IAT 与重定位解析验证位于 `directory-details-tests.cpp`，直接检查独立于 UI 的结果：32 / 64 位槽位和原值、INT 名称 / 序号关联、绑定 IAT、缺少 INT 的回退、多 DLL、终止项、非法 RVA / 名称、截断槽位、重定位块长度 / 对齐、HIGHLOW / DIR64、ABSOLUTE、HIGHADJ 配对和未知类型。页面回归现覆盖两种格式的 14 种页面，包括 IAT 完整 64 位列宽、重定位块切换与错误文本；x64 的两个新页面也使用 4 GB 以上缓冲区。
 
-验证程序可额外接收真实 PE 文件路径，检查导入、IAT、导出、绑定导入、调试、资源及重定位解析并打印数量（生成样本路径仍作为第一个参数）：
+验证程序可额外接收真实 PE 文件路径，检查导入、IAT、导出、绑定导入、调试、资源、TLS 及重定位解析并打印数量（生成样本路径仍作为第一个参数）：
 
 ```powershell
 .\bin\Debug\x64\tests\portability-smoke.exe .\obj\real-check.exe C:\Windows\System32\notepad.exe C:\Windows\SysWOW64\notepad.exe
 ```
+
+Win32 验证程序访问 64 位系统文件时，请用 `C:\Windows\Sysnative`；其 `System32` 路径会被 Windows 重定向到 `SysWOW64`。x64 验证程序使用 `System32` 和 `SysWOW64` 分别读取两种格式。
 
 结构解释参考 [Microsoft PE 格式规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format)，尤其是 Import Address Table 与 Base Relocation Block / Types。显示的 IAT 与重定位原值均来自磁盘文件，不应用重定位或解析进程中的运行时函数地址。
 
@@ -50,4 +52,6 @@ IAT 与重定位解析验证位于 `directory-details-tests.cpp`，直接检查�
 
 资源解析用例位于 `resource-details-tests.cpp`，独立于窗口；`fixtures/resources.h` 为两种格式建立相同的类型 / 名称 / 语言树，含 Unicode 名称、数字 ID 和三个资源数据条目。覆盖目录起点相对偏移、数据 RVA、完整数据范围、多语言、带长度名称中的空字符、截断名称 / 表头 / 条目 / 数据描述符、非法地址、循环引用、共享子树、深度 / 节点 / 名称总量限制、空目录和零长度资源。
 
-当前页面回归扩展为两种格式的 13 个页面，资源页检查树标签、数字模型索引、语言切换后的字段、显式上下文重载、旧树 / 详情清理和错误状态；x64 资源页同样使用 4 GB 以上的缓冲区。真实资源数据先复制到 `obj` 中的独立文件，避免系统 MUI 语言包或已加载同名模块干扰，再通过 `LoadLibraryEx` 的数据 / 资源映射与 `FindResourceEx`、`SizeofResource`、`LoadResource` / `LockResource` 交叉比较条目大小和原始字节；该映射不执行目标程序代码。
+当前页面回归扩展为两种格式的 14 种页面，资源页检查树标签、数字模型索引、语言切换后的字段、显式上下文重载、旧树 / 详情清理和错误状态；x64 资源页同样使用 4 GB 以上的缓冲区。真实资源数据先复制到 `obj` 中的独立文件，避免系统 MUI 语言包或已加载同名模块干扰，再通过 `LoadLibraryEx` 的数据 / 资源映射与 `FindResourceEx`、`SizeofResource`、`LoadResource` / `LockResource` 交叉比较条目大小和原始字节；该映射不执行目标程序代码。
+
+TLS 解析入口 `ReadTlsDetails()` 和普通辅助函数位于 `src/pe/directoryDetails.cpp`，主程序与验证工程均从该文件编译；资源的 `ResourceReader` 类保持独立。TLS 用例位于 `tls-details-tests.cpp`，样本由 `fixtures/tls.h` 生成。两种格式均覆盖四个地址字段、回调步长、64 位 VA 保留、VA 到 RVA / 文件偏移转换、目录头之外的数组和模板、空数组 / 无模板、排他的模板结束边界、位于零填充内的索引、异常 VA、无效回调与有效兄弟项、缺少终止项、文件尾截断、缺失目录和 100000 项上限，并交替读取两个格式的独立上下文，验证结果隔离及失败后再次读取不残留状态。`portability-smoke.cpp` 创建实际 TLS 对话框，检查标题、字段和列宽、错误行保留、显式上下文与格式切换、失败重载清空、目录按钮启用状态；x64 页面使用 4 GB 以上缓冲区。

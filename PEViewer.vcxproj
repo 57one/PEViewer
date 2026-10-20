@@ -161,6 +161,7 @@
     <ClCompile Include="src\pe\resourceDetails.cpp" />
     <ClCompile Include="src\ui\directoryDialogs.cpp" />
     <ClCompile Include="src\ui\resourceDialog.cpp" />
+    <ClCompile Include="src\ui\tlsDialog.cpp" />
     <ClCompile Include="src\common\utility.cpp" />
     <ClCompile Include="src\ui\windowProc.cpp" />
   </ItemGroup>
@@ -192,6 +193,8 @@
     <None Include="tests\pe-context-tests.cpp" />
     <None Include="tests\directory-details-tests.cpp" />
     <None Include="tests\resource-details-tests.cpp" />
+    <None Include="tests\tls-details-tests.cpp" />
+    <None Include="tests\fixtures\tls.h" />
     <None Include="tests\fixtures\resources.h" />
     <None Include="tests\fixtures\pe64.h" />
     <None Include="tests\fixtures\pe32.h" />
