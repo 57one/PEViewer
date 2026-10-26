@@ -1,6 +1,6 @@
 # PE 数据目录与资源目录结构
 
-本文介绍 PE 可选头中的数据目录入口，并用资源目录示意图说明结构体之间的关系。功能进度与后续实现顺序见 [architecture.md](../architecture.md)。
+本文介绍 PE 可选头中的数据目录入口、资源目录结构和延迟导入的读取方式。功能进度与后续实现顺序见 [architecture.md](../architecture.md)。
 
 ## 数据目录入口
 
@@ -164,3 +164,37 @@ FOA = 节.PointerToRawData + (数据 RVA - 节.VirtualAddress)
 5. 返回带父节点索引的结构化结果，由 UI 建树并显示所选节点的字段和状态。
 
 解析代码位于 [resourceDetails.cpp](../src/pe/resourceDetails.cpp)，模型声明位于 [directoryDetails.h](../src/pe/directoryDetails.h)，显示代码位于 [resourceDialog.cpp](../src/ui/resourceDialog.cpp)。解析器检查越界、截断、循环引用和遍历限制，并保留异常节点及有效兄弟分支；图标、版本信息等内容预览和原始数据导出仍属于后续工作。
+
+## Delay Import 延迟导入
+
+延迟导入让程序在第一次调用某个导入函数时，再由延迟加载辅助代码加载对应 DLL 并解析函数地址。目录入口是 `DataDirectory[IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT]`，索引为 13；它与普通 Import Directory 分开。规范见微软的[Delay-Load Directory Table](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-delay-load-directory-table)。
+
+目录内容是连续的 `IMAGE_DELAYLOAD_DESCRIPTOR`，每项固定 32 字节，最后由一个全零描述符结束。PE32+ 中描述符字段仍是 DWORD，INT / IAT 条目才按文件格式使用 4 / 8 字节。
+
+| 偏移（字节） | 大小（字节） | SDK 字段 | 含义 |
+| --- | --- | --- | --- |
+| 0 | 4 | `Attributes.AllAttributes` | bit 0 为 RvaBased，其余位保留。 |
+| 4 | 4 | `DllNameRVA` | DLL 名称的位置。 |
+| 8 | 4 | `ModuleHandleRVA` | 延迟加载辅助代码写入 HMODULE 的位置。 |
+| 12 | 4 | `ImportAddressTableRVA` | 延迟 IAT 的位置。 |
+| 16 | 4 | `ImportNameTableRVA` | 延迟 INT 的位置。 |
+| 20 | 4 | `BoundImportAddressTableRVA` | 可选的绑定地址表位置。 |
+| 24 | 4 | `UnloadInformationTableRVA` | 可选的卸载恢复表位置。 |
+| 28 | 4 | `TimeDateStamp` | 绑定目标 DLL 的时间戳。 |
+
+RvaBased 为 1 时，六个地址字段是 RVA；为 0 时，是旧式 VA，需要减去文件中的首选 ImageBase 后再映射文件字节。字段名称虽然包含 RVA，读取时仍必须检查属性。未知属性位不猜测布局，旧式 DWORD 地址不能表示 PE32+ 高基址时保留错误说明。
+
+```text
+Delay DataDirectory
+  └─ DLL 描述符
+       ├─ DLL 名称
+       ├─ 模块句柄存放位置
+       ├─ INT：名称条目 / 序号条目 / NULL
+       ├─ IAT：辅助代码地址或函数地址 / NULL
+       ├─ 可选 Bound IAT：绑定地址
+       └─ 可选 Unload IAT：原始 IAT 的恢复副本
+```
+
+函数名称、Hint 和序号来自 INT，解码与普通导入共用。磁盘中的延迟 IAT 通常保存本模块延迟加载辅助代码的地址，不能当作名称 RVA，因此缺失 INT 时不使用 IAT 回退。Bound / Unload IAT 的内容作为原始值显示；不加载 DLL、不解析进程中的实际地址。INT、IAT 和名称可以位于描述符目录的 Size 范围之外，但必须通过文件访问检查。
+
+解析入口是 [ReadDelayImportDetails / ReadDelayImportThunks](../src/pe/directoryDetails.cpp)，显示适配位于 [delayImportDialog.cpp](../src/ui/delayImportDialog.cpp)。目录页的 Delay Import 详情按钮打开 DLL / 函数列表，保留错误描述符、异常函数和后续有效条目，并分别提示描述符及 INT 是否正常结束。

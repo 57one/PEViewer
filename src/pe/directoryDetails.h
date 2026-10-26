@@ -46,6 +46,64 @@ struct ImportThunkDetails {
   std::wstring message;
 };
 
+struct DelayImportAddress {
+  DWORD raw = 0;
+  DWORD rva = 0;
+  SIZE_T fileOffset = 0;
+  bool hasRva = false;
+  bool hasFileOffset = false;
+  std::wstring message;
+};
+
+struct DelayImportModule {
+  DWORD descriptorIndex = 0;
+  DWORD descriptorRva = 0;
+  IMAGE_DELAYLOAD_DESCRIPTOR descriptor = {};
+  bool rvaBased = false;
+  bool supported = false;
+  std::string name;
+  DelayImportAddress dllName;
+  DelayImportAddress moduleHandle;
+  DelayImportAddress iat;
+  DelayImportAddress lookup;
+  DelayImportAddress boundIat;
+  DelayImportAddress unloadIat;
+  std::wstring message;
+};
+
+struct DelayImportDetails {
+  bool present = false;
+  bool terminated = false;
+  DWORD rva = 0;
+  DWORD size = 0;
+  std::vector<DelayImportModule> modules;
+  std::wstring message;
+};
+
+struct DelayImportSlot {
+  bool hasRva = false;
+  bool hasValue = false;
+  DWORD rva = 0;
+  SIZE_T fileOffset = 0;
+  ULONGLONG value = 0;
+  std::wstring message;
+};
+
+struct DelayImportThunk {
+  DelayImportSlot lookup;
+  ImportSymbol symbol;
+  DelayImportSlot iat;
+  DelayImportSlot boundIat;
+  DelayImportSlot unloadIat;
+  std::wstring message;
+};
+
+struct DelayImportThunkDetails {
+  bool terminated = false;
+  std::vector<DelayImportThunk> entries;
+  std::wstring message;
+};
+
 struct IatEntry {
   DWORD rva = 0;
   SIZE_T fileOffset = 0;
@@ -209,6 +267,9 @@ IatDetails ReadIatDetails(const PEContext& context);
 ImportDetails ReadImportDetails(const PEContext& context);
 ImportThunkDetails ReadImportThunks(const PEContext& context,
                                    const IMAGE_IMPORT_DESCRIPTOR& descriptor);
+DelayImportDetails ReadDelayImportDetails(const PEContext& context);
+DelayImportThunkDetails ReadDelayImportThunks(const PEContext& context,
+                                            const DelayImportModule& module);
 ExportDetails ReadExportDetails(const PEContext& context);
 BoundImportDetails ReadBoundImportDetails(const PEContext& context);
 DebugDetails ReadDebugDetails(const PEContext& context);

@@ -72,6 +72,9 @@
     <ClCompile Include="src\ui\tlsDialog.cpp">
       <Filter>src\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\delayImportDialog.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\utility.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
@@ -151,6 +154,12 @@
     </None>
     <None Include="tests\tls-details-tests.cpp">
       <Filter>tests</Filter>
+    </None>
+    <None Include="tests\delay-import-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\delay-imports.h">
+      <Filter>tests\fixtures</Filter>
     </None>
     <None Include="tests\fixtures\tls.h">
       <Filter>tests\fixtures</Filter>

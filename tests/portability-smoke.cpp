@@ -13,6 +13,7 @@
 #include "fixtures/pe64.h"
 #include "fixtures/resources.h"
 #include "fixtures/tls.h"
+#include "fixtures/delay-imports.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -20,6 +21,7 @@ void CheckPEContext(LPCTSTR filePath);
 void CheckDirectoryDetails();
 void CheckResourceDetails();
 void CheckTlsDetails();
+void CheckDelayImportDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -193,6 +195,22 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
   const auto bound = ReadBoundImportDetails(context);
   const auto debug = ReadDebugDetails(context);
   const auto tls = ReadTlsDetails(context);
+  const auto delay = ReadDelayImportDetails(context);
+  if (delay.present) {
+    if (!delay.message.empty()) std::fwprintf(stderr, L"Delay imports: %ls\n", delay.message.c_str());
+    Check(delay.terminated && delay.message.empty(), "Real-file delay descriptor parsing failed");
+    SIZE_T functions = 0;
+    for (const auto& module : delay.modules) {
+      const auto thunks = ReadDelayImportThunks(context, module);
+      if (!thunks.message.empty())
+        std::fwprintf(stderr, L"Delay functions: %ls\n", thunks.message.c_str());
+      Check(module.message.empty() && thunks.terminated && thunks.message.empty(),
+            "Real-file delay thunk parsing failed");
+      functions += thunks.entries.size();
+      std::printf("      Delay DLL=%s functions=%zu\n", module.name.c_str(), thunks.entries.size());
+    }
+    std::printf("      Delay imports: DLLs=%zu functions=%zu\n", delay.modules.size(), functions);
+  }
   if (tls.present) {
     if (!tls.message.empty()) std::fwprintf(stderr, L"TLS: %ls\n", tls.message.c_str());
     Check(tls.hasHeader && tls.terminated && tls.rawDataValid && tls.message.empty(),
@@ -292,6 +310,70 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
       std::wprintf(L"      TLS callback=%016I64X RVA=%08lX file=%zX\n", callback.target.va,
                     callback.target.rva, callback.target.fileOffset);
   }
+}
+
+void CheckDelayImportPage(void* buffer, bool wide) {
+  auto image = (BYTE*)buffer;
+  delay_fixture::Fill(image, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Delay page context rejected");
+  std::vector<BYTE> otherImage(pe32_fixture::kFileSize);
+  PEContext other;
+  Dialog directories(IDD_DIALOG_DIRECTORY, DirectoryProc);
+  Check(IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_DELAY_IMPORT)),
+        "Present delay directory button disabled");
+  Dialog dialog(IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc);
+  HWND modules = GetDlgItem(dialog.hwnd, IDC_LIST_DELAY_MODULES);
+  HWND functions = GetDlgItem(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS);
+  wchar_t title[80] = {};
+  GetWindowText(dialog.hwnd, title, _countof(title));
+  Check(std::wcscmp(title, wide ? L"Delay Import Directory - PE32+" : L"Delay Import Directory - PE32") == 0,
+        "Delay page title has wrong format");
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_MODULES, 0, L"delay-test.dll", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_MODULES, 2, L"00000001 (RVA)", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 1, L"DelayedFunc", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 2, L"1234", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 1, L"Ordinal #42", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 3, wide ? L"00001B08" : L"00001B04", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 8, wide ? L"0000000140001800" : L"00401800", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 9, wide ? L"00007FFB12345678" : L"77001000", 0, 3);
+  CheckText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, L"2 DLLs. Descriptors complete. OK");
+  CheckText(dialog.hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS, L"3 functions. INT complete. OK");
+  Check(ListView_GetColumnWidth(functions, 8) >= ListView_GetStringWidth(functions,
+          wide ? L"0000000140001800" : L"00401800"), "Delay IAT column clips pointer values");
+  ListView_SetItemState(modules, 0, 0, LVIS_SELECTED);
+  ListView_SetItemState(modules, 1, LVIS_SELECTED, LVIS_SELECTED);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 1, L"Ordinal #7", 0, 1);
+  ListView_SetItemText(modules, 0, 0, const_cast<wchar_t*>(L"edited display text"));
+  ListView_SetItemState(modules, 1, 0, LVIS_SELECTED);
+  ListView_SetItemState(modules, 0, LVIS_SELECTED, LVIS_SELECTED);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 1, L"DelayedFunc", 0, 3);
+
+  delay_fixture::Value(image, delay_fixture::kLookupRva,
+      (wide ? IMAGE_ORDINAL_FLAG64 : IMAGE_ORDINAL_FLAG32) | 0x10000 | 3, wide);
+  showDelayImportDirectory(dialog.hwnd, g_peContext);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 11, L"Invalid ordinal reserved bits", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 1, L"SecondDelayFunc", 2, 3);
+
+  // Switch both context and descriptor mode, while the global context remains unchanged.
+  delay_fixture::Fill(otherImage.data(), !wide, true);
+  Check(other.Initialize(otherImage.data(), otherImage.size()), "Alternate delay context rejected");
+  showDelayImportDirectory(dialog.hwnd, other);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_MODULES, 2, L"00000000 (VA)", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_MODULES, 4,
+            wide ? L"00401B00 -> 00001B00" : L"10001B00 -> 00001B00", 0, 2);
+  CheckList(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS, 8,
+            wide ? L"00401800" : L"0000000010001800", 0, 3);
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(other.Directory(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT));
+  directory->Size = 31;
+  showDelayImportDirectory(dialog.hwnd, other);
+  Check(ListView_GetItemCount(modules) == 0 && ListView_GetItemCount(functions) == 0,
+        "Failed delay reload left stale DLLs or functions");
+  CheckText(dialog.hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS, L"");
+  *directory = {};
+  showDelayImportDirectory(dialog.hwnd, other);
+  showDirectory(directories.hwnd, other);
+  Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_DELAY_IMPORT)),
+        "Missing delay directory button enabled");
 }
 
 void CheckTlsPage(void* buffer, bool wide) {
@@ -795,6 +877,7 @@ int wmain(int argc, wchar_t** argv) {
     CheckDirectoryDetails();
     CheckResourceDetails();
     CheckTlsDetails();
+    CheckDelayImportDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -827,12 +910,14 @@ int wmain(int argc, wchar_t** argv) {
     CheckResourcePage(allocatedBuffer, true);
     CheckTlsPage(allocatedBuffer, false);
     CheckTlsPage(allocatedBuffer, true);
+    CheckDelayImportPage(allocatedBuffer, false);
+    CheckDelayImportPage(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);
     for (int i = 2; i < argc; ++i) {
       std::wstring reference = std::wstring(argv[1]) + L".resources-" + std::to_wstring(i) + L".dll";
       CheckRealDirectoryFile(argv[i], reference.c_str());
     }
-    std::printf("PASS: %s, PE32/PE32+ pages, TLS fields/callbacks, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
+    std::printf("PASS: %s, PE32/PE32+ pages, delay imports/RVA/VA, TLS fields/callbacks, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

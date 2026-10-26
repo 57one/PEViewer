@@ -697,6 +697,9 @@ void onSectionCharacteristicsInit(HWND hwnd, LPARAM lParam) {
 
 BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
   switch (LOWORD(wParam)) {
+    case IDC_BUTTON_DIRECTORY_DELAY_IMPORT:
+      DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_DELAY_IMPORT), hwnd, DelayImportDirectoryProc);
+      return TRUE;
     case IDC_BUTTON_DIRECTORY_TLS:
       DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_TLS), hwnd, TlsDirectoryProc);
       return TRUE;

@@ -23,7 +23,7 @@ void Note(std::wstring& text, const wchar_t* message) {
   text += message;
 }
 
-ImportSymbol DecodeImport(ULONGLONG value, const PEContext& context) {
+ImportSymbol DecodeImport(ULONGLONG value, const PEContext& context, bool nameIsVa = false) {
   ImportSymbol symbol;
   symbol.kind = ImportKind::Invalid;
   bool wide = context.format == PEFormat::PE32Plus;
@@ -37,9 +37,19 @@ ImportSymbol DecodeImport(ULONGLONG value, const PEContext& context) {
       symbol.kind = ImportKind::Ordinal;
       symbol.ordinal = (WORD)value;
     }
-  } else if (value > 0x7FFFFFFFULL) {
-    symbol.message = L"Invalid name RVA / bound address";
   } else {
+    if (nameIsVa) {
+      ULONGLONG base = wide ? context.optionalHeader64->ImageBase : context.optionalHeader32->ImageBase;
+      if (value < base) {
+        symbol.message = L"Import name VA is below ImageBase";
+        return symbol;
+      }
+      value -= base;
+    }
+    if (value > 0x7FFFFFFFULL) {
+      symbol.message = L"Invalid name RVA / bound address";
+      return symbol;
+    }
     const BYTE* hint = context.ReadRva((DWORD)value, sizeof(WORD));
     const char* name = hint ? context.ReadString((DWORD)value + sizeof(WORD)) : NULL;
     if (name) {
@@ -62,6 +72,76 @@ bool ReadLookupSlot(const PEContext& context, ULONGLONG rva, ImportThunk& entry)
   entry.value = wide ? ReadValue<8>(data) : ReadValue<4>(data);
   entry.symbol = DecodeImport(entry.value, context);
   return true;
+}
+
+// Descriptors stay eight DWORDs in both formats. Only thunk/handle widths change.
+// https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-delay-load-directory-table
+DelayImportAddress ResolveDelayAddress(const PEContext& context, DWORD raw,
+                                       bool rvaBased, SIZE_T bytes, bool required) {
+  DelayImportAddress result;
+  result.raw = raw;
+  if (!raw) {
+    if (required) result.message = L"Address is zero";
+    return result;
+  }
+  bool wide = context.format == PEFormat::PE32Plus;
+  ULONGLONG base = wide ? context.optionalHeader64->ImageBase : context.optionalHeader32->ImageBase;
+  DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  ULONGLONG relative = raw;
+  if (!rvaBased) {
+    if (!wide && bytes && bytes - 1 > MAXDWORD - raw) {
+      result.message = L"Legacy VA range overflows address width";
+      return result;
+    }
+    if (relative < base) {
+      result.message = L"Legacy VA is below ImageBase (DWORD descriptor address)";
+      return result;
+    }
+    relative -= base;
+  }
+  if (relative > MAXDWORD || relative >= imageSize || bytes > imageSize - relative) {
+    result.message = L"Address range is outside SizeOfImage";
+    return result;
+  }
+  result.rva = (DWORD)relative;
+  result.hasRva = true;
+  result.hasFileOffset = context.RvaToFileOffset(result.rva, bytes, result.fileOffset) != FALSE;
+  if (!result.hasFileOffset) result.message = L"No file-backed bytes";
+  return result;
+}
+
+DelayImportSlot ReadDelaySlot(const PEContext& context, const DelayImportAddress& table,
+                             SIZE_T index) {
+  DelayImportSlot result;
+  if (!table.hasRva) {
+    result.message = table.message.empty() ? L"Table address unavailable" : table.message;
+    return result;
+  }
+  bool wide = context.format == PEFormat::PE32Plus;
+  SIZE_T width = wide ? 8 : 4;
+  DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  ULONGLONG slot = (ULONGLONG)table.rva + (ULONGLONG)index * width;
+  if (slot > MAXDWORD) {
+    result.message = L"Slot RVA overflows 32 bits";
+    return result;
+  }
+  result.rva = (DWORD)slot;
+  result.hasRva = true;
+  if (slot >= imageSize || width > imageSize - slot ||
+      !context.RvaToFileOffset(result.rva, width, result.fileOffset)) {
+    result.message = L"Slot is outside the file-backed image range";
+    return result;
+  }
+  const BYTE* data = context.fileBuffer + result.fileOffset;
+  result.value = wide ? ReadValue<8>(data) : ReadValue<4>(data);
+  result.hasValue = true;
+  return result;
+}
+
+void NoteDelayAddress(DelayImportModule& module, const wchar_t* field,
+                      const DelayImportAddress& address) {
+  if (!address.message.empty())
+    Note(module.message, (std::wstring(field) + L": " + address.message).c_str());
 }
 
 const wchar_t* RelocationName(WORD type) {
@@ -232,6 +312,127 @@ ImportDetails ReadImportDetails(const PEContext& context) {
     result.modules.push_back(std::move(module));
   }
   if (!result.terminated) Note(result.message, L"Import descriptor terminator not found");
+  return result;
+}
+
+DelayImportDetails ReadDelayImportDetails(const PEContext& context) {
+  static_assert(sizeof(IMAGE_DELAYLOAD_DESCRIPTOR) == 32, "Delay descriptor must be 32 bytes");
+  DelayImportDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
+  if (!directory) {
+    result.message = L"No delay import directory.";
+    return result;
+  }
+  result.present = true;
+  result.rva = directory->VirtualAddress;
+  result.size = directory->Size;
+  if ((ULONGLONG)result.rva + result.size > (ULONGLONG)MAXDWORD + 1) {
+    result.message = L"Delay descriptor RVA range overflows 32 bits.";
+    return result;
+  }
+  const BYTE* data = context.ReadRva(result.rva, result.size);
+  if (!data) {
+    result.message = L"Delay descriptors are outside the file-backed RVA range.";
+    return result;
+  }
+  bool wide = context.format == PEFormat::PE32Plus;
+  SIZE_T width = wide ? 8 : 4;
+  SIZE_T count = result.size / sizeof(IMAGE_DELAYLOAD_DESCRIPTOR);
+  for (SIZE_T i = 0; i < count; ++i) {
+    IMAGE_DELAYLOAD_DESCRIPTOR descriptor = {};
+    std::memcpy(&descriptor, data + i * sizeof(descriptor), sizeof(descriptor));
+    if (!descriptor.Attributes.AllAttributes && !descriptor.DllNameRVA && !descriptor.ModuleHandleRVA &&
+        !descriptor.ImportAddressTableRVA && !descriptor.ImportNameTableRVA &&
+        !descriptor.BoundImportAddressTableRVA && !descriptor.UnloadInformationTableRVA &&
+        !descriptor.TimeDateStamp) {
+      result.terminated = true;
+      break;
+    }
+    if (i == kMaxEntries) {
+      Note(result.message, L"Delay descriptor display limited to 100000 entries");
+      break;
+    }
+    DelayImportModule module;
+    module.descriptorIndex = (DWORD)i;
+    module.descriptorRva = result.rva + (DWORD)(i * sizeof(descriptor));
+    module.descriptor = descriptor;
+    module.rvaBased = (descriptor.Attributes.AllAttributes & 1) != 0;
+    module.supported = (descriptor.Attributes.AllAttributes & ~1UL) == 0;
+    if (!module.supported) {
+      module.message = L"Unsupported delay import attributes; address fields not decoded";
+    } else {
+      module.dllName = ResolveDelayAddress(context, descriptor.DllNameRVA, module.rvaBased, 1, true);
+      module.moduleHandle = ResolveDelayAddress(context, descriptor.ModuleHandleRVA, module.rvaBased, width, true);
+      module.iat = ResolveDelayAddress(context, descriptor.ImportAddressTableRVA, module.rvaBased, width, true);
+      module.lookup = ResolveDelayAddress(context, descriptor.ImportNameTableRVA, module.rvaBased, width, true);
+      module.boundIat = ResolveDelayAddress(context, descriptor.BoundImportAddressTableRVA, module.rvaBased, width, false);
+      module.unloadIat = ResolveDelayAddress(context, descriptor.UnloadInformationTableRVA, module.rvaBased, width, false);
+      const char* name = module.dllName.hasRva ? context.ReadString(module.dllName.rva) : NULL;
+      if (name && *name) module.name = name;
+      else Note(module.message, L"Invalid or unterminated delay DLL name");
+      NoteDelayAddress(module, L"DLL name", module.dllName);
+      // The helper writes HMODULE at run time; a valid zero-fill location is allowed.
+      if (!module.moduleHandle.hasRva) NoteDelayAddress(module, L"Module handle", module.moduleHandle);
+      NoteDelayAddress(module, L"Delay IAT", module.iat);
+      NoteDelayAddress(module, L"Delay INT", module.lookup);
+      NoteDelayAddress(module, L"Bound IAT", module.boundIat);
+      NoteDelayAddress(module, L"Unload IAT", module.unloadIat);
+    }
+    if (!module.message.empty()) Note(result.message, L"Invalid delay descriptor; see DLL status");
+    result.modules.push_back(std::move(module));
+  }
+  if (!result.terminated) {
+    if (result.size % sizeof(IMAGE_DELAYLOAD_DESCRIPTOR)) Note(result.message, L"Truncated delay descriptor");
+    Note(result.message, L"Delay descriptor terminator not found");
+  }
+  return result;
+}
+
+DelayImportThunkDetails ReadDelayImportThunks(const PEContext& context,
+                                            const DelayImportModule& module) {
+  DelayImportThunkDetails result;
+  if (!context.IsValid() || !module.supported) {
+    result.message = L"Invalid context or unsupported delay descriptor attributes.";
+    return result;
+  }
+  if (!module.lookup.hasRva) {
+    // An unresolved delay IAT holds helper addresses, never a safe INT fallback.
+    result.message = L"Delay INT unavailable; delay IAT is not used as a name table.";
+    return result;
+  }
+  for (SIZE_T i = 0; i <= kMaxEntries; ++i) {
+    DelayImportThunk entry;
+    entry.lookup = ReadDelaySlot(context, module.lookup, i);
+    if (!entry.lookup.hasValue) {
+      Note(result.message, L"Truncated delay INT; terminator not found");
+      return result;
+    }
+    entry.iat = ReadDelaySlot(context, module.iat, i);
+    if (module.boundIat.raw) entry.boundIat = ReadDelaySlot(context, module.boundIat, i);
+    if (module.unloadIat.raw) entry.unloadIat = ReadDelaySlot(context, module.unloadIat, i);
+    if (!entry.lookup.value) {
+      result.terminated = true;
+      if (!entry.iat.hasValue || entry.iat.value)
+        Note(result.message, L"Delay IAT terminator missing or inconsistent with INT");
+      if (module.boundIat.raw && (!entry.boundIat.hasValue || entry.boundIat.value))
+        Note(result.message, L"Bound delay IAT terminator missing or inconsistent with INT");
+      if (module.unloadIat.raw && (!entry.unloadIat.hasValue || entry.unloadIat.value))
+        Note(result.message, L"Unload delay IAT terminator missing or inconsistent with INT");
+      return result;
+    }
+    if (i == kMaxEntries) {
+      Note(result.message, L"Delay function display limited to 100000 entries; terminator not reached");
+      return result;
+    }
+    entry.symbol = DecodeImport(entry.lookup.value, context, !module.rvaBased);
+    if (entry.symbol.kind == ImportKind::Invalid) Note(entry.message, entry.symbol.message.c_str());
+    if (!entry.iat.hasValue) Note(entry.message, (L"Delay IAT: " + entry.iat.message).c_str());
+    else if (!entry.iat.value) Note(entry.message, L"Delay IAT terminator precedes INT");
+    if (!entry.boundIat.message.empty()) Note(entry.message, (L"Bound IAT: " + entry.boundIat.message).c_str());
+    if (!entry.unloadIat.message.empty()) Note(entry.message, (L"Unload IAT: " + entry.unloadIat.message).c_str());
+    if (!entry.message.empty()) Note(result.message, L"Invalid delay import entry; see function status");
+    result.entries.push_back(std::move(entry));
+  }
   return result;
 }
 
