@@ -1,4 +1,5 @@
 #include "windowProc.h"
+#include "directoryDialogUi.h"
 #include "pe/directoryDetails.h"
 
 #include <memory>
@@ -82,6 +83,7 @@ void HeaderFields(HWND list, const IMAGE_RESOURCE_DIRECTORY& header) {
 
 void ShowSelection(HWND hwnd) {
   HWND list = GetDlgItem(hwnd, IDC_LIST_RESOURCE_DETAILS);
+  ScopedDirectoryUpdate update(list);
   ListView_DeleteAllItems(list);
   auto details = (const ResourceDetails*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   if (!details) return;
@@ -133,6 +135,8 @@ HTREEITEM Insert(HWND tree, HTREEITEM parent, const std::wstring& text, LPARAM i
 void showResourceDirectory(HWND hwnd, const PEContext& context) {
   auto details = std::make_unique<ResourceDetails>(ReadResourceDetails(context));
   HWND tree = GetDlgItem(hwnd, IDC_TREE_RESOURCES);
+  ScopedDirectoryUpdate treeUpdate(tree);
+  ScopedDirectoryUpdate detailsUpdate(GetDlgItem(hwnd, IDC_LIST_RESOURCE_DETAILS));
   auto previous = (ResourceDetails*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
   TreeView_DeleteAllItems(tree);
@@ -140,7 +144,6 @@ void showResourceDirectory(HWND hwnd, const PEContext& context) {
   delete previous;
   SetWindowText(hwnd, context.format == PEFormat::PE32Plus ? L"Resource Directory - PE32+" : L"Resource Directory - PE32");
   SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)details.get());
-  SendMessage(tree, WM_SETREDRAW, FALSE, 0);
   if (details->hasRoot) {
     HTREEITEM root = Insert(tree, TVI_ROOT, L"Resources", 0);
     std::vector<HTREEITEM> handles(details->nodes.size(), NULL);
@@ -152,8 +155,6 @@ void showResourceDirectory(HWND hwnd, const PEContext& context) {
     TreeView_Expand(tree, root, TVE_EXPAND);
     TreeView_SelectItem(tree, root);
   }
-  SendMessage(tree, WM_SETREDRAW, TRUE, 0);
-  InvalidateRect(tree, NULL, TRUE);
   std::wstring status = std::to_wstring(details->resourceCount) + L" resource entries, " +
       std::to_wstring(details->nodes.size()) + L" nodes. " + details->message;
   SetDlgItemText(hwnd, IDC_STATIC_DIRECTORY_STATUS, status.c_str());
@@ -163,6 +164,7 @@ void showResourceDirectory(HWND hwnd, const PEContext& context) {
 INT_PTR CALLBACK ResourceDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Resources);
       HWND list = GetDlgItem(hwnd, IDC_LIST_RESOURCE_DETAILS);
       ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
       const wchar_t* columns[] = {L"Field", L"Value"};

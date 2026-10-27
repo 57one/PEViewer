@@ -1,4 +1,5 @@
 #include "windowProc.h"
+#include "directoryDialogUi.h"
 #include "pe/directoryDetails.h"
 
 #include <initializer_list>
@@ -39,11 +40,6 @@ void Row(HWND list, std::initializer_list<std::wstring> values) {
   }
 }
 
-void FitColumns(HWND list) {
-  int count = Header_GetItemCount(ListView_GetHeader(list));
-  for (int i = 0; i < count; ++i) ListView_SetColumnWidth(list, i, LVSCW_AUTOSIZE_USEHEADER);
-}
-
 void AddressField(HWND list, const wchar_t* field, const TlsAddress& address, int width) {
   Row(list, {field, Hex(address.va, width), address.hasRva ? Hex(address.rva) : L"-",
              address.hasFileOffset ? Hex(address.fileOffset) : L"-",
@@ -54,6 +50,8 @@ void AddressField(HWND list, const wchar_t* field, const TlsAddress& address, in
 void showTlsDirectory(HWND hwnd, const PEContext& context) {
   HWND fields = GetDlgItem(hwnd, IDC_LIST_TLS_FIELDS);
   HWND callbacks = GetDlgItem(hwnd, IDC_LIST_TLS_CALLBACKS);
+  ScopedDirectoryUpdate fieldsUpdate(fields);
+  ScopedDirectoryUpdate callbacksUpdate(callbacks);
   ListView_DeleteAllItems(fields);
   ListView_DeleteAllItems(callbacks);
   SetWindowText(hwnd, context.format == PEFormat::PE32Plus ? L"TLS Directory - PE32+" : L"TLS Directory - PE32");
@@ -78,8 +76,8 @@ void showTlsDirectory(HWND hwnd, const PEContext& context) {
                     target.hasFileOffset ? Hex(target.fileOffset) : L"-",
                     target.message.empty() ? L"OK" : target.message});
   }
-  FitColumns(fields);
-  FitColumns(callbacks);
+  FitDirectoryColumns(fields);
+  FitDirectoryColumns(callbacks);
   std::wstring status = details.hasHeader ? std::to_wstring(details.callbacks.size()) +
       L" callbacks. " + (details.terminated ? L"Callback list complete. " : L"Callback list incomplete. ") : L"";
   status += details.message.empty() ? L"OK" : details.message;
@@ -89,6 +87,7 @@ void showTlsDirectory(HWND hwnd, const PEContext& context) {
 INT_PTR CALLBACK TlsDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM) {
   switch (message) {
     case WM_INITDIALOG:
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Tls);
       Columns(GetDlgItem(hwnd, IDC_LIST_TLS_FIELDS), {L"Field", L"Value (hex / VA)", L"RVA", L"File offset", L"Status"});
       Columns(GetDlgItem(hwnd, IDC_LIST_TLS_CALLBACKS),
               {L"Index", L"Slot RVA", L"Slot file offset", L"Callback VA", L"Target RVA", L"Target file offset", L"Status"});

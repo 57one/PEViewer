@@ -1,4 +1,5 @@
 #include "windowProc.h"
+#include "directoryDialogUi.h"
 
 // mainDialog handle
 HWND mainDialogHwnd = NULL;
@@ -623,6 +624,7 @@ INT_PTR CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                             LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Overview);
       onDirectoryInit(hwnd, lParam);
       return TRUE;
     }
@@ -650,8 +652,14 @@ INT_PTR CALLBACK DirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
 
 INT_PTR CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
+  if (DirectorySelectionChanged(hwnd, message, wParam, lParam, IDC_LIST_IMPORT_DLL)) {
+    showImportThunks(hwnd, GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL),
+                     GetDlgItem(hwnd, IDC_LIST_INT_THUNK), g_peContext);
+    return TRUE;
+  }
   switch (message) { 
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Import);
       onImportDirectoryInit(hwnd);
       return TRUE;
     }
@@ -667,16 +675,6 @@ INT_PTR CALLBACK ImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
         }
       }
     }
-    case WM_NOTIFY: {
-      NMHDR* pNMHDR = (NMHDR*)lParam;
-      // click DLL in List
-      if (wParam == IDC_LIST_IMPORT_DLL && pNMHDR->code == NM_CLICK) {
-        
-        showImportThunks(hwnd, GetDlgItem(hwnd, IDC_LIST_IMPORT_DLL),
-                     GetDlgItem(hwnd, IDC_LIST_INT_THUNK), g_peContext);
-      }
-      return TRUE;
-    }
   }
   return FALSE;
 }
@@ -685,6 +683,7 @@ INT_PTR CALLBACK ExportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
                                   LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Export);
       onExportDirectoryInit(hwnd);
       return TRUE;
     }
@@ -711,6 +710,7 @@ INT_PTR CALLBACK BoundImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::BoundImport);
       onBoundImportDirectoryInit(hwnd);
       return TRUE;
     }
@@ -734,6 +734,7 @@ INT_PTR CALLBACK DebugDirectoryProc(HWND hwnd, UINT message, WPARAM wParam,
     LPARAM lParam) {
   switch (message) {
     case WM_INITDIALOG: {
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::Debug);
       onDebugDirectoryInit(hwnd);
       return TRUE;
     }

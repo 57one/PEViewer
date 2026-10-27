@@ -1,4 +1,5 @@
 #include "windowProc.h"
+#include "directoryDialogUi.h"
 #include "pe/directoryDetails.h"
 
 #include <initializer_list>
@@ -50,18 +51,6 @@ void Row(HWND list, std::initializer_list<std::wstring> values, LPARAM identity 
   }
 }
 
-void Fit(HWND list) {
-  int count = Header_GetItemCount(ListView_GetHeader(list));
-  for (int i = 0; i < count; ++i) {
-    ListView_SetColumnWidth(list, i, LVSCW_AUTOSIZE);
-    int content = ListView_GetColumnWidth(list, i);
-    ListView_SetColumnWidth(list, i, LVSCW_AUTOSIZE_USEHEADER);
-    int heading = ListView_GetColumnWidth(list, i);
-    int width = content > heading ? content : heading;
-    ListView_SetColumnWidth(list, i, width > 480 ? 480 : width);
-  }
-}
-
 std::wstring Address(DWORD raw, const DelayImportAddress& address, bool rvaBased) {
   if (!raw) return L"-";
   std::wstring text = Hex(raw);
@@ -81,6 +70,8 @@ std::wstring Value(const DelayImportSlot& slot, int width) {
 
 void ShowFunctions(HWND hwnd) {
   HWND functions = GetDlgItem(hwnd, IDC_LIST_DELAY_FUNCTIONS);
+  ScopedDirectoryUpdate update(functions);
+  ScopedDirectoryUpdate statusUpdate(GetDlgItem(hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS));
   ListView_DeleteAllItems(functions);
   SetDlgItemText(hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS, L"");
   auto page = (DelayPage*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -106,7 +97,7 @@ void ShowFunctions(HWND hwnd) {
         Value(entry.boundIat, width), Value(entry.unloadIat, width),
         entry.message.empty() ? L"OK" : entry.message});
   }
-  Fit(functions);
+  FitDirectoryColumns(functions);
   std::wstring status = std::to_wstring(details.entries.size()) + L" functions. " +
       (details.terminated ? L"INT complete. " : L"INT incomplete. ");
   status += details.message.empty() ? L"OK" : details.message;
@@ -118,6 +109,9 @@ void showDelayImportDirectory(HWND hwnd, const PEContext& context) {
   auto old = (DelayPage*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
   SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
   HWND modules = GetDlgItem(hwnd, IDC_LIST_DELAY_MODULES);
+  ScopedDirectoryUpdate modulesUpdate(modules);
+  ScopedDirectoryUpdate functionsUpdate(GetDlgItem(hwnd, IDC_LIST_DELAY_FUNCTIONS));
+  ScopedDirectoryUpdate statusUpdate(GetDlgItem(hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS));
   ListView_DeleteAllItems(modules);
   ListView_DeleteAllItems(GetDlgItem(hwnd, IDC_LIST_DELAY_FUNCTIONS));
   SetDlgItemText(hwnd, IDC_STATIC_DELAY_FUNCTION_STATUS, L"");
@@ -141,7 +135,7 @@ void showDelayImportDirectory(HWND hwnd, const PEContext& context) {
         Address(descriptor.UnloadInformationTableRVA, module.unloadIat, module.rvaBased),
         Hex(descriptor.TimeDateStamp), module.message.empty() ? L"OK" : module.message}, (LPARAM)(i + 1));
   }
-  Fit(modules);
+  FitDirectoryColumns(modules);
   std::wstring status = std::to_wstring(page->details.modules.size()) + L" DLLs. " +
       (page->details.terminated ? L"Descriptors complete. " : L"Descriptors incomplete. ");
   status += page->details.message.empty() ? L"OK" : page->details.message;
@@ -152,8 +146,13 @@ void showDelayImportDirectory(HWND hwnd, const PEContext& context) {
 }
 
 INT_PTR CALLBACK DelayImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  if (DirectorySelectionChanged(hwnd, message, wParam, lParam, IDC_LIST_DELAY_MODULES)) {
+    ShowFunctions(hwnd);
+    return TRUE;
+  }
   switch (message) {
     case WM_INITDIALOG:
+      InitDirectoryDialogLayout(hwnd, DirectoryDialogLayout::DelayImport);
       Columns(GetDlgItem(hwnd, IDC_LIST_DELAY_MODULES), {L"DLL", L"Descriptor RVA", L"Attributes / mode",
           L"Name address", L"INT (raw / RVA)", L"IAT (raw / RVA)", L"Module handle",
           L"Bound IAT", L"Unload IAT", L"Timestamp", L"Status"});
@@ -162,15 +161,6 @@ INT_PTR CALLBACK DelayImportDirectoryProc(HWND hwnd, UINT message, WPARAM wParam
           L"IAT raw value", L"Bound IAT value", L"Unload IAT value", L"Status"});
       showDelayImportDirectory(hwnd, g_peContext);
       return TRUE;
-    case WM_NOTIFY: {
-      const auto header = (const NMHDR*)lParam;
-      if (header && header->idFrom == IDC_LIST_DELAY_MODULES && header->code == LVN_ITEMCHANGED) {
-        const auto change = (const NMLISTVIEW*)lParam;
-        if ((change->uChanged & LVIF_STATE) && ((change->uOldState ^ change->uNewState) & LVIS_SELECTED))
-          ShowFunctions(hwnd);
-      }
-      break;
-    }
     case WM_COMMAND:
       if (LOWORD(wParam) != IDOK && LOWORD(wParam) != IDCANCEL) break;
       EndDialog(hwnd, 0);

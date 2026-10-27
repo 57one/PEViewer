@@ -57,3 +57,7 @@ Win32 验证程序访问 64 位系统文件时，请用 `C:\Windows\Sysnative`�
 TLS 解析入口 `ReadTlsDetails()` 和普通辅助函数位于 `src/pe/directoryDetails.cpp`，主程序与验证工程均从该文件编译；资源的 `ResourceReader` 类保持独立。TLS 用例位于 `tls-details-tests.cpp`，样本由 `fixtures/tls.h` 生成。两种格式均覆盖四个地址字段、回调步长、64 位 VA 保留、VA 到 RVA / 文件偏移转换、目录头之外的数组和模板、空数组 / 无模板、排他的模板结束边界、位于零填充内的索引、异常 VA、无效回调与有效兄弟项、缺少终止项、文件尾截断、缺失目录和 100000 项上限，并交替读取两个格式的独立上下文，验证结果隔离及失败后再次读取不残留状态。`portability-smoke.cpp` 创建实际 TLS 对话框，检查标题、字段和列宽、错误行保留、显式上下文与格式切换、失败重载清空、目录按钮启用状态；x64 页面使用 4 GB 以上缓冲区。
 
 延迟导入用例位于 `delay-import-tests.cpp`，样本由 `fixtures/delay-imports.h` 生成；覆盖 PE32 / PE32+ 的 RVA 和旧式 VA 描述符、多个 DLL、共用名称 / Hint / 序号解码、辅助代码 IAT 原值、可选 Bound / Unload IAT、普通 Import / IAT Directory 缺失、INT 缺失时不回退、非法属性 / 名称 / 地址、截断 / 无终止项、零填充模块句柄、独立上下文以及 100000 项边界。页面回归检查 DLL 切换、数值身份、64 位列宽、显式上下文和格式 / 地址模式切换、错误行保留、失败重载清空与目录按钮状态；x64 缓冲区仍在 4 GB 以上。真实文件检查额外打印延迟 DLL 名称和函数数量，供 `dumpbin /imports` 交叉对照。
+
+`portability-smoke.cpp` 的 `CheckDirectoryWindowBehavior` 覆盖两种文件格式下的数据目录总览和 9 个详情窗口：可调整大小 / 最大化样式、最小尺寸、上下 / 左右列表扩展、关闭按钮边距、控件边界及反复放大 / 恢复后的布局。通过观察实际 ListView 消息，检查普通 / 延迟导入、重定位和资源选择切换时只批量更新一次，忽略纯焦点变化；另检查清除选择后清空详情，以及用户列宽、横向滚动位置和隐藏窗口状态的保留。
+
+背景绘制回归使用内存 DC 和 DIB，验证 `WM_ERASEBKGND` 实际填充的系统底色与 `WM_CTLCOLORSTATIC` 的画刷 / 背景模式一致；检查包含分组框的窗口不会用 `WS_CLIPCHILDREN` 跳过整片透明内部，且分组框裁剪兄弟控件，防止缩放残影和文字背景色块。

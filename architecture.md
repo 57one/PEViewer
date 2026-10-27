@@ -16,6 +16,7 @@
 | [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、延迟导入、IAT、导出、绑定导入、调试、TLS 和重定位解析；共用名称 / 序号 thunk 解码，返回数值字段、名称、条目集合和异常说明。 |
 | [resourceDetails.cpp](src/pe/resourceDetails.cpp) | 资源目录解析，保留内部 `ResourceReader` 类，集中管理递归路径、循环检查和名称总量；模型声明复用 `directoryDetails.h`，返回树节点、目录头、数据描述符和异常说明。 |
 | [directoryDialogs.cpp](src/ui/directoryDialogs.cpp)、[directoryDialogs.h](src/ui/directoryDialogs.h) | 数据目录总览及详情的结果显示、十六进制格式化、列表填充和状态提示；IAT / 重定位页面还在此处理初始化、选择和关闭。旧页面的列初始化和消息分派继续由 messageCallback / windowProc 组织。 |
+| [directoryDialogUi.cpp](src/ui/directoryDialogUi.cpp)、[directoryDialogUi.h](src/ui/directoryDialogUi.h) | 数据目录窗口的缩放布局、最小尺寸、列表批量重绘和稳定列宽；统一选择变化通知，避免切换时清空 / 重建两次。布局状态由窗口 subclass 持有，不占用解析模型的 GWLP_USERDATA。 |
 | [resourceDialog.cpp](src/ui/resourceDialog.cpp) | 资源树、节点详情和状态显示；树项使用数值模型索引，窗口拥有解析结果，切换选择不从显示文字反推地址。 |
 | [tlsDialog.cpp](src/ui/tlsDialog.cpp) | TLS 字段和回调列表的独立对话框，负责格式标题、32 / 64 位十六进制显示、列宽和错误状态。 |
 | [delayImportDialog.cpp](src/ui/delayImportDialog.cpp) | 延迟导入 DLL 描述符和函数列表；窗口持有解析模型和当前上下文引用，选择项通过数值模型索引关联 DLL，重载 / 关闭清理旧状态。 |
@@ -54,6 +55,8 @@ PEViewer/
 │  │  ├─ messageCallback.h
 │  │  ├─ directoryDialogs.cpp
 │  │  ├─ directoryDialogs.h
+│  │  ├─ directoryDialogUi.cpp
+│  │  ├─ directoryDialogUi.h
 │  │  ├─ resourceDialog.cpp
 │  │  ├─ tlsDialog.cpp
 │  │  └─ delayImportDialog.cpp
@@ -257,6 +260,9 @@ WinMain
 - [x] 延迟导入通过 `ReadDelayImportDetails()` 读取固定 32 字节的 `IMAGE_DELAYLOAD_DESCRIPTOR` 数组及全零终止描述符；根据 Attributes 的 RvaBased 位解释六个地址字段，旧式 VA 按首选 ImageBase 转换，未知保留位保留原始描述符并提示。PE32+ 高基址下无法表示的 DWORD VA 不截断猜测。
 - [x] `ReadDelayImportThunks()` 按文件格式读取 4 / 8 字节 INT，共用 `DecodeImport()` 识别名称、Hint 和序号；分别保留 IAT、可选 Bound / Unload IAT 的磁盘原值。延迟 IAT 可能保存辅助代码地址，缺失 INT 时不回退到 IAT；缺失 IAT 时仍保留能独立解析的 INT 函数信息，不依赖普通 Import / IAT Directory。
 - [x] 延迟导入页布局在 `resource.rc`，上方 DLL 列表显示描述符字段，下方按选择显示函数 / 槽位详情。检查目录范围、地址转换、完整条目、名称、INT / IAT 终止项以及 100000 条上限；保留无效函数及有效兄弟项。模块句柄允许位于加载后的零填充区域。此功能只读取文件，不触发 DLL 加载。
+- [x] 数据目录总览及 9 个详情窗口支持拖动边框调整大小和最大化，以资源模板尺寸为最小尺寸。列表随窗口扩展；上下列表分配新增高度，资源树 / 详情分配新增宽度，状态区与关闭按钮保持边距。布局从初始矩形计算并批量更新，反复缩放不累计偏移。
+- [x] 对话框背景和静态标签使用统一的系统底色。包含重叠分组框的窗口不使用父窗口 `WS_CLIPCHILDREN`，分组框置于其他控件后方并裁剪兄弟区域，避免透明内部漏刷；缩放不复制旧像素，完成布局后统一使父窗口及子控件失效重绘，清除表头 / 网格残影。
+- [x] 列表清空、填充和列宽调整在同一重绘作用域中完成，覆盖普通 / 延迟导入、重定位、资源、TLS、IAT、导出、绑定导入和调试；作用域支持嵌套并保留控件可见性与横向滚动位置。列宽首次适应内容，随后只自动增宽，保留用户拉宽的列。普通 / 延迟导入和重定位只响应选择变化，失去选择时延后确认，避免行切换中途显示空表；键盘切换与鼠标操作一致。
 - [ ] 资源内容继续增加图标、版本信息等预览及原始数据导出。
 - [ ] 调试数据载荷（例如 CodeView / PDB）及绑定导入子记录的独立详情展示继续扩展；节表的显示适配与错误状态仍需后续整理。
 - [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；Load Config 等结构仍需区分 32 / 64 位布局，TLS 的双格式已单独实现。
@@ -324,6 +330,8 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 已完成的验证：
 
+- 背景绘制修正通过 Debug / Release × Win32 / x64 四组构建和回归：内存 DC / DIB 检查实际背景填充、标签画刷及透明模式，确认分组框不会导致父窗口跳过整片内部区域。Debug/x64 使用 `bin/Debug/x64/directory-paint-check` / `obj/Debug/x64/directory-paint-check` 独立输出，保留正在运行的默认程序。
+- 目录窗口缩放与刷新改造通过 Debug / Release × Win32 / x64 四组主程序构建和回归。两种文件格式均覆盖总览及 9 个详情窗口的尺寸样式、最小尺寸、列表增长、按钮边距与反复恢复；消息级检查确认选择切换时下表只批量重建一次，纯焦点变化不重建，清除选择后移除旧详情，列宽与横向滚动位置保留。
 - 延迟导入通过 Debug / Release × Win32 / x64 四组主程序构建及模型 / 页面回归，覆盖 RVA / 旧式 VA、名称 / Hint / 序号、原始 IAT 与可选表、缺失 / 损坏输入、独立上下文及数量上限。Release/x64 默认 EXE 被其他进程占用，使用 `bin/Release/x64/delay-import-check` / `obj/Release/x64/delay-import-check` 独立输出完成同配置验证。Win32 / x64 验证程序均交叉读取两种格式的 notepad.exe（各 6 个延迟 DLL / 25 个函数）和 ActivationClient.dll（各 1 个 DLL / 4 个函数）；记事本的 DLL 名称和逐 DLL 函数数量与 `dumpbin /imports` 一致。
 - TLS 解析统一编译自 `directoryDetails.cpp`，通过 Debug / Release × Win32 / x64 四组主程序构建及模型 / 页面回归，另覆盖交替解析独立上下文及失败后重读；Debug/x64 默认程序运行时，使用 `bin/Debug/x64/verification` 独立输出完成验证。覆盖双格式字段、VA 转换、空 / 截断数组、终止项、地址溢出、零填充索引和 100000 项上限。Win32 / x64 验证程序交叉读取系统两种格式的 `ActivationClient.dll`（各 2 个回调）和 `aadauthhelper.dll`（各 0 个回调），字段及回调地址与 `dumpbin /TLS` 一致。Win32 通过 `Sysnative` 读取 64 位系统文件，避免 System32 重定向。
 

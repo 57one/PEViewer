@@ -55,6 +55,213 @@ struct Dialog {
   Dialog& operator=(const Dialog&) = delete;
 };
 
+RECT ControlRect(HWND dialog, HWND control) {
+  RECT rect = {};
+  GetWindowRect(control, &rect);
+  MapWindowPoints(NULL, dialog, (POINT*)&rect, 2);
+  return rect;
+}
+
+void DispatchDirectoryUpdates(HWND dialog) {
+  MSG message = {};
+  while (PeekMessage(&message, dialog, WM_APP, 0xBFFF, PM_REMOVE)) DispatchMessage(&message);
+}
+
+struct ListUpdates {
+  HWND list;
+  int clears = 0;
+  bool disabled = false;
+  bool unbatched = false;
+  static LRESULT CALLBACK Observe(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+                                  UINT_PTR, DWORD_PTR reference) {
+    auto updates = (ListUpdates*)reference;
+    if (message == WM_SETREDRAW) updates->disabled = !wParam;
+    if (message == LVM_DELETEALLITEMS || message == LVM_INSERTITEMW) {
+      if (!updates->disabled) updates->unbatched = true;
+      if (message == LVM_DELETEALLITEMS) ++updates->clears;
+    }
+    return DefSubclassProc(window, message, wParam, lParam);
+  }
+  explicit ListUpdates(HWND control) : list(control) {
+    Check(SetWindowSubclass(list, Observe, 2, (DWORD_PTR)this) != FALSE,
+          "Cannot observe directory list updates");
+  }
+  ~ListUpdates() { RemoveWindowSubclass(list, Observe, 2); }
+};
+
+void CheckDirectoryWindowBehavior(void* buffer, bool wide) {
+  delay_fixture::Fill((BYTE*)buffer, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Resize context rejected");
+  const struct {
+    int resource;
+    DLGPROC callback;
+    int first, second, close;
+  } pages[] = {
+    {IDD_DIALOG_DIRECTORY, DirectoryProc, 0, 0, IDC_BUTTON_DIRECTORY_CANCEL},
+    {IDD_DIALOG_IMPORT_DIRECTORY, ImportDirectoryProc, IDC_LIST_IMPORT_DLL, IDC_LIST_INT_THUNK,
+      IDC_BUTTON_IMPORT_DIRECTORY_CLOSE},
+    {IDD_DIALOG_EXPORT_DIRECTORY, ExportDirectoryProc, IDC_LIST_EXPORT_FUNC, 0, 0},
+    {IDD_DIALOG_BOUND_IMPORT_DIRECTORY, BoundImportDirectoryProc, IDC_LIST_BOUND_IMPORT_DIRECTORY,
+      0, IDC_BUTTON_BOUND_IMPORT_DIRECTORY_CLOSE},
+    {IDD_DIALOG_DEBUG_DIRECTORY, DebugDirectoryProc, IDC_LIST_DEBUG_DIRECTORY, IDC_LIST_DEBUG_DIRECTORY_INFO,
+      IDC_BUTTON_DEBUG_DIRECTORY_CLOSE},
+    {IDD_DIALOG_IAT, IatDirectoryProc, IDC_LIST_IAT, 0, IDCANCEL},
+    {IDD_DIALOG_RELOCATIONS, RelocationDirectoryProc, IDC_LIST_RELOC_BLOCKS, IDC_LIST_RELOC_ENTRIES, IDCANCEL},
+    {IDD_DIALOG_RESOURCES, ResourceDirectoryProc, IDC_TREE_RESOURCES, IDC_LIST_RESOURCE_DETAILS, IDCANCEL},
+    {IDD_DIALOG_TLS, TlsDirectoryProc, IDC_LIST_TLS_FIELDS, IDC_LIST_TLS_CALLBACKS, IDCANCEL},
+    {IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc, IDC_LIST_DELAY_MODULES, IDC_LIST_DELAY_FUNCTIONS, IDCANCEL}
+  };
+  for (const auto& page : pages) {
+    Dialog dialog(page.resource, page.callback);
+    LONG_PTR style = GetWindowLongPtr(dialog.hwnd, GWL_STYLE);
+    Check((style & WS_THICKFRAME) && (style & WS_MAXIMIZEBOX), "Directory window cannot resize/maximize");
+    RECT window = {}, client = {};
+    GetWindowRect(dialog.hwnd, &window);
+    GetClientRect(dialog.hwnd, &client);
+    // Paint into a memory DC: check the actual parent/static brush contract,
+    // including the empty areas inside sibling group boxes.
+    HDC paint = CreateCompatibleDC(NULL);
+    BITMAPINFO bitmapInfo = {};
+    bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmapInfo.bmiHeader.biWidth = bitmapInfo.bmiHeader.biHeight = 8;
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biBitCount = 32;
+    void* pixels = NULL;
+    HBITMAP bitmap = CreateDIBSection(paint, &bitmapInfo, DIB_RGB_COLORS, &pixels, NULL, 0);
+    Check(paint && bitmap, "Cannot create directory background test surface");
+    HGDIOBJ previousBitmap = SelectObject(paint, bitmap);
+    SetPixel(paint, 1, 1, RGB(255, 0, 255));
+    SendMessage(dialog.hwnd, WM_ERASEBKGND, (WPARAM)paint, 0);
+    Check(GetPixel(paint, 1, 1) == GetSysColor(COLOR_BTNFACE), "Directory background is not erased consistently");
+    HWND status = GetDlgItem(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS);
+    if (status) {
+      HBRUSH brush = (HBRUSH)SendMessage(dialog.hwnd, WM_CTLCOLORSTATIC, (WPARAM)paint, (LPARAM)status);
+      Check(brush == GetSysColorBrush(COLOR_BTNFACE) && GetBkMode(paint) == TRANSPARENT &&
+            GetBkColor(paint) == GetSysColor(COLOR_BTNFACE), "Static text has a different background");
+    }
+    SelectObject(paint, previousBitmap);
+    DeleteObject(bitmap);
+    DeleteDC(paint);
+    for (HWND child = GetWindow(dialog.hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
+      wchar_t className[32] = {};
+      GetClassName(child, className, _countof(className));
+      if (!lstrcmpi(className, L"Button") &&
+          (GetWindowLongPtr(child, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX) {
+        Check(!(GetWindowLongPtr(dialog.hwnd, GWL_STYLE) & WS_CLIPCHILDREN),
+              "Parent background incorrectly clips out a transparent group box");
+        Check((GetWindowLongPtr(child, GWL_STYLE) & WS_CLIPSIBLINGS) != 0,
+              "Group box can paint over sibling tables");
+      }
+    }
+    MINMAXINFO limits = {};
+    SendMessage(dialog.hwnd, WM_GETMINMAXINFO, 0, (LPARAM)&limits);
+    Check(limits.ptMinTrackSize.x == window.right - window.left &&
+          limits.ptMinTrackSize.y == window.bottom - window.top, "Directory minimum size is missing");
+    HWND first = GetDlgItem(dialog.hwnd, page.first);
+    HWND second = GetDlgItem(dialog.hwnd, page.second);
+    HWND close = GetDlgItem(dialog.hwnd, page.close);
+    RECT originalFirst = first ? ControlRect(dialog.hwnd, first) : RECT{};
+    RECT originalSecond = second ? ControlRect(dialog.hwnd, second) : RECT{};
+    RECT originalClose = close ? ControlRect(dialog.hwnd, close) : RECT{};
+    for (int cycle = 0; cycle < 3; ++cycle) {
+      SetWindowPos(dialog.hwnd, NULL, 0, 0, window.right - window.left + 320,
+          window.bottom - window.top + 180, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+      RECT grown = {};
+      GetClientRect(dialog.hwnd, &grown);
+      Check(grown.right == client.right + 320 && grown.bottom == client.bottom + 180,
+            "Directory client did not grow with the window");
+      if (first) {
+        RECT rect = ControlRect(dialog.hwnd, first);
+        Check(rect.right - rect.left > originalFirst.right - originalFirst.left &&
+              rect.bottom - rect.top > originalFirst.bottom - originalFirst.top,
+              "Directory table did not grow with the window");
+      }
+      if (second) {
+        RECT rect = ControlRect(dialog.hwnd, second);
+        Check(rect.right - rect.left > originalSecond.right - originalSecond.left &&
+              rect.bottom - rect.top > originalSecond.bottom - originalSecond.top,
+              "Directory detail table did not grow");
+      }
+      if (close) {
+        RECT rect = ControlRect(dialog.hwnd, close);
+        Check(grown.right - rect.right == client.right - originalClose.right &&
+              grown.bottom - rect.bottom == client.bottom - originalClose.bottom &&
+              rect.right - rect.left == originalClose.right - originalClose.left,
+              "Directory Close button lost its size or bottom/right margins");
+      }
+      for (HWND child = GetWindow(dialog.hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
+        RECT rect = ControlRect(dialog.hwnd, child);
+        Check(rect.left >= 0 && rect.top >= 0 && rect.right <= grown.right && rect.bottom <= grown.bottom,
+              "Directory control moved outside the client area");
+      }
+      SetWindowPos(dialog.hwnd, NULL, 0, 0, window.right - window.left, window.bottom - window.top,
+                   SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+      if (first) {
+        RECT restored = ControlRect(dialog.hwnd, first);
+        Check(EqualRect(&restored, &originalFirst) != FALSE, "Repeated resizing accumulated layout drift");
+      }
+    }
+    Check(!IsWindowVisible(dialog.hwnd), "Directory updates exposed a hidden dialog");
+  }
+
+  {
+    Dialog dialog(IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc);
+    HWND modules = GetDlgItem(dialog.hwnd, IDC_LIST_DELAY_MODULES);
+    HWND functions = GetDlgItem(dialog.hwnd, IDC_LIST_DELAY_FUNCTIONS);
+    ListUpdates updates(functions);
+    int widened = ListView_GetColumnWidth(functions, 1) + 1200;
+    ListView_SetColumnWidth(functions, 1, widened);
+    ListView_Scroll(functions, 180, 0);
+    int horizontal = GetScrollPos(functions, SB_HORZ);
+    Check(horizontal > 0, "Horizontal scroll test did not reach offscreen columns");
+    ListView_SetItemState(modules, 1, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+    DispatchDirectoryUpdates(dialog.hwnd);
+    Check(updates.clears == 1 && !updates.unbatched && !updates.disabled,
+          "Delay selection redraws an empty/intermediate list or rebuilds twice");
+    Check(ListView_GetItemCount(functions) == 1, "Delay selection did not refresh its functions");
+    Check(ListView_GetColumnWidth(functions, 1) == widened && GetScrollPos(functions, SB_HORZ) == horizontal,
+          "Delay selection reset column widths or horizontal scroll");
+    ListView_SetItemState(modules, 1, 0, LVIS_FOCUSED);
+    DispatchDirectoryUpdates(dialog.hwnd);
+    Check(updates.clears == 1, "A focus-only notification rebuilt delay functions");
+    ListView_SetItemState(modules, -1, 0, LVIS_SELECTED);
+    DispatchDirectoryUpdates(dialog.hwnd);
+    Check(ListView_GetItemCount(functions) == 0 && updates.clears == 2,
+          "Clearing selection left stale delay functions");
+  }
+  {
+    Dialog dialog(IDD_DIALOG_IMPORT_DIRECTORY, ImportDirectoryProc);
+    HWND modules = GetDlgItem(dialog.hwnd, IDC_LIST_IMPORT_DLL);
+    HWND functions = GetDlgItem(dialog.hwnd, IDC_LIST_INT_THUNK);
+    ListUpdates updates(functions);
+    ListView_SetItemState(modules, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+    Check(updates.clears == 1 && !updates.unbatched && ListView_GetItemCount(functions) > 0,
+          "Import keyboard-style selection did not refresh in one batch");
+    ListView_SetItemState(modules, 0, 0, LVIS_FOCUSED);
+    Check(updates.clears == 1, "Import focus changes rebuild the function list");
+  }
+  {
+    Dialog dialog(IDD_DIALOG_RELOCATIONS, RelocationDirectoryProc);
+    HWND blocks = GetDlgItem(dialog.hwnd, IDC_LIST_RELOC_BLOCKS);
+    ListUpdates updates(GetDlgItem(dialog.hwnd, IDC_LIST_RELOC_ENTRIES));
+    ListView_SetItemState(blocks, 0, 0, LVIS_FOCUSED);
+    Check(updates.clears == 0, "Relocation focus changes rebuild the entries");
+    ListView_SetItemState(blocks, 1, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+    DispatchDirectoryUpdates(dialog.hwnd);
+    Check(updates.clears == 1 && !updates.unbatched, "Relocation switch is not a single batch");
+  }
+  resource_fixture::Fill((BYTE*)buffer, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Resource update context rejected");
+  {
+    Dialog dialog(IDD_DIALOG_RESOURCES, ResourceDirectoryProc);
+    HWND tree = GetDlgItem(dialog.hwnd, IDC_TREE_RESOURCES);
+    ListUpdates updates(GetDlgItem(dialog.hwnd, IDC_LIST_RESOURCE_DETAILS));
+    TreeView_SelectItem(tree, TreeView_GetChild(tree, TreeView_GetRoot(tree)));
+    Check(updates.clears == 1 && !updates.unbatched && !updates.disabled,
+          "Resource selection does not batch its detail updates");
+  }
+}
+
 void CheckText(HWND dialog, int controlId, const wchar_t* expected) {
   wchar_t actual[MAX_PATH] = {};
   Check(GetDlgItem(dialog, controlId) != NULL, "Expected control is missing");
@@ -912,6 +1119,8 @@ int wmain(int argc, wchar_t** argv) {
     CheckTlsPage(allocatedBuffer, true);
     CheckDelayImportPage(allocatedBuffer, false);
     CheckDelayImportPage(allocatedBuffer, true);
+    CheckDirectoryWindowBehavior(allocatedBuffer, false);
+    CheckDirectoryWindowBehavior(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);
     for (int i = 2; i < argc; ++i) {
       std::wstring reference = std::wstring(argv[1]) + L".resources-" + std::to_wstring(i) + L".dll";
