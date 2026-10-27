@@ -756,6 +756,85 @@ DebugDetails ReadDebugDetails(const PEContext& context) {
   return result;
 }
 
+// AMD64 records are exactly three DWORD RVAs, independent of viewer bitness.
+// https://learn.microsoft.com/en-us/cpp/build/exception-handling-x64
+ExceptionDetails ReadExceptionDetails(const PEContext& context) {
+  ExceptionDetails result;
+  if (context.fileHeader) result.machine = context.fileHeader->Machine;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_EXCEPTION);
+  if (!directory) {
+    result.message = L"No exception directory.";
+    return result;
+  }
+  result.present = true;
+  result.rva = directory->VirtualAddress;
+  result.size = directory->Size;
+  if (result.machine != IMAGE_FILE_MACHINE_AMD64) {
+    result.message = L"Unsupported exception table Machine (AMD64 only).";
+    return result;
+  }
+  if (context.format != PEFormat::PE32Plus) {
+    result.message = L"AMD64 exception tables require PE32+.";
+    return result;
+  }
+  result.supported = true;
+  constexpr SIZE_T recordSize = 3 * sizeof(DWORD);
+  if ((ULONGLONG)result.rva + result.size > (ULONGLONG)MAXDWORD + 1) {
+    result.message = L"Exception directory RVA range overflows 32 bits.";
+    return result;
+  }
+  result.totalEntries = result.size / recordSize;
+  result.complete = result.size % recordSize == 0;
+  if (!result.complete) Note(result.message, L"Truncated exception record (directory size is not a multiple of 12)");
+  if (result.rva % sizeof(DWORD)) Note(result.message, L"Exception directory RVA is not DWORD aligned");
+  DWORD imageSize = context.optionalHeader64->SizeOfImage;
+  for (SIZE_T i = 0; i < result.totalEntries; ++i) {
+    if (i == kMaxEntries) {
+      result.complete = false;
+      Note(result.message, L"Exception display limited to 100000 entries");
+      break;
+    }
+    ULONGLONG position = (ULONGLONG)result.rva + i * recordSize;
+    SIZE_T offset = 0;
+    if (position >= imageSize || recordSize > imageSize - position ||
+        !context.RvaToFileOffset((DWORD)position, recordSize, offset)) {
+      result.complete = false;
+      Note(result.message, L"Exception table is truncated or outside the file/image range");
+      break;
+    }
+    const BYTE* bytes = context.fileBuffer + offset;
+    ExceptionEntry entry;
+    entry.recordRva = (DWORD)position;
+    entry.recordFileOffset = offset;
+    entry.beginRva = (DWORD)ReadValue<4>(bytes);
+    entry.endRva = (DWORD)ReadValue<4>(bytes + 4);
+    entry.unwindRva = (DWORD)ReadValue<4>(bytes + 8);
+    entry.rangeValid = entry.beginRva < entry.endRva && entry.endRva <= imageSize;
+    if (!entry.rangeValid) Note(entry.message, L"Invalid function range (expected Begin < End <= SizeOfImage)");
+    entry.hasCodeFileOffset = entry.beginRva < imageSize &&
+        context.RvaToFileOffset(entry.beginRva, 1, entry.codeFileOffset) != FALSE;
+    SIZE_T codeOffset = 0;
+    if (entry.rangeValid && !context.RvaToFileOffset(entry.beginRva,
+          (SIZE_T)(entry.endRva - entry.beginRva), codeOffset))
+      Note(entry.message, L"Function range has no complete file-backed bytes");
+    if (i && entry.beginRva < result.entries.back().beginRva)
+      Note(entry.message, L"Function table is not sorted by BeginAddress");
+    if (!entry.unwindRva || entry.unwindRva % sizeof(DWORD)) {
+      Note(entry.message, L"Unwind RVA is zero or not DWORD aligned");
+    } else if (entry.unwindRva >= imageSize || sizeof(DWORD) > imageSize - entry.unwindRva) {
+      Note(entry.message, L"Unwind RVA is outside SizeOfImage");
+    } else {
+      // Check only the fixed header's availability. UNWIND_INFO decoding is separate.
+      entry.hasUnwindFileOffset = context.RvaToFileOffset(entry.unwindRva, sizeof(DWORD),
+                                                         entry.unwindFileOffset) != FALSE;
+      if (!entry.hasUnwindFileOffset) Note(entry.message, L"Unwind header has no complete file-backed bytes");
+    }
+    if (!entry.message.empty()) Note(result.message, L"Invalid exception entry; see row status");
+    result.entries.push_back(std::move(entry));
+  }
+  return result;
+}
+
 TlsDetails ReadTlsDetails(const PEContext& context) {
   TlsDetails result;
   const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_TLS);

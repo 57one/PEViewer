@@ -12,4 +12,5 @@ void showBoundImportDirectory(HWND hwnd, HWND list, const PEContext& context);
 void showDebugDirectory(HWND hwnd, HWND list, const PEContext& context);
 void showResourceDirectory(HWND hwnd, const PEContext& context);
 void showTlsDirectory(HWND hwnd, const PEContext& context);
+void showExceptionDirectory(HWND hwnd, const PEContext& context);
 void showDelayImportDirectory(HWND hwnd, const PEContext& context);

@@ -4,7 +4,7 @@
 #include <commctrl.h>
 
 enum class DirectoryDialogLayout {
-  Overview, Import, Export, BoundImport, Iat, Relocations, Resources, Tls, DelayImport, Debug
+  Overview, Import, Export, BoundImport, Iat, Relocations, Resources, Tls, DelayImport, Debug, Exception
 };
 
 // Captures the resource layout once; resize state is independent of GWLP_USERDATA.

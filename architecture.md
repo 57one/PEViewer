@@ -13,12 +13,13 @@
 | [messageCallback.cpp](src/ui/messageCallback.cpp)、[messageCallback.h](src/ui/messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
 | [PEContext.cpp](src/pe/PEContext.cpp)、[PEContext.h](src/pe/PEContext.h) | 文件所有权、长度、格式、头部与节表校验，以及有边界检查的 RVA / 字符串访问；独立于界面。 |
 | [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 现阶段保留头部、汇总和节表的读取 / 显示适配；目录解析和填表逻辑已迁出。 |
-| [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、延迟导入、IAT、导出、绑定导入、调试、TLS 和重定位解析；共用名称 / 序号 thunk 解码，返回数值字段、名称、条目集合和异常说明。 |
+| [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、延迟导入、IAT、导出、绑定导入、调试、TLS、AMD64 异常函数表和重定位解析；共用名称 / 序号 thunk 解码，返回数值字段、名称、条目集合和异常说明。 |
 | [resourceDetails.cpp](src/pe/resourceDetails.cpp) | 资源目录解析，保留内部 `ResourceReader` 类，集中管理递归路径、循环检查和名称总量；模型声明复用 `directoryDetails.h`，返回树节点、目录头、数据描述符和异常说明。 |
 | [directoryDialogs.cpp](src/ui/directoryDialogs.cpp)、[directoryDialogs.h](src/ui/directoryDialogs.h) | 数据目录总览及详情的结果显示、十六进制格式化、列表填充和状态提示；IAT / 重定位页面还在此处理初始化、选择和关闭。旧页面的列初始化和消息分派继续由 messageCallback / windowProc 组织。 |
 | [directoryDialogUi.cpp](src/ui/directoryDialogUi.cpp)、[directoryDialogUi.h](src/ui/directoryDialogUi.h) | 数据目录窗口的缩放布局、最小尺寸、列表批量重绘和稳定列宽；统一选择变化通知，避免切换时清空 / 重建两次。布局状态由窗口 subclass 持有，不占用解析模型的 GWLP_USERDATA。 |
 | [resourceDialog.cpp](src/ui/resourceDialog.cpp) | 资源树、节点详情和状态显示；树项使用数值模型索引，窗口拥有解析结果，切换选择不从显示文字反推地址。 |
 | [tlsDialog.cpp](src/ui/tlsDialog.cpp) | TLS 字段和回调列表的独立对话框，负责格式标题、32 / 64 位十六进制显示、列宽和错误状态。 |
+| [exceptionDialog.cpp](src/ui/exceptionDialog.cpp) | AMD64 异常函数表独立页面，显示表项 / 代码 / 展开信息 RVA 与文件偏移、范围及错误状态；复用缩放与批量重绘。 |
 | [delayImportDialog.cpp](src/ui/delayImportDialog.cpp) | 延迟导入 DLL 描述符和函数列表；窗口持有解析模型和当前上下文引用，选择项通过数值模型索引关联 DLL，重载 / 关闭清理旧状态。 |
 | [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
 | [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
@@ -59,7 +60,8 @@ PEViewer/
 │  │  ├─ directoryDialogUi.h
 │  │  ├─ resourceDialog.cpp
 │  │  ├─ tlsDialog.cpp
-│  │  └─ delayImportDialog.cpp
+│  │  ├─ delayImportDialog.cpp
+│  │  └─ exceptionDialog.cpp
 │  ├─ pe/
 │  │  ├─ PEContext.cpp
 │  │  ├─ PEContext.h
@@ -93,12 +95,14 @@ PEViewer/
 │  ├─ resource-details-tests.cpp
 │  ├─ tls-details-tests.cpp
 │  ├─ delay-import-tests.cpp
+│  ├─ exception-details-tests.cpp
 │  └─ fixtures/
 │     ├─ pe32.h                 # PE32 页面与解析样本
 │     ├─ pe64.h                 # PE32+ 页面与解析样本
 │     ├─ resources.h            # 双格式资源树与多语言样本
 │     ├─ tls.h                  # 双格式 TLS 字段、VA 与回调数组样本
-│     └─ delay-imports.h        # 双格式延迟导入、RVA / 旧式 VA 样本
+│     ├─ delay-imports.h        # 双格式延迟导入、RVA / 旧式 VA 样本
+│     └─ exceptions.h           # AMD64 三 DWORD 异常函数表样本
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
@@ -147,7 +151,7 @@ PEViewer/
 
 当前 UI 在模态查看窗口结束后重置上下文。字段和目录接口显式接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已实现目录统一返回结构化结果，不接收 `HWND`、资源 ID 或 ListView；界面适配使用调用者传入的上下文。头部 / 节表显示适配继续按后续计划迁移。
 
-[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。当前页面回归覆盖两种格式的 15 种页面、64 位字段输入 / 布局、普通 / 延迟导入 thunk、名称 / 序号转发导出、资源树和 TLS 字段 / 回调；更多真实文件用例继续推进。
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。当前页面回归覆盖两种格式与架构状态的 16 种页面、64 位字段输入 / 布局、普通 / 延迟导入 thunk、名称 / 序号转发导出、资源树和 TLS 字段 / 回调；更多真实文件用例继续推进。
 
 ## 数据与页面
 
@@ -263,23 +267,27 @@ WinMain
 - [x] 数据目录总览及 9 个详情窗口支持拖动边框调整大小和最大化，以资源模板尺寸为最小尺寸。列表随窗口扩展；上下列表分配新增高度，资源树 / 详情分配新增宽度，状态区与关闭按钮保持边距。布局从初始矩形计算并批量更新，反复缩放不累计偏移。
 - [x] 对话框背景和静态标签使用统一的系统底色。包含重叠分组框的窗口不使用父窗口 `WS_CLIPCHILDREN`，分组框置于其他控件后方并裁剪兄弟区域，避免透明内部漏刷；缩放不复制旧像素，完成布局后统一使父窗口及子控件失效重绘，清除表头 / 网格残影。
 - [x] 列表清空、填充和列宽调整在同一重绘作用域中完成，覆盖普通 / 延迟导入、重定位、资源、TLS、IAT、导出、绑定导入和调试；作用域支持嵌套并保留控件可见性与横向滚动位置。列宽首次适应内容，随后只自动增宽，保留用户拉宽的列。普通 / 延迟导入和重定位只响应选择变化，失去选择时延后确认，避免行切换中途显示空表；键盘切换与鼠标操作一致。
+- [x] `ReadExceptionDetails()` 以普通函数放在 `directoryDetails.cpp`，仅对 `Machine == AMD64` 且 PE32+ 按固定三个 DWORD（12 字节）解析。所有地址保持 32 位 RVA，不依赖查看器自身位数；非 AMD64 保留入口信息并显示未支持，缺失目录正常返回。
+- [x] 异常表保留原始顺序和异常条目，检查目录 RVA 溢出 / 对齐、记录截断、Begin < End <= SizeOfImage、代码完整文件范围、BeginAddress 排序及展开信息固定头的对齐 / 范围；结束地址按排他边界处理，全零记录不作为终止项。最多读取 100000 项，达到上限提示。
+- [x] `exceptionDialog.cpp` 与资源布局提供记录 RVA / 文件偏移、起止 RVA、长度、代码文件偏移、展开信息 RVA / 文件偏移和状态。页面复用缩放、批量重绘与稳定列宽，重载清空旧记录；`complete` 只表示目录记录读取完整，条目错误由各行及整体 message 表示。
+- [ ] 后续扩展 AMD64 UNWIND_INFO 的版本、标志、展开码与处理器数据，以及其他 CPU 架构的异常目录格式。
 - [ ] 资源内容继续增加图标、版本信息等预览及原始数据导出。
 - [ ] 调试数据载荷（例如 CodeView / PDB）及绑定导入子记录的独立详情展示继续扩展；节表的显示适配与错误状态仍需后续整理。
 - [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；Load Config 等结构仍需区分 32 / 64 位布局，TLS 的双格式已单独实现。
 
-阶段验收：两种查看器均能显示两种文件格式的节表和已实现的 9 个数据目录详情，包括普通 / 延迟导入 DLL 与函数、导出、IAT、重定位、绑定导入、调试、资源树和 TLS，并正确处理不存在的目录。
+阶段验收：两种查看器均能显示两种文件格式的节表和已实现的 10 个数据目录详情（Exception 先支持 AMD64），包括普通 / 延迟导入 DLL 与函数、导出、IAT、重定位、绑定导入、调试、资源树、TLS 和 AMD64 异常函数表，并正确处理不存在的目录。
 
 ### 其他数据目录的实现顺序
 
-当前已有详情的 9 个目录是：导入、导出、IAT、重定位、绑定导入、调试、资源、TLS 和延迟导入。接下来优先补齐其余尚未实现的目录，下一项是 Exception 异常目录。目录入口、资源与延迟导入说明见 [PE 数据目录文档](docs/pe-directories.md)。
+当前已有详情的 10 个目录是：导入、导出、IAT、重定位、绑定导入、调试、资源、TLS、延迟导入和 Exception（先支持 AMD64）。接下来优先补齐其余尚未实现的目录，下一项是 Load Config 加载配置。目录入口、资源与延迟导入说明见 [PE 数据目录文档](docs/pe-directories.md)。
 
 | 顺序 | 目录 | 当前状态 | 第一版实现范围 |
 | --- | --- | --- | --- |
 | 1 | Resource 资源目录 | 已完成 | “类型 → 名称 / ID → 语言”树；显示叶子数据的 RVA、文件偏移、大小和 CodePage。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-rsrc-section) |
 | 2 | TLS 目录 | 已完成 | 区分 PE32 / PE32+ 字段宽度，显示 TLS 字段及回调地址列表，按首选 ImageBase 转换 VA，并检查范围与终止项。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-directory) |
 | 3 | Delay Import 延迟导入 | 已完成 | DLL、名称 / 序号、Hint、INT / IAT 槽位及可选 Bound / Unload IAT 原值；共用 thunk 解码，区分 RVA / 旧式 VA。 |
-| 4 | Exception 异常目录 | 下一项 | 先支持 x64 的函数起止 RVA、展开信息 RVA；根据 Machine 选择结构，不把所有 PE32+ 都当作 x64。 |
-| 5 | Load Config 加载配置 | 待实现 | 根据结构的 Size 和 PE32 / PE32+ 格式读取字段，兼容较短版本，不越过有效长度。 |
+| 4 | Exception 异常目录 | AMD64 第一版已完成 | 函数 / 代码片段起止 RVA、展开信息 RVA、记录及目标文件偏移；根据 Machine 和格式选择布局，其他架构显示未支持。UNWIND_INFO 详细解码另行扩展。 |
+| 5 | Load Config 加载配置 | 下一项 | 根据结构的 Size 和 PE32 / PE32+ 格式读取字段，兼容较短版本，不越过有效长度。 |
 | 6 | Security / Certificate 证书目录 | 待实现 | 显示证书条目、长度、版本和类型；按 8 字节对齐遍历，目录地址使用文件偏移。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-attribute-certificate-table-image-only) |
 | 7 | CLR Runtime Header | 待实现 | 先显示 CLR 头部及元数据入口，检查头部长度和元数据范围。 |
 
@@ -329,6 +337,8 @@ pwsh -File .\scripts\build.ps1 -All -Test
 验证源码、样本生成代码和使用说明位于 [tests](tests/README.md)。`-Test` 为独立验证工程传入主程序对应配置的工具集及 SDK，将验证程序写入 `bin/<配置>/<平台>/tests`，将中间文件、生成样本和构建日志写入 `obj/<配置>/<平台>/tests`。主程序的构建日志位于 `obj/<配置>/<平台>/build.log`。正式入口和验证源码不受 [.gitignore](.gitignore) 的生成文件规则影响。
 
 已完成的验证：
+
+- AMD64 Exception 函数表通过 Debug / Release × Win32 / x64 四组构建及模型 / 页面回归，覆盖错误架构、完整与截断记录、RVA / 文件范围、排序、空 / 异常条目、数量上限、缩放和批量刷新。Win32 与 x64 验证程序均读取系统 AMD64 的 ActivationClient.dll、kernel32.dll、notepad.exe，分别得到 783 / 1521 / 385 条记录；数量及首尾三个 RVA 字段与 `dumpbin /pdata` 一致。对应 PE32 样本没有该目录时正常返回。全量双格式 UI 回归在当前环境单轮约 95 秒，脚本超时上限由 30 秒调整为 180 秒。
 
 - 背景绘制修正通过 Debug / Release × Win32 / x64 四组构建和回归：内存 DC / DIB 检查实际背景填充、标签画刷及透明模式，确认分组框不会导致父窗口跳过整片内部区域。Debug/x64 使用 `bin/Debug/x64/directory-paint-check` / `obj/Debug/x64/directory-paint-check` 独立输出，保留正在运行的默认程序。
 - 目录窗口缩放与刷新改造通过 Debug / Release × Win32 / x64 四组主程序构建和回归。两种文件格式均覆盖总览及 9 个详情窗口的尺寸样式、最小尺寸、列表增长、按钮边距与反复恢复；消息级检查确认选择切换时下表只批量重建一次，纯焦点变化不重建，清除选择后移除旧详情，列宽与横向滚动位置保留。

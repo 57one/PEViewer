@@ -14,6 +14,7 @@
 #include "fixtures/resources.h"
 #include "fixtures/tls.h"
 #include "fixtures/delay-imports.h"
+#include "fixtures/exceptions.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -22,6 +23,7 @@ void CheckDirectoryDetails();
 void CheckResourceDetails();
 void CheckTlsDetails();
 void CheckDelayImportDetails();
+void CheckExceptionDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -109,7 +111,8 @@ void CheckDirectoryWindowBehavior(void* buffer, bool wide) {
     {IDD_DIALOG_RELOCATIONS, RelocationDirectoryProc, IDC_LIST_RELOC_BLOCKS, IDC_LIST_RELOC_ENTRIES, IDCANCEL},
     {IDD_DIALOG_RESOURCES, ResourceDirectoryProc, IDC_TREE_RESOURCES, IDC_LIST_RESOURCE_DETAILS, IDCANCEL},
     {IDD_DIALOG_TLS, TlsDirectoryProc, IDC_LIST_TLS_FIELDS, IDC_LIST_TLS_CALLBACKS, IDCANCEL},
-    {IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc, IDC_LIST_DELAY_MODULES, IDC_LIST_DELAY_FUNCTIONS, IDCANCEL}
+    {IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc, IDC_LIST_DELAY_MODULES, IDC_LIST_DELAY_FUNCTIONS, IDCANCEL},
+    {IDD_DIALOG_EXCEPTIONS, ExceptionDirectoryProc, IDC_LIST_EXCEPTION_FUNCTIONS, 0, IDCANCEL}
   };
   for (const auto& page : pages) {
     Dialog dialog(page.resource, page.callback);
@@ -403,6 +406,22 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
   const auto debug = ReadDebugDetails(context);
   const auto tls = ReadTlsDetails(context);
   const auto delay = ReadDelayImportDetails(context);
+  const auto exceptions = ReadExceptionDetails(context);
+  if (exceptions.present && exceptions.supported) {
+    if (!exceptions.message.empty()) std::fwprintf(stderr, L"Exceptions: %ls\n", exceptions.message.c_str());
+    Check(exceptions.complete && exceptions.message.empty(), "Real AMD64 exception table rejected");
+    for (const auto& entry : exceptions.entries)
+      Check(entry.rangeValid && entry.hasCodeFileOffset && entry.hasUnwindFileOffset && entry.message.empty(),
+            "Real AMD64 exception record range/reference invalid");
+  }
+  std::wprintf(L"      Exception Machine=%04X records=%zu size=%08lX\n",
+      exceptions.machine, exceptions.entries.size(), exceptions.size);
+  if (!exceptions.entries.empty()) {
+    const auto& first = exceptions.entries.front();
+    const auto& last = exceptions.entries.back();
+    std::wprintf(L"      Exception first=%08lX %08lX %08lX last=%08lX %08lX %08lX\n",
+        first.beginRva, first.endRva, first.unwindRva, last.beginRva, last.endRva, last.unwindRva);
+  }
   if (delay.present) {
     if (!delay.message.empty()) std::fwprintf(stderr, L"Delay imports: %ls\n", delay.message.c_str());
     Check(delay.terminated && delay.message.empty(), "Real-file delay descriptor parsing failed");
@@ -581,6 +600,65 @@ void CheckDelayImportPage(void* buffer, bool wide) {
   showDirectory(directories.hwnd, other);
   Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_DELAY_IMPORT)),
         "Missing delay directory button enabled");
+}
+
+void CheckExceptionPage(void* buffer) {
+  auto image = (BYTE*)buffer;
+  exception_fixture::Fill(image);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Exception page fixture rejected");
+  Dialog directories(IDD_DIALOG_DIRECTORY, DirectoryProc);
+  Check(IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_EXCEPTION)),
+        "Present exception directory button disabled");
+  Dialog dialog(IDD_DIALOG_EXCEPTIONS, ExceptionDirectoryProc);
+  HWND list = GetDlgItem(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS);
+  wchar_t title[100] = {};
+  GetWindowText(dialog.hwnd, title, _countof(title));
+  Check(!std::wcscmp(title, L"Exception Directory - AMD64 (PE32+)"), "Exception title lacks architecture");
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 1, L"00001900", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 2, L"00000B00", 0, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 3, L"00001810", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 4, L"00001830", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 5, L"00000020", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 6, L"00000A10", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 7, L"00001A04", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 8, L"00000C04", 1, 3);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 9, L"OK", 1, 3);
+  Check(ListView_GetColumnWidth(list, 4) >= ListView_GetStringWidth(list, L"00001830"),
+        "Exception RVA text clipped");
+  ListView_SetColumnWidth(list, 3, 520);
+  ListUpdates updates(list);
+  exception_fixture::Record(image, 0, 0x1800, 0x1800, 0);
+  showExceptionDirectory(dialog.hwnd, g_peContext);
+  wchar_t text[512] = {};
+  ListView_GetItemText(list, 0, 9, text, _countof(text));
+  Check(std::wcsstr(text, L"Invalid function range") != NULL, "Invalid exception row has no error text");
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 9, L"OK", 1, 3);
+  Check(!updates.unbatched && updates.clears == 1 && ListView_GetColumnWidth(list, 3) >= 520,
+        "Exception refresh flickers or shrinks user column width");
+
+  std::vector<BYTE> otherImage(pe32_fixture::kFileSize);
+  exception_fixture::Fill(otherImage.data(), false);
+  PEContext other;
+  Check(other.Initialize(otherImage.data(), otherImage.size()), "PE32 exception page context rejected");
+  showExceptionDirectory(dialog.hwnd, other);
+  Check(ListView_GetItemCount(list) == 0, "Unsupported Machine retained old AMD64 rows");
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, text, _countof(text));
+  Check(std::wcsstr(text, L"Unsupported") != NULL, "Unsupported architecture has no visible status");
+  exception_fixture::Fill(otherImage.data());
+  Check(other.Initialize(otherImage.data(), otherImage.size()), "Alternate exception context rejected");
+  showExceptionDirectory(dialog.hwnd, other);
+  CheckList(dialog.hwnd, IDC_LIST_EXCEPTION_FUNCTIONS, 9, L"OK", 0, 3);
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(other.Directory(IMAGE_DIRECTORY_ENTRY_EXCEPTION));
+  directory->Size = 1;
+  showExceptionDirectory(dialog.hwnd, other);
+  Check(ListView_GetItemCount(list) == 0, "Truncated table retained old exception rows");
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, text, _countof(text));
+  Check(std::wcsstr(text, L"Truncated") != NULL, "Partial exception record has no visible status");
+  *directory = {};
+  showExceptionDirectory(dialog.hwnd, other);
+  showDirectory(directories.hwnd, other);
+  Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_EXCEPTION)),
+        "Missing exception directory button remains enabled");
 }
 
 void CheckTlsPage(void* buffer, bool wide) {
@@ -1085,6 +1163,7 @@ int wmain(int argc, wchar_t** argv) {
     CheckResourceDetails();
     CheckTlsDetails();
     CheckDelayImportDetails();
+    CheckExceptionDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -1119,6 +1198,7 @@ int wmain(int argc, wchar_t** argv) {
     CheckTlsPage(allocatedBuffer, true);
     CheckDelayImportPage(allocatedBuffer, false);
     CheckDelayImportPage(allocatedBuffer, true);
+    CheckExceptionPage(allocatedBuffer);
     CheckDirectoryWindowBehavior(allocatedBuffer, false);
     CheckDirectoryWindowBehavior(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);
@@ -1126,7 +1206,7 @@ int wmain(int argc, wchar_t** argv) {
       std::wstring reference = std::wstring(argv[1]) + L".resources-" + std::to_wstring(i) + L".dll";
       CheckRealDirectoryFile(argv[i], reference.c_str());
     }
-    std::printf("PASS: %s, PE32/PE32+ pages, delay imports/RVA/VA, TLS fields/callbacks, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
+    std::printf("PASS: %s, AMD64 exception table, PE32/PE32+ pages, delay imports/RVA/VA, TLS fields/callbacks, resource tree, IAT/INT association, export forwarders, relocation blocks, malformed directories, 64-bit input/layout, name/ordinal thunks, bitmap\n",
                 sizeof(void*) == 8 ? "x64 buffer above 4 GB" : "x86");
     g_peContext.Reset();
     VirtualFree(allocatedBuffer, 0, MEM_RELEASE);

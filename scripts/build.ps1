@@ -162,7 +162,8 @@ foreach ($config in $configurations) {
             $process.StartInfo = New-ProcessInfo $testExecutable @($fixturePath) $environment
             try {
                 [void]$process.Start()
-                if (!$process.WaitForExit(30000)) {
+                # Full UI regression covers both formats and repeated resize/paint cycles.
+                if (!$process.WaitForExit(180000)) {
                     $process.Kill($true)
                     $process.WaitForExit()
                     throw "Smoke test timed out: $config/$projectPlatform"

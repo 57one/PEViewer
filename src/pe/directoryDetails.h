@@ -167,6 +167,32 @@ struct DebugDetails {
   std::wstring message;
 };
 
+struct ExceptionEntry {
+  DWORD recordRva = 0;
+  SIZE_T recordFileOffset = 0;
+  DWORD beginRva = 0;
+  DWORD endRva = 0;  // Exclusive end of the function/fragment range.
+  DWORD unwindRva = 0;
+  bool rangeValid = false;
+  bool hasCodeFileOffset = false;
+  SIZE_T codeFileOffset = 0;
+  bool hasUnwindFileOffset = false;
+  SIZE_T unwindFileOffset = 0;
+  std::wstring message;
+};
+
+struct ExceptionDetails {
+  bool present = false;
+  bool supported = false;
+  bool complete = false;  // All declared records read; entries can still have errors.
+  WORD machine = 0;
+  DWORD rva = 0;
+  DWORD size = 0;
+  SIZE_T totalEntries = 0;
+  std::vector<ExceptionEntry> entries;
+  std::wstring message;
+};
+
 struct TlsAddress {
   ULONGLONG va = 0;
   DWORD rva = 0;
@@ -273,6 +299,7 @@ DelayImportThunkDetails ReadDelayImportThunks(const PEContext& context,
 ExportDetails ReadExportDetails(const PEContext& context);
 BoundImportDetails ReadBoundImportDetails(const PEContext& context);
 DebugDetails ReadDebugDetails(const PEContext& context);
+ExceptionDetails ReadExceptionDetails(const PEContext& context);
 TlsDetails ReadTlsDetails(const PEContext& context);
 ResourceDetails ReadResourceDetails(const PEContext& context);
 RelocationDetails ReadRelocationDetails(const PEContext& context);
