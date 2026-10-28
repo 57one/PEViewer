@@ -165,6 +165,7 @@
     <ClCompile Include="src\ui\tlsDialog.cpp" />
     <ClCompile Include="src\ui\delayImportDialog.cpp" />
     <ClCompile Include="src\ui\exceptionDialog.cpp" />
+    <ClCompile Include="src\ui\loadConfigDialog.cpp" />
     <ClCompile Include="src\common\utility.cpp" />
     <ClCompile Include="src\ui\windowProc.cpp" />
   </ItemGroup>
@@ -200,6 +201,8 @@
     <None Include="tests\tls-details-tests.cpp" />
     <None Include="tests\delay-import-tests.cpp" />
     <None Include="tests\exception-details-tests.cpp" />
+    <None Include="tests\load-config-tests.cpp" />
+    <None Include="tests\fixtures\load-config.h" />
     <None Include="tests\fixtures\exceptions.h" />
     <None Include="tests\fixtures\delay-imports.h" />
     <None Include="tests\fixtures\tls.h" />

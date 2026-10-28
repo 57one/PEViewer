@@ -193,6 +193,53 @@ struct ExceptionDetails {
   std::wstring message;
 };
 
+struct LoadConfigField {
+  std::wstring name;
+  DWORD offset = 0;  // Offset within IMAGE_LOAD_CONFIG_DIRECTORY32/64.
+  BYTE size = 0;
+  bool available = false;
+  ULONGLONG value = 0;
+  bool isVa = false;
+  bool hasRva = false;
+  DWORD rva = 0;
+  bool hasFileOffset = false;
+  SIZE_T fileOffset = 0;
+  std::wstring message;
+};
+
+struct SafeSehEntry {
+  DWORD slotRva = 0;
+  SIZE_T slotFileOffset = 0;
+  DWORD handlerRva = 0;
+  bool hasVa = false;
+  ULONGLONG handlerVa = 0;
+  bool hasFileOffset = false;
+  SIZE_T fileOffset = 0;
+  std::wstring message;
+};
+
+struct SafeSehDetails {
+  bool applicable = false;  // Only I386 / PE32 has an x86 SafeSEH table.
+  bool hasFields = false;
+  bool complete = false;  // All declared slots read, independently of row errors.
+  ULONGLONG tableVa = 0;
+  ULONGLONG count = 0;
+  std::vector<SafeSehEntry> entries;
+  std::wstring message;
+};
+
+struct LoadConfigDetails {
+  bool present = false;
+  bool hasSize = false;
+  DWORD rva = 0;
+  DWORD size = 0;  // DataDirectory size, distinct from the structure's Size.
+  DWORD declaredSize = 0;
+  DWORD knownSize = 0;  // Layout supported by the build's Windows SDK.
+  std::vector<LoadConfigField> fields;
+  SafeSehDetails safeSeh;
+  std::wstring message;
+};
+
 struct TlsAddress {
   ULONGLONG va = 0;
   DWORD rva = 0;
@@ -300,6 +347,7 @@ ExportDetails ReadExportDetails(const PEContext& context);
 BoundImportDetails ReadBoundImportDetails(const PEContext& context);
 DebugDetails ReadDebugDetails(const PEContext& context);
 ExceptionDetails ReadExceptionDetails(const PEContext& context);
+LoadConfigDetails ReadLoadConfigDetails(const PEContext& context);
 TlsDetails ReadTlsDetails(const PEContext& context);
 ResourceDetails ReadResourceDetails(const PEContext& context);
 RelocationDetails ReadRelocationDetails(const PEContext& context);

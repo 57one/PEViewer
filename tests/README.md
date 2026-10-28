@@ -65,3 +65,7 @@ TLS 解析入口 `ReadTlsDetails()` 和普通辅助函数位于 `src/pe/director
 异常目录模型用例位于 `exception-details-tests.cpp`，使用 `fixtures/exceptions.h`。覆盖 AMD64 的 12 字节步长、RVA / 文件偏移、排他的范围末尾、排序、零记录、无效范围和展开信息引用、目录对齐 / 溢出 / 截断、零填充、其他 Machine、AMD64 与 PE32 格式不匹配、上下文隔离及 100000 项上限。页面回归检查数据与错误行、未知架构 / 缺失目录状态、显式上下文重载、列表清理、批量重绘、列宽保持和窗口缩放；x64 将样本缓冲区放在 4 GB 以上，Win32 同样读取 AMD64 表。真实文件参数另检查支持的异常表并打印记录数量及首尾原始三元组，供 `dumpbin /pdata` 对照。这里只验证展开信息固定头的可读范围，不解码 UNWIND_INFO 载荷。
 
 全量验证包含双格式页面的多轮缩放和绘制检查；构建脚本允许每组回归最多运行 180 秒，超时会终止并报告失败。
+
+Load Config 模型用例位于 `load-config-tests.cpp`，样本由 `fixtures/load-config.h` 生成。覆盖 PE32 / PE32+ 的不同偏移与字段宽度、64 位值、VA 转换、CodeIntegrity、旧版短结构、跨字段截断、结构 / 目录 / 文件 / 映像边界、未知版本尾部及非对齐读取。x86 SafeSEH 另验证按数量读取的 DWORD RVA、槽位与处理函数地址、零值异常项、排序 / 重复、缺失或截断表、零填充、错误 Machine、独立上下文及 100000 项限制。
+
+Load Config 页面回归检查完整 64 位显示、SafeSEH 列表、PE32 / PE32+ 与显式上下文切换、旧版不可用字段、错误重载清空、目录按钮、批量刷新、手工列宽保持和上下列表缩放；x64 使用 4 GB 以上缓冲区。真实文件参数会额外打印 Load Config Size、SecurityCookie、GuardFlags、SEHandlerTable / Count 和 SafeSEH 数量，便于与 `dumpbin /loadconfig` 核对。CFG 等目标子表不在第一版遍历范围内。

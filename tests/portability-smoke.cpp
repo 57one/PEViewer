@@ -15,6 +15,7 @@
 #include "fixtures/tls.h"
 #include "fixtures/delay-imports.h"
 #include "fixtures/exceptions.h"
+#include "fixtures/load-config.h"
 
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -24,6 +25,7 @@ void CheckResourceDetails();
 void CheckTlsDetails();
 void CheckDelayImportDetails();
 void CheckExceptionDetails();
+void CheckLoadConfigDetails();
 
 namespace {
 void Check(bool condition, const char* message) {
@@ -112,7 +114,8 @@ void CheckDirectoryWindowBehavior(void* buffer, bool wide) {
     {IDD_DIALOG_RESOURCES, ResourceDirectoryProc, IDC_TREE_RESOURCES, IDC_LIST_RESOURCE_DETAILS, IDCANCEL},
     {IDD_DIALOG_TLS, TlsDirectoryProc, IDC_LIST_TLS_FIELDS, IDC_LIST_TLS_CALLBACKS, IDCANCEL},
     {IDD_DIALOG_DELAY_IMPORT, DelayImportDirectoryProc, IDC_LIST_DELAY_MODULES, IDC_LIST_DELAY_FUNCTIONS, IDCANCEL},
-    {IDD_DIALOG_EXCEPTIONS, ExceptionDirectoryProc, IDC_LIST_EXCEPTION_FUNCTIONS, 0, IDCANCEL}
+    {IDD_DIALOG_EXCEPTIONS, ExceptionDirectoryProc, IDC_LIST_EXCEPTION_FUNCTIONS, 0, IDCANCEL},
+    {IDD_DIALOG_LOAD_CONFIG, LoadConfigDirectoryProc, IDC_LIST_LOAD_CONFIG_FIELDS, IDC_LIST_SAFE_SEH, IDCANCEL}
   };
   for (const auto& page : pages) {
     Dialog dialog(page.resource, page.callback);
@@ -407,6 +410,23 @@ void CheckRealDirectoryFile(const wchar_t* path, const wchar_t* resourceReferenc
   const auto tls = ReadTlsDetails(context);
   const auto delay = ReadDelayImportDetails(context);
   const auto exceptions = ReadExceptionDetails(context);
+  const auto config = ReadLoadConfigDetails(context);
+  if (config.present) {
+    Check(config.hasSize && !config.fields.empty(), "Real Load Config header rejected");
+    for (const auto& field : config.fields) {
+      if (field.name == L"SecurityCookie" || field.name == L"GuardFlags" ||
+          field.name == L"SEHandlerTable" || field.name == L"SEHandlerCount")
+        std::wprintf(L"      LoadConfig %ls=%016llX bytes=%u available=%d\n", field.name.c_str(),
+                     field.value, field.size, field.available);
+    }
+    if (config.safeSeh.applicable && config.safeSeh.count) {
+      Check(config.safeSeh.complete && config.safeSeh.message.empty(), "Real SafeSEH table rejected");
+      for (const auto& entry : config.safeSeh.entries)
+        Check(entry.hasVa && entry.hasFileOffset && entry.message.empty(), "Real SafeSEH handler invalid");
+    }
+    std::wprintf(L"      LoadConfig Size=%08lX directorySize=%08lX SafeSEH=%zu\n",
+                 config.declaredSize, config.size, config.safeSeh.entries.size());
+  }
   if (exceptions.present && exceptions.supported) {
     if (!exceptions.message.empty()) std::fwprintf(stderr, L"Exceptions: %ls\n", exceptions.message.c_str());
     Check(exceptions.complete && exceptions.message.empty(), "Real AMD64 exception table rejected");
@@ -600,6 +620,80 @@ void CheckDelayImportPage(void* buffer, bool wide) {
   showDirectory(directories.hwnd, other);
   Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_DELAY_IMPORT)),
         "Missing delay directory button enabled");
+}
+
+void CheckLoadConfigPage(void* buffer, bool wide) {
+  auto image = (BYTE*)buffer;
+  load_config_fixture::Fill(image, wide);
+  Check(g_peContext.Initialize(buffer, pe32_fixture::kFileSize), "Load Config page fixture rejected");
+  Dialog directories(IDD_DIALOG_DIRECTORY, DirectoryProc);
+  Check(IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_LOAD_CONFIG)),
+        "Present Load Config button disabled");
+  Dialog dialog(IDD_DIALOG_LOAD_CONFIG, LoadConfigDirectoryProc);
+  HWND fields = GetDlgItem(dialog.hwnd, IDC_LIST_LOAD_CONFIG_FIELDS);
+  HWND handlers = GetDlgItem(dialog.hwnd, IDC_LIST_SAFE_SEH);
+  auto fieldRow = [&](const wchar_t* name) {
+    wchar_t text[128] = {};
+    for (int i = 0; i < ListView_GetItemCount(fields); ++i) {
+      ListView_GetItemText(fields, i, 0, text, _countof(text));
+      if (!std::wcscmp(text, name)) return i;
+    }
+    throw std::runtime_error("Load Config field not displayed");
+  };
+  auto cell = [&](const wchar_t* name, int column, const wchar_t* expected) {
+    wchar_t text[256] = {};
+    ListView_GetItemText(fields, fieldRow(name), column, text, _countof(text));
+    Check(!std::wcscmp(text, expected), "Load Config field cell mismatch");
+  };
+  wchar_t title[100] = {};
+  GetWindowText(dialog.hwnd, title, _countof(title));
+  Check(!std::wcscmp(title, wide ? L"Load Config Directory - PE32+" : L"Load Config Directory - PE32"),
+        "Load Config title lacks file format");
+  cell(L"SecurityCookie", 3, wide ? L"0000000140001D00" : L"00401D00");
+  cell(L"SecurityCookie", 5, L"00001D00");
+  cell(L"SecurityCookie", 6, L"00000F00");
+  cell(L"ProcessAffinityMask", 3, wide ? L"0000000100000002" : L"00001234");
+  Check(ListView_GetItemCount(handlers) == (wide ? 0 : 3), "SafeSEH page count mismatch");
+  if (!wide) {
+    CheckList(dialog.hwnd, IDC_LIST_SAFE_SEH, 1, L"00001C04", 1, 3);
+    CheckList(dialog.hwnd, IDC_LIST_SAFE_SEH, 3, L"00001810", 1, 3);
+    CheckList(dialog.hwnd, IDC_LIST_SAFE_SEH, 4, L"00401810", 1, 3);
+    CheckList(dialog.hwnd, IDC_LIST_SAFE_SEH, 5, L"00000A10", 1, 3);
+  }
+  Check(ListView_GetColumnWidth(fields, 3) >= ListView_GetStringWidth(fields,
+        wide ? L"0000000140001D00" : L"00401D00"), "64-bit Load Config value clipped");
+  ListView_SetColumnWidth(fields, 3, 530);
+  ListUpdates fieldUpdates(fields), handlerUpdates(handlers);
+  showLoadConfigDirectory(dialog.hwnd, g_peContext);
+  Check(!fieldUpdates.unbatched && !handlerUpdates.unbatched && fieldUpdates.clears == 1 &&
+        handlerUpdates.clears == 1 && ListView_GetColumnWidth(fields, 3) >= 530,
+        "Load Config reload flickers or shrinks manual column width");
+  std::vector<BYTE> otherImage(pe32_fixture::kFileSize);
+  load_config_fixture::Fill(otherImage.data(), !wide);
+  PEContext other;
+  Check(other.Initialize(otherImage.data(), otherImage.size()), "Alternate Load Config context rejected");
+  showLoadConfigDirectory(dialog.hwnd, other);
+  cell(L"SecurityCookie", 3, !wide ? L"0000000140001D00" : L"00401D00");
+  Check(ListView_GetItemCount(handlers) == (wide ? 3 : 0), "Format switch retained old SafeSEH handlers");
+  DWORD size = 64;
+  std::memcpy(otherImage.data() + load_config_fixture::kRaw, &size, 4);
+  showLoadConfigDirectory(dialog.hwnd, other);
+  cell(L"GuardFlags", 3, L"-");
+  cell(L"GuardFlags", 7, L"Not present in this structure version");
+  Check(ListView_GetItemCount(handlers) == 0, "Short Load Config retained old SafeSEH handlers");
+  auto directory = const_cast<IMAGE_DATA_DIRECTORY*>(other.Directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG));
+  directory->Size = 3;
+  showLoadConfigDirectory(dialog.hwnd, other);
+  Check(ListView_GetItemCount(fields) == 0 && ListView_GetItemCount(handlers) == 0,
+        "Failed Load Config reload retained old rows");
+  wchar_t status[512] = {};
+  GetDlgItemText(dialog.hwnd, IDC_STATIC_DIRECTORY_STATUS, status, _countof(status));
+  Check(std::wcsstr(status, L"Truncated") != NULL, "Load Config error status hidden");
+  *directory = {};
+  showLoadConfigDirectory(dialog.hwnd, other);
+  showDirectory(directories.hwnd, other);
+  Check(!IsWindowEnabled(GetDlgItem(directories.hwnd, IDC_BUTTON_DIRECTORY_LOAD_CONFIG)),
+        "Missing Load Config button remains enabled");
 }
 
 void CheckExceptionPage(void* buffer) {
@@ -1164,6 +1258,7 @@ int wmain(int argc, wchar_t** argv) {
     CheckTlsDetails();
     CheckDelayImportDetails();
     CheckExceptionDetails();
+    CheckLoadConfigDetails();
     g_peContext.Reset();
 
 #ifdef _WIN64
@@ -1199,6 +1294,8 @@ int wmain(int argc, wchar_t** argv) {
     CheckDelayImportPage(allocatedBuffer, false);
     CheckDelayImportPage(allocatedBuffer, true);
     CheckExceptionPage(allocatedBuffer);
+    CheckLoadConfigPage(allocatedBuffer, false);
+    CheckLoadConfigPage(allocatedBuffer, true);
     CheckDirectoryWindowBehavior(allocatedBuffer, false);
     CheckDirectoryWindowBehavior(allocatedBuffer, true);
     CheckDirectoryErrorPages(allocatedBuffer);

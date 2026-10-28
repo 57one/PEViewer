@@ -1,6 +1,7 @@
 #include "directoryDetails.h"
 
 #include <cstring>
+#include <cstddef>
 #include <map>
 #include <utility>
 
@@ -878,6 +879,233 @@ TlsDetails ReadTlsDetails(const PEContext& context) {
   } else {
     result.message = L"TLS directory is outside the file-backed RVA range.";
   }
+  return result;
+}
+
+namespace {
+void ReadLoadConfigField(const PEContext& context, LoadConfigDetails& result,
+                         const wchar_t* name, DWORD offset, BYTE width, bool isVa) {
+  LoadConfigField field;
+  field.name = name;
+  field.offset = offset;
+  field.size = width;
+  field.isVa = isVa;
+  const bool wide = context.format == PEFormat::PE32Plus;
+  const DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  if (offset >= result.declaredSize) {
+    field.message = L"Not present in this structure version";
+  } else if (width > result.declaredSize - offset) {
+    field.message = L"Truncated field (structure Size)";
+    Note(result.message, L"Structure Size ends inside a field");
+  } else if (offset >= result.size || width > result.size - offset) {
+    field.message = L"Truncated field (directory Size)";
+  } else {
+    const ULONGLONG rva = (ULONGLONG)result.rva + offset;
+    const BYTE* bytes = rva < imageSize && width <= imageSize - rva ?
+        context.ReadRva((DWORD)rva, width) : NULL;
+    if (!bytes) {
+      field.message = L"Field is outside the file/image range";
+      Note(result.message, L"Load Config fields are truncated or outside the file/image range");
+    } else {
+      field.available = true;
+      field.value = width == 8 ? ReadValue<8>(bytes) : width == 4 ? ReadValue<4>(bytes) : ReadValue<2>(bytes);
+      if (isVa && field.value) {
+        const ULONGLONG base = wide ? context.optionalHeader64->ImageBase : context.optionalHeader32->ImageBase;
+        if (field.value < base || field.value - base > MAXDWORD || field.value - base >= imageSize) {
+          field.message = L"VA is outside the preferred image range";
+        } else {
+          field.hasRva = true;
+          field.rva = (DWORD)(field.value - base);
+          field.hasFileOffset = context.RvaToFileOffset(field.rva, 1, field.fileOffset) != FALSE;
+          if (!field.hasFileOffset) field.message = L"No file-backed bytes at target VA";
+        }
+      }
+    }
+  }
+  result.fields.push_back(std::move(field));
+}
+
+// Read individual members, never copy sizeof(Header) from an older/shorter file.
+// Explicit layouts also preserve 64-bit fields in a Win32 viewer.
+template <typename Header>
+void ReadLoadConfigFields(const PEContext& context, LoadConfigDetails& result) {
+#define CONFIG_WIDEN_IMPL(text) L##text
+#define CONFIG_WIDEN(text) CONFIG_WIDEN_IMPL(text)
+#define CONFIG_FIELD(member, va) ReadLoadConfigField(context, result, CONFIG_WIDEN(#member), \
+    (DWORD)offsetof(Header, member), (BYTE)sizeof(((Header*)nullptr)->member), va)
+  CONFIG_FIELD(Size, false);
+  CONFIG_FIELD(TimeDateStamp, false);
+  CONFIG_FIELD(MajorVersion, false);
+  CONFIG_FIELD(MinorVersion, false);
+  CONFIG_FIELD(GlobalFlagsClear, false);
+  CONFIG_FIELD(GlobalFlagsSet, false);
+  CONFIG_FIELD(CriticalSectionDefaultTimeout, false);
+  CONFIG_FIELD(DeCommitFreeBlockThreshold, false);
+  CONFIG_FIELD(DeCommitTotalFreeThreshold, false);
+  CONFIG_FIELD(LockPrefixTable, true);
+  CONFIG_FIELD(MaximumAllocationSize, false);
+  CONFIG_FIELD(VirtualMemoryThreshold, false);
+  // The order of these two members differs between PE32 and PE32+.
+  if (sizeof(((Header*)nullptr)->ProcessAffinityMask) == 8) {
+    CONFIG_FIELD(ProcessAffinityMask, false);
+    CONFIG_FIELD(ProcessHeapFlags, false);
+  } else {
+    CONFIG_FIELD(ProcessHeapFlags, false);
+    CONFIG_FIELD(ProcessAffinityMask, false);
+  }
+  CONFIG_FIELD(CSDVersion, false);
+  CONFIG_FIELD(DependentLoadFlags, false);
+  CONFIG_FIELD(EditList, true);
+  CONFIG_FIELD(SecurityCookie, true);
+  CONFIG_FIELD(SEHandlerTable, true);
+  CONFIG_FIELD(SEHandlerCount, false);
+  CONFIG_FIELD(GuardCFCheckFunctionPointer, true);
+  CONFIG_FIELD(GuardCFDispatchFunctionPointer, true);
+  CONFIG_FIELD(GuardCFFunctionTable, true);
+  CONFIG_FIELD(GuardCFFunctionCount, false);
+  CONFIG_FIELD(GuardFlags, false);
+#define INTEGRITY_FIELD(member) ReadLoadConfigField(context, result, L"CodeIntegrity." CONFIG_WIDEN(#member), \
+    (DWORD)(offsetof(Header, CodeIntegrity) + offsetof(IMAGE_LOAD_CONFIG_CODE_INTEGRITY, member)), \
+    (BYTE)sizeof(((IMAGE_LOAD_CONFIG_CODE_INTEGRITY*)nullptr)->member), false)
+  INTEGRITY_FIELD(Flags);
+  INTEGRITY_FIELD(Catalog);
+  INTEGRITY_FIELD(CatalogOffset);
+  INTEGRITY_FIELD(Reserved);
+#undef INTEGRITY_FIELD
+  CONFIG_FIELD(GuardAddressTakenIatEntryTable, true);
+  CONFIG_FIELD(GuardAddressTakenIatEntryCount, false);
+  CONFIG_FIELD(GuardLongJumpTargetTable, true);
+  CONFIG_FIELD(GuardLongJumpTargetCount, false);
+  CONFIG_FIELD(DynamicValueRelocTable, true);
+  CONFIG_FIELD(CHPEMetadataPointer, true);
+  CONFIG_FIELD(GuardRFFailureRoutine, true);
+  CONFIG_FIELD(GuardRFFailureRoutineFunctionPointer, true);
+  CONFIG_FIELD(DynamicValueRelocTableOffset, false);
+  CONFIG_FIELD(DynamicValueRelocTableSection, false);
+  CONFIG_FIELD(Reserved2, false);
+  CONFIG_FIELD(GuardRFVerifyStackPointerFunctionPointer, true);
+  CONFIG_FIELD(HotPatchTableOffset, false);
+  CONFIG_FIELD(Reserved3, false);
+  CONFIG_FIELD(EnclaveConfigurationPointer, true);
+  CONFIG_FIELD(VolatileMetadataPointer, true);
+  CONFIG_FIELD(GuardEHContinuationTable, true);
+  CONFIG_FIELD(GuardEHContinuationCount, false);
+  CONFIG_FIELD(GuardXFGCheckFunctionPointer, true);
+  CONFIG_FIELD(GuardXFGDispatchFunctionPointer, true);
+  CONFIG_FIELD(GuardXFGTableDispatchFunctionPointer, true);
+  CONFIG_FIELD(CastGuardOsDeterminedFailureMode, true);
+  CONFIG_FIELD(GuardMemcpyFunctionPointer, true);
+#undef CONFIG_FIELD
+#undef CONFIG_WIDEN
+#undef CONFIG_WIDEN_IMPL
+}
+
+void ReadSafeSeh(const PEContext& context, LoadConfigDetails& config) {
+  auto& result = config.safeSeh;
+  result.applicable = context.format == PEFormat::PE32 && context.fileHeader->Machine == IMAGE_FILE_MACHINE_I386;
+  if (!result.applicable) {
+    result.message = L"SafeSEH is only applicable to I386 / PE32 images";
+    return;
+  }
+  const LoadConfigField* table = NULL;
+  const LoadConfigField* count = NULL;
+  for (const auto& field : config.fields) {
+    if (field.name == L"SEHandlerTable") table = &field;
+    if (field.name == L"SEHandlerCount") count = &field;
+  }
+  if (!table || !count || !table->available || !count->available) {
+    result.message = L"SafeSEH fields are absent or truncated";
+    return;
+  }
+  result.hasFields = true;
+  result.tableVa = table->value;
+  result.count = count->value;
+  if (!result.tableVa || !result.count) {
+    result.complete = !result.count;
+    result.message = !result.tableVa && !result.count ? L"No SafeSEH table" : L"Inconsistent SafeSEH table VA / count";
+    return;
+  }
+  if (!table->hasRva) {
+    result.message = L"Invalid SafeSEH table VA";
+    return;
+  }
+  if (table->rva % sizeof(DWORD)) Note(result.message, L"SafeSEH table is not DWORD aligned");
+  const ULONGLONG bytes = result.count * sizeof(DWORD);  // Count is a DWORD in I386 images.
+  const DWORD imageSize = context.optionalHeader32->SizeOfImage;
+  const ULONGLONG base = context.optionalHeader32->ImageBase;
+  if (bytes - 1 > MAXDWORD - result.tableVa || bytes > imageSize - table->rva)
+    Note(result.message, L"SafeSEH table range exceeds the image/address width");
+  if (result.count > kMaxEntries) Note(result.message, L"SafeSEH display limited to 100000 entries");
+  DWORD previous = 0;
+  for (ULONGLONG i = 0; i < result.count && i < kMaxEntries; ++i) {
+    const ULONGLONG slot = (ULONGLONG)table->rva + i * sizeof(DWORD);
+    SafeSehEntry entry;
+    if (i * sizeof(DWORD) + sizeof(DWORD) - 1 > MAXDWORD - result.tableVa ||
+        slot >= imageSize || sizeof(DWORD) > imageSize - slot ||
+        !context.RvaToFileOffset((DWORD)slot, sizeof(DWORD), entry.slotFileOffset)) {
+      Note(result.message, L"SafeSEH table is truncated or outside the file/image range");
+      break;
+    }
+    entry.slotRva = (DWORD)slot;
+    entry.handlerRva = (DWORD)ReadValue<4>(context.fileBuffer + entry.slotFileOffset);
+    if (!entry.handlerRva || entry.handlerRva >= imageSize) {
+      Note(entry.message, L"Invalid handler RVA");
+    } else {
+      if (entry.handlerRva > MAXDWORD - base) {
+        Note(entry.message, L"Handler VA overflows 32 bits");
+      } else {
+        entry.hasVa = true;
+        entry.handlerVa = base + entry.handlerRva;
+      }
+      entry.hasFileOffset = context.RvaToFileOffset(entry.handlerRva, 1, entry.fileOffset) != FALSE;
+      if (!entry.hasFileOffset) Note(entry.message, L"Handler has no file-backed bytes");
+    }
+    if (i && entry.handlerRva <= previous) Note(entry.message, L"SafeSEH handlers are not sorted / unique");
+    previous = entry.handlerRva;
+    if (!entry.message.empty()) Note(result.message, L"Invalid SafeSEH entry; see row status");
+    result.entries.push_back(std::move(entry));
+  }
+  result.complete = result.entries.size() == result.count;
+}
+}  // namespace
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory32
+// SEHandlerTable is a VA; its counted DWORD entries are handler RVAs (no terminator).
+LoadConfigDetails ReadLoadConfigDetails(const PEContext& context) {
+  LoadConfigDetails result;
+  const auto directory = context.Directory(IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
+  if (!directory) {
+    result.message = L"No Load Config directory.";
+    return result;
+  }
+  result.present = true;
+  result.rva = directory->VirtualAddress;
+  result.size = directory->Size;
+  const bool wide = context.format == PEFormat::PE32Plus;
+  result.knownSize = wide ? sizeof(IMAGE_LOAD_CONFIG_DIRECTORY64) : sizeof(IMAGE_LOAD_CONFIG_DIRECTORY32);
+  const DWORD imageSize = wide ? context.optionalHeader64->SizeOfImage : context.optionalHeader32->SizeOfImage;
+  if ((ULONGLONG)result.rva + result.size > (ULONGLONG)MAXDWORD + 1) {
+    result.message = L"Load Config directory RVA range overflows 32 bits.";
+    return result;
+  }
+  const BYTE* size = result.size >= sizeof(DWORD) && result.rva < imageSize &&
+      sizeof(DWORD) <= imageSize - result.rva ? context.ReadRva(result.rva, sizeof(DWORD)) : NULL;
+  if (!size) {
+    result.message = L"Truncated Load Config Size field or directory outside file/image range.";
+    return result;
+  }
+  result.hasSize = true;
+  result.declaredSize = (DWORD)ReadValue<4>(size);
+  if (result.declaredSize < sizeof(DWORD)) {
+    result.message = L"Invalid Load Config structure Size (less than 4).";
+    return result;
+  }
+  if (result.declaredSize > result.size) Note(result.message, L"Structure Size exceeds directory Size (truncated)");
+  if (result.declaredSize > imageSize - result.rva) Note(result.message, L"Structure Size exceeds image range");
+  if (result.declaredSize > result.knownSize) Note(result.message, L"Newer Load Config extension is not decoded");
+  if (wide) ReadLoadConfigFields<IMAGE_LOAD_CONFIG_DIRECTORY64>(context, result);
+  else ReadLoadConfigFields<IMAGE_LOAD_CONFIG_DIRECTORY32>(context, result);
+  ReadSafeSeh(context, result);
   return result;
 }
 

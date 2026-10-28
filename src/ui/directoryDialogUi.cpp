@@ -111,11 +111,13 @@ void InitDirectoryDialogLayout(HWND dialog, DirectoryDialogLayout kind) {
   int upperId = kind == DirectoryDialogLayout::Import ? IDC_LIST_IMPORT_DLL :
                 kind == DirectoryDialogLayout::Relocations ? IDC_LIST_RELOC_BLOCKS :
                 kind == DirectoryDialogLayout::Tls ? IDC_LIST_TLS_FIELDS :
+                kind == DirectoryDialogLayout::LoadConfig ? IDC_LIST_LOAD_CONFIG_FIELDS :
                 kind == DirectoryDialogLayout::DelayImport ? IDC_LIST_DELAY_MODULES :
                 kind == DirectoryDialogLayout::Debug ? IDC_LIST_DEBUG_DIRECTORY : 0;
   int lowerId = kind == DirectoryDialogLayout::Import ? IDC_LIST_INT_THUNK :
                 kind == DirectoryDialogLayout::Relocations ? IDC_LIST_RELOC_ENTRIES :
                 kind == DirectoryDialogLayout::Tls ? IDC_LIST_TLS_CALLBACKS :
+                kind == DirectoryDialogLayout::LoadConfig ? IDC_LIST_SAFE_SEH :
                 kind == DirectoryDialogLayout::DelayImport ? IDC_LIST_DELAY_FUNCTIONS :
                 kind == DirectoryDialogLayout::Debug ? IDC_LIST_DEBUG_DIRECTORY_INFO : 0;
   RECT upper = upperId ? ChildRect(dialog, GetDlgItem(dialog, upperId)) : RECT{};
@@ -134,7 +136,8 @@ void InitDirectoryDialogLayout(HWND dialog, DirectoryDialogLayout kind) {
     if (list) ListView_SetExtendedListViewStyleEx(child, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
     if (button && !group) item.left = item.top = item.bottom = 100;
     else if (group || list || tree) item.bottom = 100;
-    else if (id == IDC_STATIC_DIRECTORY_STATUS || id == IDC_STATIC_DELAY_FUNCTION_STATUS)
+    else if (id == IDC_STATIC_DIRECTORY_STATUS || id == IDC_STATIC_DELAY_FUNCTION_STATUS ||
+             id == IDC_STATIC_SAFE_SEH_STATUS)
       item.top = item.bottom = 100;
 
     if (upperId) {

@@ -51,6 +51,7 @@
     <ClCompile Include="tls-details-tests.cpp" />
     <ClCompile Include="delay-import-tests.cpp" />
     <ClCompile Include="exception-details-tests.cpp" />
+    <ClCompile Include="load-config-tests.cpp" />
     <ClCompile Include="..\src\pe\directoryDetails.cpp" />
     <ClCompile Include="..\src\pe\resourceDetails.cpp" />
     <ClCompile Include="..\src\ui\directoryDialogs.cpp" />
@@ -59,6 +60,7 @@
     <ClCompile Include="..\src\ui\tlsDialog.cpp" />
     <ClCompile Include="..\src\ui\delayImportDialog.cpp" />
     <ClCompile Include="..\src\ui\exceptionDialog.cpp" />
+    <ClCompile Include="..\src\ui\loadConfigDialog.cpp" />
     <ClCompile Include="..\src\common\global.cpp" />
     <ClCompile Include="..\src\common\utility.cpp" />
     <ClCompile Include="..\src\process\handleProcessAndModule.cpp" />
@@ -72,6 +74,7 @@
     <ClInclude Include="fixtures\tls.h" />
     <ClInclude Include="fixtures\delay-imports.h" />
     <ClInclude Include="fixtures\exceptions.h" />
+    <ClInclude Include="fixtures\load-config.h" />
     <ClInclude Include="..\src\pe\PEContext.h" />
     <ClInclude Include="..\src\ui\directoryDialogs.h" />
     <ClInclude Include="..\src\ui\directoryDialogUi.h" />

@@ -13,13 +13,14 @@
 | [messageCallback.cpp](src/ui/messageCallback.cpp)、[messageCallback.h](src/ui/messageCallback.h) | 文件选择、子对话框打开、控件初始化和部分字段调整逻辑。 |
 | [PEContext.cpp](src/pe/PEContext.cpp)、[PEContext.h](src/pe/PEContext.h) | 文件所有权、长度、格式、头部与节表校验，以及有边界检查的 RVA / 字符串访问；独立于界面。 |
 | [readPE.cpp](src/pe/readPE.cpp)、[readPE.h](src/pe/readPE.h) | 现阶段保留头部、汇总和节表的读取 / 显示适配；目录解析和填表逻辑已迁出。 |
-| [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、延迟导入、IAT、导出、绑定导入、调试、TLS、AMD64 异常函数表和重定位解析；共用名称 / 序号 thunk 解码，返回数值字段、名称、条目集合和异常说明。 |
+| [directoryDetails.cpp](src/pe/directoryDetails.cpp)、[directoryDetails.h](src/pe/directoryDetails.h) | 独立于控件的导入、延迟导入、IAT、导出、绑定导入、调试、TLS、AMD64 异常函数表、Load Config / x86 SafeSEH 和重定位解析；共用名称 / 序号 thunk 解码，返回数值字段、名称、条目集合和异常说明。 |
 | [resourceDetails.cpp](src/pe/resourceDetails.cpp) | 资源目录解析，保留内部 `ResourceReader` 类，集中管理递归路径、循环检查和名称总量；模型声明复用 `directoryDetails.h`，返回树节点、目录头、数据描述符和异常说明。 |
 | [directoryDialogs.cpp](src/ui/directoryDialogs.cpp)、[directoryDialogs.h](src/ui/directoryDialogs.h) | 数据目录总览及详情的结果显示、十六进制格式化、列表填充和状态提示；IAT / 重定位页面还在此处理初始化、选择和关闭。旧页面的列初始化和消息分派继续由 messageCallback / windowProc 组织。 |
 | [directoryDialogUi.cpp](src/ui/directoryDialogUi.cpp)、[directoryDialogUi.h](src/ui/directoryDialogUi.h) | 数据目录窗口的缩放布局、最小尺寸、列表批量重绘和稳定列宽；统一选择变化通知，避免切换时清空 / 重建两次。布局状态由窗口 subclass 持有，不占用解析模型的 GWLP_USERDATA。 |
 | [resourceDialog.cpp](src/ui/resourceDialog.cpp) | 资源树、节点详情和状态显示；树项使用数值模型索引，窗口拥有解析结果，切换选择不从显示文字反推地址。 |
 | [tlsDialog.cpp](src/ui/tlsDialog.cpp) | TLS 字段和回调列表的独立对话框，负责格式标题、32 / 64 位十六进制显示、列宽和错误状态。 |
 | [exceptionDialog.cpp](src/ui/exceptionDialog.cpp) | AMD64 异常函数表独立页面，显示表项 / 代码 / 展开信息 RVA 与文件偏移、范围及错误状态；复用缩放与批量重绘。 |
+| [loadConfigDialog.cpp](src/ui/loadConfigDialog.cpp) | Load Config 字段与 x86 SafeSEH 表页面，显示结构偏移、字段宽度 / 原值、VA 转换结果与处理函数槽位；兼容短版本，复用缩放、批量重绘和稳定列宽。 |
 | [delayImportDialog.cpp](src/ui/delayImportDialog.cpp) | 延迟导入 DLL 描述符和函数列表；窗口持有解析模型和当前上下文引用，选择项通过数值模型索引关联 DLL，重载 / 关闭清理旧状态。 |
 | [handleProcessAndModule.cpp](src/process/handleProcessAndModule.cpp)、[handleProcessAndModule.h](src/process/handleProcessAndModule.h) | 进程枚举、架构判断调用、模块查询和进程 / 模块列表显示。 |
 | [utility.cpp](src/common/utility.cpp)、[utility.h](src/common/utility.h) | 调试权限、错误输出、进程架构判断、时间和窗口布局辅助函数。 |
@@ -61,7 +62,8 @@ PEViewer/
 │  │  ├─ resourceDialog.cpp
 │  │  ├─ tlsDialog.cpp
 │  │  ├─ delayImportDialog.cpp
-│  │  └─ exceptionDialog.cpp
+│  │  ├─ exceptionDialog.cpp
+│  │  └─ loadConfigDialog.cpp
 │  ├─ pe/
 │  │  ├─ PEContext.cpp
 │  │  ├─ PEContext.h
@@ -96,13 +98,15 @@ PEViewer/
 │  ├─ tls-details-tests.cpp
 │  ├─ delay-import-tests.cpp
 │  ├─ exception-details-tests.cpp
+│  ├─ load-config-tests.cpp
 │  └─ fixtures/
 │     ├─ pe32.h                 # PE32 页面与解析样本
 │     ├─ pe64.h                 # PE32+ 页面与解析样本
 │     ├─ resources.h            # 双格式资源树与多语言样本
 │     ├─ tls.h                  # 双格式 TLS 字段、VA 与回调数组样本
 │     ├─ delay-imports.h        # 双格式延迟导入、RVA / 旧式 VA 样本
-│     └─ exceptions.h           # AMD64 三 DWORD 异常函数表样本
+│     ├─ exceptions.h           # AMD64 三 DWORD 异常函数表样本
+│     └─ load-config.h          # 双格式加载配置与 x86 SafeSEH 样本
 ├─ bin/                         # 构建产物，忽略提交
 └─ obj/                         # 中间文件和临时样本，忽略提交
 ```
@@ -151,7 +155,7 @@ PEViewer/
 
 当前 UI 在模态查看窗口结束后重置上下文。字段和目录接口显式接收 `const PEContext&`；RVA 转换和节显示不会移动共享节表指针。已实现目录统一返回结构化结果，不接收 `HWND`、资源 ID 或 ListView；界面适配使用调用者传入的上下文。头部 / 节表显示适配继续按后续计划迁移。
 
-[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。当前页面回归覆盖两种格式与架构状态的 16 种页面、64 位字段输入 / 布局、普通 / 延迟导入 thunk、名称 / 序号转发导出、资源树和 TLS 字段 / 回调；更多真实文件用例继续推进。
+[pe-context-tests.cpp](tests/pe-context-tests.cpp) 覆盖两种格式的磁盘加载、头部、64 位字段、上下文隔离、所有权与重载、失败清理、无效头部、目录数量、RVA 越界和无终止符字符串。页面回归覆盖两种格式、64 位字段输入 / 布局、普通 / 延迟导入 thunk、名称 / 序号转发导出、资源树、TLS、AMD64 异常函数表和 Load Config / x86 SafeSEH；更多真实文件用例继续推进。
 
 ## 数据与页面
 
@@ -264,22 +268,26 @@ WinMain
 - [x] 延迟导入通过 `ReadDelayImportDetails()` 读取固定 32 字节的 `IMAGE_DELAYLOAD_DESCRIPTOR` 数组及全零终止描述符；根据 Attributes 的 RvaBased 位解释六个地址字段，旧式 VA 按首选 ImageBase 转换，未知保留位保留原始描述符并提示。PE32+ 高基址下无法表示的 DWORD VA 不截断猜测。
 - [x] `ReadDelayImportThunks()` 按文件格式读取 4 / 8 字节 INT，共用 `DecodeImport()` 识别名称、Hint 和序号；分别保留 IAT、可选 Bound / Unload IAT 的磁盘原值。延迟 IAT 可能保存辅助代码地址，缺失 INT 时不回退到 IAT；缺失 IAT 时仍保留能独立解析的 INT 函数信息，不依赖普通 Import / IAT Directory。
 - [x] 延迟导入页布局在 `resource.rc`，上方 DLL 列表显示描述符字段，下方按选择显示函数 / 槽位详情。检查目录范围、地址转换、完整条目、名称、INT / IAT 终止项以及 100000 条上限；保留无效函数及有效兄弟项。模块句柄允许位于加载后的零填充区域。此功能只读取文件，不触发 DLL 加载。
-- [x] 数据目录总览及 9 个详情窗口支持拖动边框调整大小和最大化，以资源模板尺寸为最小尺寸。列表随窗口扩展；上下列表分配新增高度，资源树 / 详情分配新增宽度，状态区与关闭按钮保持边距。布局从初始矩形计算并批量更新，反复缩放不累计偏移。
+- [x] 数据目录总览及 11 个详情窗口支持拖动边框调整大小和最大化，以资源模板尺寸为最小尺寸。列表随窗口扩展；上下列表分配新增高度，资源树 / 详情分配新增宽度，状态区与关闭按钮保持边距。布局从初始矩形计算并批量更新，反复缩放不累计偏移。
 - [x] 对话框背景和静态标签使用统一的系统底色。包含重叠分组框的窗口不使用父窗口 `WS_CLIPCHILDREN`，分组框置于其他控件后方并裁剪兄弟区域，避免透明内部漏刷；缩放不复制旧像素，完成布局后统一使父窗口及子控件失效重绘，清除表头 / 网格残影。
 - [x] 列表清空、填充和列宽调整在同一重绘作用域中完成，覆盖普通 / 延迟导入、重定位、资源、TLS、IAT、导出、绑定导入和调试；作用域支持嵌套并保留控件可见性与横向滚动位置。列宽首次适应内容，随后只自动增宽，保留用户拉宽的列。普通 / 延迟导入和重定位只响应选择变化，失去选择时延后确认，避免行切换中途显示空表；键盘切换与鼠标操作一致。
 - [x] `ReadExceptionDetails()` 以普通函数放在 `directoryDetails.cpp`，仅对 `Machine == AMD64` 且 PE32+ 按固定三个 DWORD（12 字节）解析。所有地址保持 32 位 RVA，不依赖查看器自身位数；非 AMD64 保留入口信息并显示未支持，缺失目录正常返回。
 - [x] 异常表保留原始顺序和异常条目，检查目录 RVA 溢出 / 对齐、记录截断、Begin < End <= SizeOfImage、代码完整文件范围、BeginAddress 排序及展开信息固定头的对齐 / 范围；结束地址按排他边界处理，全零记录不作为终止项。最多读取 100000 项，达到上限提示。
 - [x] `exceptionDialog.cpp` 与资源布局提供记录 RVA / 文件偏移、起止 RVA、长度、代码文件偏移、展开信息 RVA / 文件偏移和状态。页面复用缩放、批量重绘与稳定列宽，重载清空旧记录；`complete` 只表示目录记录读取完整，条目错误由各行及整体 message 表示。
+- [x] `ReadLoadConfigDetails()` 读取索引 10 的 Load Config 目录，按文件 Magic 明确选择 `IMAGE_LOAD_CONFIG_DIRECTORY32/64` 的成员偏移与宽度；`ReadLoadConfigFields()` 逐字段检查结构 `Size`、目录 `Size`、映像及文件范围，不整体复制当前 SDK 的结构。旧版未包含的字段显示不可用，跨字段截断保留可读前缀；比 SDK 更新的扩展提示尚未解码，并保留已知字段。
+- [x] Load Config 字段模型保留结构偏移、2 / 4 / 8 字节宽度、64 位原值和 VA 类型；显示 SecurityCookie、SEHandlerTable / Count、Guard CF、CodeIntegrity 及 SDK 中截至 GuardMemcpyFunctionPointer 的字段。VA 按文件首选 ImageBase 转为 RVA / 文件偏移，允许显示无文件支持的零填充地址。第一版只展示 CFG 等扩展字段，不遍历其目标子表。
+- [x] `ReadSafeSeh()` 仅对 `Machine == I386` 且 PE32 读取 x86 SafeSEH。`SEHandlerTable` 是 VA，表项固定为 DWORD RVA，按 `SEHandlerCount` 计数而非零终止；显示槽位 RVA / 文件偏移、处理函数 RVA / VA / 文件偏移及状态。校验地址位宽、映像 / 文件范围、排序与唯一性；保留无效项和可读前缀，最多 100000 项，`complete` 仅表示声明项读取完整。PE32+ / 其他 Machine 显示不适用。
+- [x] `loadConfigDialog.cpp` 使用 `resource.rc` 定义的上下列表页面，复用缩放、批量重绘与稳定列宽；显式上下文重载、格式切换、短结构或失败输入均清理旧数据。总览的 Load Config 按钮已接入消息分派。
 - [ ] 后续扩展 AMD64 UNWIND_INFO 的版本、标志、展开码与处理器数据，以及其他 CPU 架构的异常目录格式。
 - [ ] 资源内容继续增加图标、版本信息等预览及原始数据导出。
 - [ ] 调试数据载荷（例如 CodeView / PDB）及绑定导入子记录的独立详情展示继续扩展；节表的显示适配与错误状态仍需后续整理。
-- [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；Load Config 等结构仍需区分 32 / 64 位布局，TLS 的双格式已单独实现。
+- [ ] 接入其他目录时分别核对规范：Security / Certificate 目录地址是文件偏移；CLR Runtime Header 需检查头部长度及内部目录范围。Load Config、TLS 的双格式已单独实现，Load Config 的 CFG 等子表可继续扩展。
 
-阶段验收：两种查看器均能显示两种文件格式的节表和已实现的 10 个数据目录详情（Exception 先支持 AMD64），包括普通 / 延迟导入 DLL 与函数、导出、IAT、重定位、绑定导入、调试、资源树、TLS 和 AMD64 异常函数表，并正确处理不存在的目录。
+阶段验收：两种查看器均能显示两种文件格式的节表和已实现的 11 个数据目录详情（Exception 先支持 AMD64），包括普通 / 延迟导入 DLL 与函数、导出、IAT、重定位、绑定导入、调试、资源树、TLS、AMD64 异常函数表及 Load Config 字段 / x86 SafeSEH，并正确处理不存在的目录及架构差异。
 
 ### 其他数据目录的实现顺序
 
-当前已有详情的 10 个目录是：导入、导出、IAT、重定位、绑定导入、调试、资源、TLS、延迟导入和 Exception（先支持 AMD64）。接下来优先补齐其余尚未实现的目录，下一项是 Load Config 加载配置。目录入口、资源与延迟导入说明见 [PE 数据目录文档](docs/pe-directories.md)。
+当前已有详情的 11 个目录是：导入、导出、IAT、重定位、绑定导入、调试、资源、TLS、延迟导入、Exception（先支持 AMD64）和 Load Config（含 x86 SafeSEH）。接下来优先补齐其余尚未实现的目录，下一项是 Security / Certificate 证书目录，再处理 CLR Runtime Header。目录入口、资源与延迟导入说明见 [PE 数据目录文档](docs/pe-directories.md)。
 
 | 顺序 | 目录 | 当前状态 | 第一版实现范围 |
 | --- | --- | --- | --- |
@@ -287,8 +295,8 @@ WinMain
 | 2 | TLS 目录 | 已完成 | 区分 PE32 / PE32+ 字段宽度，显示 TLS 字段及回调地址列表，按首选 ImageBase 转换 VA，并检查范围与终止项。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-tls-directory) |
 | 3 | Delay Import 延迟导入 | 已完成 | DLL、名称 / 序号、Hint、INT / IAT 槽位及可选 Bound / Unload IAT 原值；共用 thunk 解码，区分 RVA / 旧式 VA。 |
 | 4 | Exception 异常目录 | AMD64 第一版已完成 | 函数 / 代码片段起止 RVA、展开信息 RVA、记录及目标文件偏移；根据 Machine 和格式选择布局，其他架构显示未支持。UNWIND_INFO 详细解码另行扩展。 |
-| 5 | Load Config 加载配置 | 下一项 | 根据结构的 Size 和 PE32 / PE32+ 格式读取字段，兼容较短版本，不越过有效长度。 |
-| 6 | Security / Certificate 证书目录 | 待实现 | 显示证书条目、长度、版本和类型；按 8 字节对齐遍历，目录地址使用文件偏移。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-attribute-certificate-table-image-only) |
+| 5 | Load Config 加载配置 | 第一版已完成 | 按结构 Size、目录 Size 和 PE32 / PE32+ 布局读取字段；显示 VA 转换与 x86 SafeSEH 槽位 / 处理函数，兼容短版本和未知尾部。CFG 等子表另行扩展。[结构](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory32) |
+| 6 | Security / Certificate 证书目录 | 下一项 | 显示证书条目、长度、版本和类型；按 8 字节对齐遍历，目录地址使用文件偏移。[规范](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#the-attribute-certificate-table-image-only) |
 | 7 | CLR Runtime Header | 待实现 | 先显示 CLR 头部及元数据入口，检查头部长度和元数据范围。 |
 
 每个新增目录继续采用“解析结果模型 → UI 显示”的接口，并补充 PE32 / PE32+、缺失目录与损坏输入的适用用例。Architecture 和 Reserved 属于保留入口，Global Ptr 属于特殊入口，不按普通目录表逐项扩展。资源内容预览、调试载荷和绑定导入子记录详情仍保留为已有页面的后续增强。
@@ -338,6 +346,8 @@ pwsh -File .\scripts\build.ps1 -All -Test
 
 已完成的验证：
 
+- Load Config / x86 SafeSEH 通过 Debug / Release × Win32 / x64 四组主程序构建及模型 / 页面回归，覆盖双格式布局 / 64 位值、短版本、结构 / 目录 / 文件 / 映像截断、未知扩展、VA 转换、SafeSEH 排序 / 异常项 / 数量上限、上下文切换、缩放和批量刷新。Win32 与 x64 验证程序交叉读取两种格式的 kernel32.dll、notepad.exe；Load Config Size、SecurityCookie、GuardFlags 以及 x86 的 SEHandlerTable / Count 与 `dumpbin /loadconfig` 一致。PE32 kernel32 / notepad 分别读取到 3 / 2 个 SafeSEH 处理函数，PE32+ 明确显示 SafeSEH 不适用。当前系统文件的较新尾部超过项目 SDK 已知结构时保留已知字段并提示未解码扩展。
+
 - AMD64 Exception 函数表通过 Debug / Release × Win32 / x64 四组构建及模型 / 页面回归，覆盖错误架构、完整与截断记录、RVA / 文件范围、排序、空 / 异常条目、数量上限、缩放和批量刷新。Win32 与 x64 验证程序均读取系统 AMD64 的 ActivationClient.dll、kernel32.dll、notepad.exe，分别得到 783 / 1521 / 385 条记录；数量及首尾三个 RVA 字段与 `dumpbin /pdata` 一致。对应 PE32 样本没有该目录时正常返回。全量双格式 UI 回归在当前环境单轮约 95 秒，脚本超时上限由 30 秒调整为 180 秒。
 
 - 背景绘制修正通过 Debug / Release × Win32 / x64 四组构建和回归：内存 DC / DIB 检查实际背景填充、标签画刷及透明模式，确认分组框不会导致父窗口跳过整片内部区域。Debug/x64 使用 `bin/Debug/x64/directory-paint-check` / `obj/Debug/x64/directory-paint-check` 独立输出，保留正在运行的默认程序。
@@ -361,6 +371,7 @@ pwsh -File .\scripts\build.ps1 -All -Test
 ## 规范参考
 
 - [Microsoft PE / COFF 格式](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format)：文件布局、字段宽度、导入 / 导出与数据目录。
+- [Load Config 32](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory32)、[Load Config 64](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-image_load_config_directory64)：字段布局、版本长度、VA 及仅适用于 x86 的 SafeSEH 表 / 数量。
 - [Windows 指针使用规则](https://learn.microsoft.com/en-us/windows/win32/winprog64/rules-for-using-pointers)：本进程地址和消息参数的双平台类型选择。
 - [DLGPROC](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-dlgproc)、[MODULEINFO](https://learn.microsoft.com/en-us/windows/win32/api/psapi/ns-psapi-moduleinfo)：回调签名与实际加载映像信息。
 - [EnumProcessModules](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-enumprocessmodules)、[EnumProcessModulesEx](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-enumprocessmodulesex)：进程模块枚举的跨位数限制。

@@ -81,6 +81,9 @@
     <ClCompile Include="src\ui\exceptionDialog.cpp">
       <Filter>src\ui</Filter>
     </ClCompile>
+    <ClCompile Include="src\ui\loadConfigDialog.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\utility.cpp">
       <Filter>src\common</Filter>
     </ClCompile>
@@ -169,6 +172,12 @@
     </None>
     <None Include="tests\exception-details-tests.cpp">
       <Filter>tests</Filter>
+    </None>
+    <None Include="tests\load-config-tests.cpp">
+      <Filter>tests</Filter>
+    </None>
+    <None Include="tests\fixtures\load-config.h">
+      <Filter>tests\fixtures</Filter>
     </None>
     <None Include="tests\fixtures\exceptions.h">
       <Filter>tests\fixtures</Filter>

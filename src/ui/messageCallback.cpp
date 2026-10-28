@@ -700,6 +700,9 @@ BOOL onDirectoryButton(HWND hwnd, WPARAM wParam) {
     case IDC_BUTTON_DIRECTORY_EXCEPTION:
       DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_EXCEPTIONS), hwnd, ExceptionDirectoryProc);
       return TRUE;
+    case IDC_BUTTON_DIRECTORY_LOAD_CONFIG:
+      DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_LOAD_CONFIG), hwnd, LoadConfigDirectoryProc);
+      return TRUE;
     case IDC_BUTTON_DIRECTORY_DELAY_IMPORT:
       DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_DELAY_IMPORT), hwnd, DelayImportDirectoryProc);
       return TRUE;
